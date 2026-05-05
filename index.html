@@ -1074,4 +1074,43 @@ async function verResumo(jobId) {
 }
 
 </script>
+
+<!-- Modal decisao -->
+<div class="modal-overlay" id="modal-decisao">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-decisao-title">Registrar Decisao</div>
+      <button class="modal-close" onclick="closeModal('modal-decisao')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-decisao-info" style="background:var(--gray50);border-radius:var(--r-sm);padding:12px;margin-bottom:16px;font-size:13px;color:var(--gray600)"></div>
+      <div id="modal-justificativa-wrap" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Motivo da recusa <span style="color:var(--red)">*</span></label>
+          <textarea class="form-input" id="modal-justificativa" rows="4" placeholder="Descreva o motivo da recusa da proposta..." style="resize:vertical"></textarea>
+        </div>
+      </div>
+      <div id="modal-decisao-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm btn-outline" style="flex:1;justify-content:center" onclick="closeModal('modal-decisao')">Cancelar</button>
+        <button class="btn-sm" id="btn-confirmar-decisao" style="flex:1;justify-content:center;padding:10px" onclick="confirmarDecisao()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal resumo analitico -->
+<div class="modal-overlay" id="modal-resumo">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <div class="modal-title">Resumo Analitico - IA</div>
+      <button class="modal-close" onclick="closeModal('modal-resumo')">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-resumo-content" style="font-size:14px;line-height:1.7;color:var(--gray800)">
+        <div style="text-align:center;padding:24px;color:var(--gray400)">Gerando resumo com IA...</div>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
