@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProAgro Seguros — Subscrição</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --g50:#f0faf4;--g100:#d4f0e0;--g200:#a8e0c0;--g500:#2d8a55;--g600:#1e6b40;--g700:#155130;--g900:#0a2818;
+    --gold:#c9a227;--gray50:#f8f8f6;--gray100:#eeecea;--gray200:#d5d3ce;--gray400:#9c9a94;
+    --gray600:#5e5c57;--gray800:#2a2926;--gray900:#161512;
+    --red:#c0392b;--amber:#d97706;--blue:#2563eb;
+    --shadow-sm:0 1px 3px rgba(0,0,0,.08);--shadow-md:0 4px 16px rgba(0,0,0,.12);--shadow-lg:0 12px 40px rgba(0,0,0,.18);
+    --r-sm:6px;--r-md:10px;--r-lg:16px;--r-xl:24px;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:var(--gray900);color:var(--gray800);min-height:100vh;overflow-x:hidden}
+
+  /* AUTH */
+  #auth-screen{min-height:100vh;display:flex;align-items:stretch}
+  .auth-left{flex:1;background:linear-gradient(160deg,var(--g900) 0%,#0d3520 50%,var(--g700) 100%);display:flex;flex-direction:column;justify-content:center;padding:60px;position:relative;overflow:hidden}
+  .auth-left::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;border:1px solid rgba(255,255,255,.06);top:-200px;right:-200px}
+  .auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:60px;position:relative;z-index:1}
+  .auth-logo span{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:#fff;letter-spacing:-.5px}
+  .auth-title{font-family:'Syne',sans-serif;font-size:48px;font-weight:800;color:#fff;line-height:1.1;margin-bottom:20px;position:relative;z-index:1}
+  .auth-title span{color:var(--gold)}
+  .auth-sub{font-size:16px;color:rgba(255,255,255,.6);line-height:1.7;max-width:420px;position:relative;z-index:1}
+  .auth-features{margin-top:48px;display:flex;flex-direction:column;gap:16px;position:relative;z-index:1}
+  .auth-feature{display:flex;align-items:center;gap:12px}
+  .feat-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);flex-shrink:0}
+  .auth-feature span{font-size:14px;color:rgba(255,255,255,.7)}
+  .auth-right{width:480px;flex-shrink:0;background:var(--gray50);display:flex;align-items:center;justify-content:center;padding:60px 50px}
+  .auth-form{width:100%;max-width:360px}
+  .auth-form-title{font-family:'Syne',sans-serif;font-size:28px;font-weight:700;color:var(--gray900);margin-bottom:8px}
+  .auth-form-sub{font-size:14px;color:var(--gray400);margin-bottom:36px;line-height:1.5}
+  .form-group{margin-bottom:20px}
+  .form-label{display:block;font-size:12px;font-weight:500;color:var(--gray600);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+  .form-input{width:100%;padding:12px 16px;border:1.5px solid var(--gray200);border-radius:var(--r-md);font-family:'DM Sans',sans-serif;font-size:15px;color:var(--gray900);background:#fff;transition:border-color .2s,box-shadow .2s;outline:none}
+  .form-input:focus{border-color:var(--g500);box-shadow:0 0 0 3px rgba(45,138,85,.12)}
+  .form-input::placeholder{color:var(--gray400)}
+  .btn-primary{width:100%;padding:14px;background:var(--g600);color:#fff;border:none;border-radius:var(--r-md);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn-primary:hover{background:var(--g700)}
+  .btn-primary:disabled{opacity:.6;cursor:not-allowed}
+  .auth-error{background:#fff5f5;border:1px solid #fecaca;border-radius:var(--r-sm);padding:10px 14px;font-size:13px;color:var(--red);margin-top:12px;display:none}
+  .domain-badge{background:var(--g50);border:1px solid var(--g100);border-radius:var(--r-sm);padding:10px 14px;font-size:12px;color:var(--g600);display:flex;align-items:center;gap:8px;margin-top:20px}
+
+  /* APP */
+  #app-screen{display:none;min-height:100vh;background:var(--gray50)}
+  .topbar{background:var(--g900);border-bottom:1px solid rgba(255,255,255,.08);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100}
+  .topbar-logo{display:flex;align-items:center;gap:10px;font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:#fff}
+  .topbar-nav{display:flex;gap:4px}
+  .topbar-btn{padding:7px 16px;border-radius:var(--r-sm);background:transparent;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:rgba(255,255,255,.65);cursor:pointer;transition:all .15s}
+  .topbar-btn:hover{background:rgba(255,255,255,.08);color:#fff}
+  .topbar-btn.active{background:rgba(255,255,255,.12);color:#fff}
+  .topbar-right{display:flex;align-items:center;gap:12px}
+  .user-chip{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border-radius:20px;padding:6px 14px 6px 8px}
+  .user-avatar{width:28px;height:28px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--g900)}
+  .user-name{font-size:13px;color:rgba(255,255,255,.85);font-weight:500}
+  .btn-logout{background:rgba(255,255,255,.08);border:none;color:rgba(255,255,255,.6);padding:7px 14px;border-radius:var(--r-sm);font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+  .btn-logout:hover{background:rgba(255,255,255,.15);color:#fff}
+  .env-chip{background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.3);color:var(--gold);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;letter-spacing:.05em}
+
+  .content-area{padding:32px;max-width:1200px;margin:0 auto}
+  .page-section{display:none}
+  .page-section.active{display:block}
+  .section-header{margin-bottom:28px}
+  .section-title{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;color:var(--gray900);margin-bottom:6px}
+  .section-sub{font-size:14px;color:var(--gray400)}
+
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:28px}
+  .stat-card{background:#fff;border:1px solid var(--gray100);border-radius:var(--r-lg);padding:20px 24px;box-shadow:var(--shadow-sm)}
+  .stat-label{font-size:12px;color:var(--gray400);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+  .stat-value{font-family:'Syne',sans-serif;font-size:28px;font-weight:700;color:var(--gray900)}
+  .stat-delta{font-size:12px;color:var(--g500);margin-top:4px}
+
+  .card{background:#fff;border:1px solid var(--gray100);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);overflow:hidden}
+  .card-header{padding:20px 24px;border-bottom:1px solid var(--gray100);display:flex;align-items:center;justify-content:space-between}
+  .card-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:600;color:var(--gray900)}
+  .card-body{padding:24px}
+
+  .upload-zone{border:2px dashed var(--gray200);border-radius:var(--r-lg);padding:48px;text-align:center;cursor:pointer;transition:all .2s;background:var(--gray50)}
+  .upload-zone:hover,.upload-zone.drag-over{border-color:var(--g500);background:var(--g50)}
+  .upload-icon{font-size:40px;margin-bottom:16px}
+  .upload-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:600;color:var(--gray900);margin-bottom:6px}
+  .upload-sub{font-size:13px;color:var(--gray400)}
+
+  .jobs-table{width:100%;border-collapse:collapse}
+  .jobs-table th{text-align:left;padding:12px 16px;font-size:11px;font-weight:600;color:var(--gray400);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--gray100);background:var(--gray50)}
+  .jobs-table td{padding:14px 16px;font-size:14px;color:var(--gray800);border-bottom:1px solid var(--gray100);vertical-align:middle}
+  .jobs-table tr:last-child td{border-bottom:none}
+  .jobs-table tr:hover td{background:var(--gray50)}
+
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:.03em}
+  .badge-success{background:var(--g50);color:var(--g600)}
+  .badge-warning{background:#fef3c7;color:#92400e}
+  .badge-error{background:#fff5f5;color:var(--red)}
+  .badge-info{background:#eff6ff;color:var(--blue)}
+  .badge-neutral{background:var(--gray100);color:var(--gray600)}
+  .badge-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+
+  .progress-bar{width:100%;height:4px;background:var(--gray100);border-radius:2px;overflow:hidden}
+  .progress-fill{height:100%;background:var(--g500);border-radius:2px;transition:width .6s ease}
+
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+
+  .btn-sm{padding:7px 14px;border-radius:var(--r-sm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;border:1px solid transparent}
+  .btn-green{background:var(--g600);color:#fff}
+  .btn-green:hover{background:var(--g700)}
+  .btn-outline{background:#fff;border-color:var(--gray200);color:var(--gray700)}
+  .btn-outline:hover{border-color:var(--gray400)}
+  .btn-danger{background:#fff5f5;border-color:#fecaca;color:var(--red)}
+  .btn-danger:hover{background:#fee2e2}
+
+  .log-panel{background:var(--gray900);border-radius:var(--r-md);padding:16px;font-family:monospace;font-size:12px;line-height:1.7;color:#a8ffa0;max-height:300px;overflow-y:auto;border:1px solid rgba(255,255,255,.08)}
+  .log-line{margin:0;white-space:pre-wrap}
+  .log-line.err{color:#ff6b6b}
+  .log-line.inf{color:#74b9ff}
+
+  .tabs{display:flex;gap:2px;background:var(--gray100);border-radius:var(--r-sm);padding:3px;margin-bottom:24px}
+  .tab-btn{flex:1;padding:8px;text-align:center;border:none;background:transparent;border-radius:calc(var(--r-sm) - 2px);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--gray600);cursor:pointer;transition:all .15s}
+  .tab-btn.active{background:#fff;color:var(--gray900);box-shadow:var(--shadow-sm)}
+
+  .modal-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:24px}
+  .modal-overlay.open{display:flex}
+  .modal{background:#fff;border-radius:var(--r-xl);width:100%;max-width:520px;box-shadow:var(--shadow-lg)}
+  .modal-header{padding:24px 28px 0;display:flex;align-items:flex-start;justify-content:space-between}
+  .modal-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--gray900)}
+  .modal-close{width:32px;height:32px;border-radius:50%;background:var(--gray100);border:none;cursor:pointer;font-size:16px;color:var(--gray600);display:flex;align-items:center;justify-content:center;transition:background .15s}
+  .modal-close:hover{background:var(--gray200)}
+  .modal-body{padding:20px 28px 28px}
+
+  #toast-container{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px}
+  .toast{background:var(--gray900);color:#fff;padding:12px 18px;border-radius:var(--r-md);font-size:13px;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:10px;animation:slideIn .3s ease;max-width:360px}
+  .toast.success{border-left:3px solid var(--g500)}
+  .toast.error{border-left:3px solid var(--red)}
+  .toast.warning{border-left:3px solid var(--amber)}
+  @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+  .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .file-list{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+  .file-item{display:flex;align-items:center;gap:12px;background:var(--gray50);border:1px solid var(--gray100);border-radius:var(--r-sm);padding:10px 14px}
+  .file-name{flex:1;font-size:13px;color:var(--gray800);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .file-size{font-size:12px;color:var(--gray400)}
+  .file-remove{background:none;border:none;color:var(--gray400);cursor:pointer;font-size:16px}
+  .file-remove:hover{color:var(--red)}
+
+  .chat-messages{max-height:400px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:4px 0}
+  .chat-msg{display:flex;gap:10px}
+  .chat-msg.user{flex-direction:row-reverse}
+  .chat-bubble{max-width:75%;padding:10px 14px;border-radius:var(--r-md);font-size:14px;line-height:1.6}
+  .chat-msg.assistant .chat-bubble{background:var(--gray100);color:var(--gray900);border-bottom-left-radius:4px}
+  .chat-msg.user .chat-bubble{background:var(--g600);color:#fff;border-bottom-right-radius:4px}
+  .chat-avatar{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+  .chat-msg.assistant .chat-avatar{background:var(--g100);color:var(--g700)}
+  .chat-msg.user .chat-avatar{background:var(--gold);color:var(--g900)}
+  .chat-input-row{display:flex;gap:8px;margin-top:12px}
+  .chat-input{flex:1;padding:10px 14px;border:1.5px solid var(--gray200);border-radius:var(--r-md);font-family:'DM Sans',sans-serif;font-size:14px;color:var(--gray900);outline:none;transition:border-color .2s}
+  .chat-input:focus{border-color:var(--g500)}
+  .chat-send{padding:10px 18px;background:var(--g600);color:#fff;border:none;border-radius:var(--r-md);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer}
+  .chat-send:hover{background:var(--g700)}
+
+  .user-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--gray100)}
+  .user-row:last-child{border-bottom:none}
+  .user-row-avatar{width:36px;height:36px;border-radius:50%;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--g700);flex-shrink:0}
+  .user-row-info{flex:1;min-width:0}
+  .user-row-name{font-size:14px;font-weight:500;color:var(--gray900)}
+  .user-row-email{font-size:12px;color:var(--gray400)}
+
+  .overflow-x{overflow-x:auto}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--gray200);border-radius:3px}
+
+  /* Config panel */
+  .config-notice{background:#fffbeb;border:1px solid #fde68a;border-radius:var(--r-md);padding:14px 18px;font-size:13px;color:#92400e;margin-bottom:20px;display:flex;gap:10px;align-items:flex-start}
+
+  @media(max-width:960px){
+    #auth-screen{flex-direction:column}
+    .auth-left{padding:40px;min-height:40vh}
+    .auth-right{width:100%;padding:40px 32px}
+    .auth-title{font-size:36px}
+    .topbar{padding:0 16px}
+    .content-area{padding:20px 16px}
+    .two-col{grid-template-columns:1fr}
+    .form-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- ── AUTH ── -->
+<div id="auth-screen">
+  <div class="auth-left">
+    <div class="auth-logo">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="10" fill="rgba(255,255,255,.12)"/><path d="M20 8L32 14V26L20 32L8 26V14L20 8Z" stroke="#c9a227" stroke-width="2" fill="none"/><circle cx="20" cy="20" r="5" fill="#c9a227"/></svg>
+      <span>ProAgro Seguros</span>
+    </div>
+    <div class="auth-title">Plataforma de<br><span>Subscrição</span><br>Inteligente</div>
+    <div class="auth-sub">Sistema integrado de análise de risco agrícola com dados geoespaciais, climáticos e ambientais em tempo real.</div>
+    <div class="auth-features">
+      <div class="auth-feature"><div class="feat-dot"></div><span>NDVI via Sentinel-2 (Google Earth Engine)</span></div>
+      <div class="auth-feature"><div class="feat-dot"></div><span>Prognóstico climático estacional (9 meses)</span></div>
+      <div class="auth-feature"><div class="feat-dot"></div><span>PRODES, CAR, CNFP, INCRA automatizados</span></div>
+      <div class="auth-feature"><div class="feat-dot"></div><span>Relatórios PSR em Word + Excel</span></div>
+      <div class="auth-feature"><div class="feat-dot"></div><span>Verificações ESG completas</span></div>
+    </div>
+  </div>
+  <div class="auth-right">
+    <div class="auth-form">
+      <div class="auth-form-title">Acessar plataforma</div>
+      <div class="auth-form-sub">Restrito a colaboradores com e-mail institucional autorizado.</div>
+      <div id="config-warning" class="config-notice" style="display:none">
+        ⚠️ <span>Backend não configurado. Abra as configurações e informe a URL do servidor.</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">E-mail institucional</label>
+        <input type="email" class="form-input" id="auth-email" placeholder="voce@proagroseguros.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Senha</label>
+        <input type="password" class="form-input" id="auth-password" placeholder="••••••••">
+      </div>
+      <div id="auth-error" class="auth-error"></div>
+      <button class="btn-primary" id="btn-login" onclick="handleLogin()">
+        <span id="btn-login-text">Entrar</span>
+      </button>
+      <div style="display:flex;align-items:center;gap:12px;margin:24px 0"><div style="flex:1;height:1px;background:var(--gray200)"></div><span style="font-size:12px;color:var(--gray400)">domínios autorizados</span><div style="flex:1;height:1px;background:var(--gray200)"></div></div>
+      <div class="domain-badge">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L12 4V10L7 13L2 10V4L7 1Z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+        @proagroseguros.com &nbsp;·&nbsp; @proagroinsur.tech
+      </div>
+      <div style="margin-top:16px;text-align:center">
+        <button onclick="openModal('modal-config')" style="background:none;border:none;font-size:12px;color:var(--gray400);cursor:pointer;text-decoration:underline">Configurar URL do servidor</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app-screen">
+  <div class="topbar">
+    <div class="topbar-logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="rgba(255,255,255,.10)"/><path d="M14 5L22 9.5V18.5L14 23L6 18.5V9.5L14 5Z" stroke="#c9a227" stroke-width="1.5" fill="none"/><circle cx="14" cy="14" r="3.5" fill="#c9a227"/></svg>
+      ProAgro Seguros
+    </div>
+    <nav class="topbar-nav">
+      <button class="topbar-btn active" onclick="showPage('dashboard')">Dashboard</button>
+      <button class="topbar-btn" onclick="showPage('nova-analise')">Nova Análise</button>
+      <button class="topbar-btn" onclick="showPage('historico')">Histórico</button>
+      <button class="topbar-btn" onclick="showPage('assistente')">Assistente IA</button>
+      <button class="topbar-btn" id="admin-btn" onclick="showPage('admin')" style="display:none">Admin</button>
+    </nav>
+    <div class="topbar-right">
+      <div class="env-chip">PRODUÇÃO</div>
+      <div class="user-chip">
+        <div class="user-avatar" id="top-avatar">--</div>
+        <span class="user-name" id="top-username">Usuário</span>
+      </div>
+      <button class="btn-logout" onclick="handleLogout()">Sair</button>
+    </div>
+  </div>
+
+  <div class="content-area">
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page-section active">
+      <div class="section-header">
+        <div class="section-title">Dashboard</div>
+        <div class="section-sub">Resumo de atividades da equipe</div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Análises hoje</div><div class="stat-value" id="stat-hoje">—</div><div class="stat-delta">atualizado agora</div></div>
+        <div class="stat-card"><div class="stat-label">Esta semana</div><div class="stat-value" id="stat-semana">—</div><div class="stat-delta">todos os usuários</div></div>
+        <div class="stat-card"><div class="stat-label">Em processamento</div><div class="stat-value" id="stat-proc">—</div><div class="stat-delta">jobs ativos</div></div>
+        <div class="stat-card"><div class="stat-label">Usuários ativos</div><div class="stat-value" id="stat-users">—</div><div class="stat-delta">com acesso aprovado</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Últimas análises</div><button class="btn-sm btn-outline" onclick="showPage('historico')">Ver todas</button></div>
+          <div class="card-body" id="recent-jobs-dash"><div style="text-align:center;color:var(--gray400);font-size:13px;padding:24px 0">Carregando…</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Status do sistema</div></div>
+          <div class="card-body" id="system-status">
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;color:var(--gray600)">🔌 Backend (servidor local)</span><span id="status-backend" class="badge badge-neutral">Verificando…</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;color:var(--gray600)">🗄️ Supabase</span><span id="status-supa" class="badge badge-neutral">Verificando…</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;color:var(--gray600)">🛰️ Google Earth Engine</span><span class="badge badge-success"><span class="badge-dot"></span>Online</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;color:var(--gray600)">🌦️ Servidor SFTP</span><span class="badge badge-success"><span class="badge-dot"></span>Online</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOVA ANÁLISE -->
+    <div id="page-nova-analise" class="page-section">
+      <div class="section-header">
+        <div class="section-title">Nova Análise de Subscrição</div>
+        <div class="section-sub">Preencha os dados do proponente e faça upload dos arquivos KML</div>
+      </div>
+      <div class="two-col">
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Dados do Proponente</div></div>
+            <div class="card-body">
+              <div class="form-group"><label class="form-label">ID da Proposta</label><input type="text" class="form-input" id="f-id" placeholder="Ex: PROP-2025-001"></div>
+              <div class="form-group"><label class="form-label">Nome do Proponente</label><input type="text" class="form-input" id="f-nome" placeholder="Nome completo ou razão social"></div>
+              <div class="form-grid">
+                <div class="form-group"><label class="form-label">CPF / CNPJ</label><input type="text" class="form-input" id="f-cpf" placeholder="Somente números"></div>
+                <div class="form-group"><label class="form-label">Cultura</label>
+                  <select class="form-input" id="f-cultura">
+                    <option value="">Selecionar…</option>
+                    <option>Soja</option><option>Milho</option><option>Trigo</option><option>Algodão</option>
+                    <option>Cana-de-açúcar</option><option>Café</option><option>Arroz</option>
+                    <option>Feijão</option><option>Sorgo</option><option>Pastagem</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Upload de Arquivos</div><span class="badge badge-info">KML obrigatório</span></div>
+            <div class="card-body">
+              <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event)">
+                <div class="upload-icon">📂</div>
+                <div class="upload-title">Arraste os arquivos aqui</div>
+                <div class="upload-sub">KML de polígonos, planilhas Excel (.xlsx), arquivos CSV<br>.kml · .xlsx · .xls · .csv</div>
+                <input type="file" id="file-input" style="display:none" multiple accept=".kml,.xlsx,.xls,.csv" onchange="handleFiles(this.files)">
+              </div>
+              <div class="file-list" id="file-list"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Iniciar Processamento</div></div>
+            <div class="card-body">
+              <p style="font-size:13px;color:var(--gray600);margin-bottom:16px;line-height:1.6">O sistema vai executar o script completo: SFTP → GEE (NDVI) → análises ambientais → relatório Word/Excel.</p>
+              <button class="btn-sm btn-green" id="btn-iniciar" style="width:100%;padding:14px;font-size:15px;justify-content:center;border-radius:var(--r-md)" onclick="iniciarAnalise()">
+                🚀 &nbsp; Iniciar Análise Completa
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div id="page-historico" class="page-section">
+      <div class="section-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div><div class="section-title">Histórico de Análises</div><div class="section-sub">Todos os jobs executados</div></div>
+        <div style="display:flex;gap:8px">
+          <select class="form-input" id="hist-filter" style="width:auto;padding:8px 12px" onchange="carregarJobs()">
+            <option value="">Todos</option><option value="concluido">Concluídos</option>
+            <option value="processando">Em processamento</option><option value="erro">Erros</option>
+          </select>
+          <button class="btn-sm btn-outline" onclick="carregarJobs()">↻ Atualizar</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="overflow-x">
+          <table class="jobs-table">
+            <thead><tr><th>Proposta</th><th>Proponente</th><th>Cultura</th><th>Analista</th><th>Iniciado</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody id="jobs-tbody"><tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ASSISTENTE IA -->
+    <div id="page-assistente" class="page-section">
+      <div class="section-header">
+        <div class="section-title">Assistente de Subscrição IA</div>
+        <div class="section-sub">Dúvidas técnicas sobre análises, PSR, regulamentação e dados</div>
+      </div>
+      <div class="two-col">
+        <div class="card" style="display:flex;flex-direction:column">
+          <div class="card-header"><div class="card-title">💬 Chat com Claude</div></div>
+          <div class="card-body" style="flex:1;display:flex;flex-direction:column">
+            <div class="chat-messages" id="chat-messages">
+              <div class="chat-msg assistant">
+                <div class="chat-avatar">PA</div>
+                <div class="chat-bubble">Olá! Sou o assistente especializado da ProAgro. Posso ajudar com interpretação de resultados, PSR, análises de risco, regulamentação ambiental e muito mais. Como posso ajudar?</div>
+              </div>
+            </div>
+            <div class="chat-input-row">
+              <input type="text" class="chat-input" id="chat-input" placeholder="Digite sua pergunta…" onkeydown="if(event.key==='Enter')sendChat()">
+              <button class="chat-send" onclick="sendChat()">Enviar</button>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Sugestões</div></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:8px">
+              <button class="btn-sm btn-outline" style="text-align:left;white-space:normal" onclick="quickChat('O que significa AD0 na classificação de solos?')">O que significa AD0 na classificação de solos?</button>
+              <button class="btn-sm btn-outline" style="text-align:left;white-space:normal" onclick="quickChat('Como interpretar o semáforo vermelho do CAR?')">Como interpretar o semáforo vermelho do CAR?</button>
+              <button class="btn-sm btn-outline" style="text-align:left;white-space:normal" onclick="quickChat('Qual a diferença entre PRODES e CAR na análise ambiental?')">Diferença entre PRODES e CAR?</button>
+              <button class="btn-sm btn-outline" style="text-align:left;white-space:normal" onclick="quickChat('Como funciona o prognóstico estacional para os próximos 9 meses?')">Como funciona o prognóstico estacional?</button>
+              <button class="btn-sm btn-outline" style="text-align:left;white-space:normal" onclick="quickChat('Quais critérios definem sinistralidade alta para soja?')">Sinistralidade alta para soja?</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div id="page-admin" class="page-section">
+      <div class="section-header">
+        <div class="section-title">Administração</div>
+        <div class="section-sub">Usuários e configurações do sistema</div>
+      </div>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="adminTab('usuarios')">Usuários</button>
+        <button class="tab-btn" onclick="adminTab('config')">Servidor</button>
+        <button class="tab-btn" onclick="adminTab('logs')">Logs</button>
+      </div>
+      <div id="admin-tab-usuarios">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Usuários cadastrados</div><button class="btn-sm btn-green" onclick="openModal('modal-add-user')">+ Convidar</button></div>
+          <div class="card-body" id="users-list-wrap"><div style="text-align:center;color:var(--gray400);font-size:13px;padding:20px">Carregando…</div></div>
+        </div>
+      </div>
+      <div id="admin-tab-config" style="display:none">
+        <div class="card">
+          <div class="card-header"><div class="card-title">URL do servidor backend</div></div>
+          <div class="card-body">
+            <div class="config-notice">
+              ⚠️ <span>Esta URL é gerada pelo Cloudflare Tunnel ao iniciar o servidor no computador do escritório. Ela muda toda vez que o servidor reinicia. Cole a URL nova aqui.</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">URL do backend (Cloudflare Tunnel)</label>
+              <input type="url" class="form-input" id="backend-url-input" placeholder="https://XXXXX.trycloudflare.com">
+            </div>
+            <button class="btn-sm btn-green" onclick="salvarBackendUrl()">Salvar URL</button>
+            <button class="btn-sm btn-outline" style="margin-left:8px" onclick="testarConexao()">Testar conexão</button>
+          </div>
+        </div>
+      </div>
+      <div id="admin-tab-logs" style="display:none">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Log do sistema</div><button class="btn-sm btn-outline" onclick="document.getElementById('system-log').innerHTML=''">Limpar</button></div>
+          <div class="card-body"><div class="log-panel" id="system-log"><p class="log-line inf">[INFO] Plataforma ProAgro v2.0 iniciada</p></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAIS -->
+<div class="modal-overlay" id="modal-config">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">Configurar servidor</div><button class="modal-close" onclick="closeModal('modal-config')">✕</button></div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--gray600);margin-bottom:16px;line-height:1.6">Cole abaixo a URL gerada pelo Cloudflare Tunnel ao iniciar o servidor no computador do escritório (arquivo <code>iniciar_servidor.bat</code>).</p>
+      <div class="form-group">
+        <label class="form-label">URL do backend</label>
+        <input type="url" class="form-input" id="backend-url-modal" placeholder="https://XXXXX.trycloudflare.com">
+      </div>
+      <button class="btn-sm btn-green" style="width:100%;justify-content:center;padding:12px" onclick="salvarBackendUrlModal()">Salvar e conectar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-job">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="modal-job-title">Detalhes</div><button class="modal-close" onclick="closeModal('modal-job')">✕</button></div>
+    <div class="modal-body" id="modal-job-body"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-add-user">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">Convidar Usuário</div><button class="modal-close" onclick="closeModal('modal-add-user')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Nome completo</label><input type="text" class="form-input" id="new-name" placeholder="Nome do colaborador"></div>
+      <div class="form-group"><label class="form-label">E-mail institucional</label><input type="email" class="form-input" id="new-email" placeholder="colaborador@proagroseguros.com"></div>
+      <div class="form-group"><label class="form-label">Perfil</label>
+        <select class="form-input" id="new-role"><option value="analista">Analista</option><option value="supervisor">Supervisor</option><option value="admin">Administrador</option></select>
+      </div>
+      <div id="new-user-result" style="display:none;background:var(--g50);border:1px solid var(--g100);border-radius:var(--r-sm);padding:12px;font-size:13px;color:var(--g700);margin-bottom:12px"></div>
+      <div id="new-user-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px"></div>
+      <button class="btn-sm btn-green" style="width:100%;justify-content:center;padding:12px" onclick="convidarUsuario()">Enviar convite</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+// ══════════════════════════════════════════
+// CONFIGURAÇÃO
+// ══════════════════════════════════════════
+const ALLOWED_DOMAINS = ['proagroseguros.com', 'proagroinsur.tech'];
+let BACKEND_URL = localStorage.getItem('pa_backend_url') || '';
+let TOKEN = sessionStorage.getItem('pa_token') || '';
+let currentUser = JSON.parse(sessionStorage.getItem('pa_user') || 'null');
+let uploadedFiles = [];
+let chatHistory = [];
+let pollingInterval = null;
+
+// ══════════════════════════════════════════
+// API HELPER
+// ══════════════════════════════════════════
+async function api(method, path, body = null, isForm = false) {
+  if (!BACKEND_URL) throw new Error('Backend não configurado. Configure a URL do servidor.');
+  const opts = {
+    method,
+    headers: { 'Authorization': `Bearer ${TOKEN}` }
+  };
+  if (body && !isForm) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  } else if (body && isForm) {
+    opts.body = body;
+  }
+  const res = await fetch(`${BACKEND_URL}${path}`, opts);
+  if (res.status === 401) { handleLogout(); throw new Error('Sessão expirada.'); }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Erro desconhecido.');
+  }
+  return res.json();
+}
+
+// ══════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════
+function validateDomain(email) {
+  const domain = email.split('@')[1]?.toLowerCase();
+  return ALLOWED_DOMAINS.includes(domain);
+}
+
+async function handleLogin() {
+  const email = document.getElementById('auth-email').value.trim().toLowerCase();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  const btn = document.getElementById('btn-login');
+
+  errEl.style.display = 'none';
+
+  if (!email) { showAuthError('Informe seu e-mail.'); return; }
+  if (!validateDomain(email)) { showAuthError('E-mail não autorizado. Apenas @proagroseguros.com e @proagroinsur.tech.'); return; }
+  if (!password) { showAuthError('Informe sua senha.'); return; }
+  if (!BACKEND_URL) { openModal('modal-config'); return; }
+
+  btn.innerHTML = '<div class="spinner"></div><span>Autenticando…</span>';
+  btn.disabled = true;
+
+  try {
+    const data = await api('POST', '/auth/login', { email, password });
+    TOKEN = data.token;
+    currentUser = data.user;
+    sessionStorage.setItem('pa_token', TOKEN);
+    sessionStorage.setItem('pa_user', JSON.stringify(currentUser));
+    enterApp();
+  } catch(e) {
+    showAuthError(e.message);
+  } finally {
+    btn.innerHTML = '<span id="btn-login-text">Entrar</span>';
+    btn.disabled = false;
+  }
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function enterApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+
+  const initials = currentUser.name.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase();
+  document.getElementById('top-avatar').textContent = initials;
+  document.getElementById('top-username').textContent = currentUser.name;
+
+  if (currentUser.role === 'admin') {
+    document.getElementById('admin-btn').style.display = '';
+    document.getElementById('backend-url-input').value = BACKEND_URL;
+  }
+
+  carregarStats();
+  carregarJobs();
+  verificarBackend();
+
+  // Polling a cada 10s para atualizar jobs em processamento
+  pollingInterval = setInterval(() => {
+    carregarJobs();
+    carregarStats();
+  }, 10000);
+}
+
+function handleLogout() {
+  clearInterval(pollingInterval);
+  TOKEN = ''; currentUser = null;
+  sessionStorage.removeItem('pa_token');
+  sessionStorage.removeItem('pa_user');
+  chatHistory = [];
+  document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('auth-email').value = '';
+  document.getElementById('auth-password').value = '';
+}
+
+// Auto-restore
+window.addEventListener('load', () => {
+  if (BACKEND_URL) document.getElementById('backend-url-modal').value = BACKEND_URL;
+  if (!BACKEND_URL) document.getElementById('config-warning').style.display = 'flex';
+  if (TOKEN && currentUser) enterApp();
+});
+
+document.getElementById('auth-password').addEventListener('keydown', e => { if(e.key==='Enter') handleLogin(); });
+document.getElementById('auth-email').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('auth-password').focus(); });
+
+// ══════════════════════════════════════════
+// BACKEND URL CONFIG
+// ══════════════════════════════════════════
+function salvarBackendUrl() {
+  const url = document.getElementById('backend-url-input').value.trim().replace(/\/$/, '');
+  if (!url) { showToast('Informe a URL.', 'error'); return; }
+  BACKEND_URL = url;
+  localStorage.setItem('pa_backend_url', url);
+  showToast('URL salva!', 'success');
+  verificarBackend();
+}
+
+function salvarBackendUrlModal() {
+  const url = document.getElementById('backend-url-modal').value.trim().replace(/\/$/, '');
+  if (!url) { showToast('Informe a URL.', 'error'); return; }
+  BACKEND_URL = url;
+  localStorage.setItem('pa_backend_url', url);
+  document.getElementById('config-warning').style.display = 'none';
+  closeModal('modal-config');
+  showToast('URL do servidor salva!', 'success');
+}
+
+async function testarConexao() {
+  try {
+    const res = await fetch(`${BACKEND_URL}/docs`);
+    if (res.ok) showToast('Servidor respondendo!', 'success');
+    else showToast('Servidor não encontrado.', 'error');
+  } catch(e) {
+    showToast('Não foi possível conectar: ' + e.message, 'error');
+  }
+}
+
+async function verificarBackend() {
+  const el = document.getElementById('status-backend');
+  if (!el) return;
+  try {
+    const res = await fetch(`${BACKEND_URL}/docs`);
+    if (res.ok) el.innerHTML = '<span class="badge-dot"></span>Online';
+    else el.innerHTML = 'Offline';
+    el.className = res.ok ? 'badge badge-success' : 'badge badge-error';
+  } catch {
+    el.textContent = 'Offline';
+    el.className = 'badge badge-error';
+  }
+  document.getElementById('status-supa').innerHTML = '<span class="badge-dot"></span>Online';
+  document.getElementById('status-supa').className = 'badge badge-success';
+}
+
+// ══════════════════════════════════════════
+// NAVEGAÇÃO
+// ══════════════════════════════════════════
+function showPage(page) {
+  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.topbar-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const pages = ['dashboard','nova-analise','historico','assistente','admin'];
+  const btns = document.querySelectorAll('.topbar-nav .topbar-btn');
+  const i = pages.indexOf(page);
+  if(i !== -1 && btns[i]) btns[i].classList.add('active');
+  if(page === 'historico') carregarJobs();
+  if(page === 'admin') { carregarUsuarios(); document.getElementById('backend-url-input').value = BACKEND_URL; }
+}
+
+// ══════════════════════════════════════════
+// UPLOAD
+// ══════════════════════════════════════════
+function handleFiles(files) {
+  Array.from(files).forEach(f => { if(!uploadedFiles.find(u=>u.name===f.name)) uploadedFiles.push(f); });
+  renderFileList();
+}
+function handleDrop(e) { e.preventDefault(); document.getElementById('upload-zone').classList.remove('drag-over'); handleFiles(e.dataTransfer.files); }
+function renderFileList() {
+  const list = document.getElementById('file-list');
+  list.innerHTML = uploadedFiles.map((f,i) => `
+    <div class="file-item">
+      <span>${f.name.endsWith('.kml')?'📍':f.name.endsWith('.csv')?'📋':'📊'}</span>
+      <span class="file-name">${f.name}</span>
+      <span class="file-size">${(f.size/1024).toFixed(0)} KB</span>
+      <button class="file-remove" onclick="uploadedFiles.splice(${i},1);renderFileList()">✕</button>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════
+// JOBS
+// ══════════════════════════════════════════
+async function iniciarAnalise() {
+  const id = document.getElementById('f-id').value.trim();
+  const nome = document.getElementById('f-nome').value.trim();
+  const cpf = document.getElementById('f-cpf').value.trim();
+  const cultura = document.getElementById('f-cultura').value;
+
+  if (!id||!nome||!cpf||!cultura) { showToast('Preencha todos os campos.', 'error'); return; }
+  if (!uploadedFiles.find(f=>f.name.toLowerCase().endsWith('.kml'))) { showToast('É necessário pelo menos um arquivo KML.', 'error'); return; }
+
+  const btn = document.getElementById('btn-iniciar');
+  btn.innerHTML = '<div class="spinner" style="border-top-color:#fff"></div> Enviando…';
+  btn.disabled = true;
+
+  try {
+    const form = new FormData();
+    form.append('id_proposta', id);
+    form.append('nome_proponente', nome);
+    form.append('cpf', cpf);
+    form.append('cultura_desejada', cultura);
+    uploadedFiles.forEach(f => form.append('arquivos', f));
+
+    const data = await api('POST', '/jobs/criar', form, true);
+    showToast(`Análise iniciada! Job: ${data.job_id.slice(0,8)}…`, 'success');
+
+    uploadedFiles = []; renderFileList();
+    document.getElementById('f-id').value = '';
+    document.getElementById('f-nome').value = '';
+    document.getElementById('f-cpf').value = '';
+    document.getElementById('f-cultura').value = '';
+
+    showPage('historico');
+  } catch(e) {
+    showToast('Erro: ' + e.message, 'error');
+  } finally {
+    btn.innerHTML = '🚀 &nbsp; Iniciar Análise Completa';
+    btn.disabled = false;
+  }
+}
+
+async function carregarJobs() {
+  try {
+    const jobs = await api('GET', '/jobs');
+    const filter = document.getElementById('hist-filter')?.value || '';
+    const filtered = filter ? jobs.filter(j=>j.status===filter) : jobs;
+    renderJobsTable(filtered);
+    renderRecentJobs(jobs.slice(0,4));
+  } catch(e) {
+    console.warn('Erro ao carregar jobs:', e.message);
+  }
+}
+
+function renderJobsTable(jobs) {
+  const tbody = document.getElementById('jobs-tbody');
+  if (!tbody) return;
+  if (!jobs.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma análise encontrada.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = jobs.map(j => `
+    <tr>
+      <td><strong>${j.id_proposta}</strong></td>
+      <td>${j.nome_proponente}</td>
+      <td>${j.cultura_desejada}</td>
+      <td style="font-size:12px;color:var(--gray400)">${j.analista_email}</td>
+      <td style="font-size:12px;color:var(--gray400)">${formatDate(j.created_at)}</td>
+      <td>${renderStatusBadge(j)}</td>
+      <td>
+        <div style="display:flex;gap:6px">
+          <button class="btn-sm btn-outline" onclick="verJob('${j.id}')">Detalhes</button>
+          ${j.status==='concluido'?`<button class="btn-sm btn-green" onclick="baixarJob('${j.id}')">⬇ Baixar</button>`:''}
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function renderRecentJobs(jobs) {
+  const el = document.getElementById('recent-jobs-dash');
+  if (!el) return;
+  if (!jobs.length) { el.innerHTML = `<div style="text-align:center;color:var(--gray400);font-size:13px;padding:24px 0">Nenhuma análise ainda. <a href="#" onclick="showPage('nova-analise');return false" style="color:var(--g600)">Iniciar →</a></div>`; return; }
+  el.innerHTML = jobs.map(j => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--gray100)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:500;color:var(--gray900)">${j.nome_proponente}</div>
+        <div style="font-size:11px;color:var(--gray400)">${j.cultura_desejada} · ${j.id_proposta}</div>
+      </div>
+      ${renderStatusBadge(j)}
+    </div>`).join('');
+}
+
+function renderStatusBadge(j) {
+  if (j.status==='concluido') return `<span class="badge badge-success"><span class="badge-dot"></span>Concluído</span>`;
+  if (j.status==='erro') return `<span class="badge badge-error"><span class="badge-dot"></span>Erro</span>`;
+  return `<div><span class="badge badge-info" style="margin-bottom:4px"><span class="badge-dot"></span>${j.etapa||'Processando…'}</span><div class="progress-bar" style="width:100px"><div class="progress-fill" style="width:${j.progress||0}%"></div></div></div>`;
+}
+
+async function verJob(id) {
+  try {
+    const j = await api('GET', `/jobs/${id}`);
+    document.getElementById('modal-job-title').textContent = `${j.id_proposta} — ${j.nome_proponente}`;
+    document.getElementById('modal-job-body').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Proponente</div><div style="font-size:14px;font-weight:500">${j.nome_proponente}</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">CPF/CNPJ</div><div style="font-size:14px">${j.cpf}</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Cultura</div><div style="font-size:14px">${j.cultura_desejada}</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Analista</div><div style="font-size:14px">${j.analista_email}</div></div>
+      </div>
+      <div style="margin-bottom:16px">${renderStatusBadge(j)}</div>
+      <div style="font-size:12px;font-weight:600;color:var(--gray600);margin-bottom:8px">LOG DE EXECUÇÃO</div>
+      <div class="log-panel" style="max-height:200px">${(j.logs||[]).map(l=>`<p class="log-line">${l}</p>`).join('')}</div>
+      ${j.erro_detalhe?`<div style="margin-top:12px"><div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:6px">DETALHE DO ERRO</div><div class="log-panel" style="max-height:120px;color:#ff9999"><p class="log-line">${j.erro_detalhe}</p></div></div>`:''}`;
+    openModal('modal-job');
+  } catch(e) { showToast('Erro: '+e.message,'error'); }
+}
+
+async function baixarJob(id) {
+  try {
+    const data = await api('GET', `/jobs/${id}/baixar`);
+    data.arquivos.forEach(a => { window.open(a.url, '_blank'); });
+    showToast('Downloads iniciados!', 'success');
+  } catch(e) { showToast('Erro: '+e.message,'error'); }
+}
+
+// ══════════════════════════════════════════
+// STATS
+// ══════════════════════════════════════════
+async function carregarStats() {
+  try {
+    const s = await api('GET', '/stats');
+    document.getElementById('stat-hoje').textContent = s.hoje;
+    document.getElementById('stat-semana').textContent = s.semana;
+    document.getElementById('stat-proc').textContent = s.processando;
+    document.getElementById('stat-users').textContent = s.usuarios_ativos;
+  } catch(e) { console.warn('Stats:', e.message); }
+}
+
+// ══════════════════════════════════════════
+// ADMIN — USUÁRIOS
+// ══════════════════════════════════════════
+async function carregarUsuarios() {
+  try {
+    const users = await api('GET', '/usuarios');
+    const wrap = document.getElementById('users-list-wrap');
+    wrap.innerHTML = users.map(u => `
+      <div class="user-row">
+        <div class="user-row-avatar">${u.name.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase()}</div>
+        <div class="user-row-info">
+          <div class="user-row-name">${u.name} ${u.email===currentUser?.email?'<span style="font-size:11px;color:var(--g600)">(você)</span>':''}</div>
+          <div class="user-row-email">${u.email} · último acesso: ${u.last_login?formatDate(u.last_login):'nunca'}</div>
+        </div>
+        <span class="badge ${u.role==='admin'?'badge-warning':'badge-neutral'}">${u.role}</span>
+        <span class="badge ${u.active?'badge-success':'badge-error'}">${u.active?'Ativo':'Inativo'}</span>
+        <div>${u.email!==currentUser?.email?`<button class="btn-sm btn-outline" onclick="toggleUser('${u.id}',${!u.active})">${u.active?'Desativar':'Ativar'}</button>`:''}</div>
+      </div>`).join('');
+  } catch(e) { showToast('Erro ao carregar usuários: '+e.message,'error'); }
+}
+
+async function convidarUsuario() {
+  const name = document.getElementById('new-name').value.trim();
+  const email = document.getElementById('new-email').value.trim().toLowerCase();
+  const role = document.getElementById('new-role').value;
+  const errEl = document.getElementById('new-user-error');
+  const resEl = document.getElementById('new-user-result');
+
+  errEl.style.display='none'; resEl.style.display='none';
+
+  if(!name||!email){errEl.textContent='Preencha todos os campos.';errEl.style.display='block';return;}
+  if(!validateDomain(email)){errEl.textContent='E-mail deve pertencer aos domínios autorizados.';errEl.style.display='block';return;}
+
+  try {
+    const data = await api('POST', '/usuarios/convidar', {email,name,role});
+    resEl.innerHTML = `✅ ${data.message}<br>Senha temporária: <strong>${data.senha_temporaria}</strong><br><em>${data.instrucao}</em>`;
+    resEl.style.display='block';
+    carregarUsuarios();
+  } catch(e) { errEl.textContent=e.message; errEl.style.display='block'; }
+}
+
+async function toggleUser(id, active) {
+  try {
+    await api('PATCH', `/usuarios/${id}`, {active});
+    carregarUsuarios();
+    showToast(active?'Usuário ativado.':'Usuário desativado.', active?'success':'warning');
+  } catch(e) { showToast('Erro: '+e.message,'error'); }
+}
+
+// ══════════════════════════════════════════
+// CHAT IA
+// ══════════════════════════════════════════
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim(); if(!msg) return;
+  input.value = '';
+  appendChatMsg('user', msg);
+  chatHistory.push({role:'user',content:msg});
+
+  const thinkId = 'think-'+Date.now();
+  document.getElementById('chat-messages').insertAdjacentHTML('beforeend',
+    `<div class="chat-msg assistant" id="${thinkId}"><div class="chat-avatar">PA</div><div class="chat-bubble" style="color:var(--gray400);font-style:italic">digitando…</div></div>`);
+  document.getElementById('chat-messages').scrollTop = 99999;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system:`Você é o assistente especializado da ProAgro Seguros, plataforma de subscrição agrícola. Responda de forma técnica e precisa sobre: NDVI, Sentinel-2, Google Earth Engine, PRODES, CAR, CNFP, INCRA, PSR (Programa de Subvenção ao Prêmio do Seguro Rural), prognóstico climático estacional, análise de solos (textura, AD), ESG (embargos IBAMA/ICMBio, trabalho análogo à escravidão), regulamentações agrícolas brasileiras. Seja direto e útil. Use português.`,
+        messages:chatHistory.slice(-10)
+      })
+    });
+    document.getElementById(thinkId)?.remove();
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || 'Erro ao processar.';
+    appendChatMsg('assistant', reply);
+    chatHistory.push({role:'assistant',content:reply});
+  } catch(e) {
+    document.getElementById(thinkId)?.remove();
+    appendChatMsg('assistant','Erro de conexão com a IA.');
+  }
+}
+
+function appendChatMsg(role, text) {
+  const el = document.getElementById('chat-messages');
+  const init = role==='user'?(currentUser?.name.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase()||'EU'):'PA';
+  el.insertAdjacentHTML('beforeend',`<div class="chat-msg ${role}"><div class="chat-avatar">${init}</div><div class="chat-bubble">${text.replace(/\n/g,'<br>')}</div></div>`);
+  el.scrollTop = 99999;
+}
+
+function quickChat(msg){ document.getElementById('chat-input').value=msg; sendChat(); showPage('assistente'); }
+
+// ══════════════════════════════════════════
+// ADMIN TABS
+// ══════════════════════════════════════════
+function adminTab(tab) {
+  document.getElementById('admin-tab-usuarios').style.display = tab==='usuarios'?'':'none';
+  document.getElementById('admin-tab-config').style.display = tab==='config'?'':'none';
+  document.getElementById('admin-tab-logs').style.display = tab==='logs'?'':'none';
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['usuarios','config','logs'][i]===tab));
+  if(tab==='usuarios') carregarUsuarios();
+}
+
+// ══════════════════════════════════════════
+// UTILITÁRIOS
+// ══════════════════════════════════════════
+function formatDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');}));
+
+function showToast(msg, type='success') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className=`toast ${type}`; t.textContent=msg;
+  c.appendChild(t); setTimeout(()=>t.remove(),4000);
+}
+</script>
+</body>
+</html>
