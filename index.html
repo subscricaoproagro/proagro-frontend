@@ -1283,21 +1283,12 @@ async function confirmarTipoAnalise(tipo) {
 }
 
 async function salvarFormCE() {
-  const campos = [
-    'ce-broker','ce-municipio','ce-codigo-ibge','ce-uf','ce-cliente',
-    'ce-status-negocio','ce-cadastro-sistema','ce-premio','ce-area-solicitada',
-    'ce-cultivo','ce-ajuste','ce-ciclo','ce-modalidade','ce-nivel-cobertura',
-    'ce-prod-estimada','ce-prod-ibge','ce-diferenca','ce-preco-saca',
-    'ce-cuota','ce-replantio','ce-fecha-siembra','ce-fecha-cosecha'
-  ];
   const body = {
     broker: document.getElementById('ce-broker').value,
     municipio: document.getElementById('ce-municipio').value,
     codigo_ibge: document.getElementById('ce-codigo-ibge').value,
     uf: document.getElementById('ce-uf').value,
     cliente: document.getElementById('ce-cliente').value,
-    status_negocio: document.getElementById('ce-status-negocio').value,
-    cadastro_cliente_sistema: document.getElementById('ce-cadastro-sistema').value,
     premio: document.getElementById('ce-premio').value,
     area_solicitada: document.getElementById('ce-area-solicitada').value,
     cultivo: document.getElementById('ce-cultivo').value,
@@ -1336,8 +1327,7 @@ async function verCondicaoEspecial(jobId) {
     const campos = {
       'vce-broker': ce.broker, 'vce-municipio': ce.municipio,
       'vce-codigo-ibge': ce.codigo_ibge, 'vce-uf': ce.uf,
-      'vce-cliente': ce.cliente, 'vce-status-negocio': ce.status_negocio,
-      'vce-cadastro-sistema': ce.cadastro_cliente_sistema, 'vce-premio': ce.premio,
+      'vce-cliente': ce.cliente, 'vce-premio': ce.premio,
       'vce-area-solicitada': ce.area_solicitada, 'vce-cultivo': ce.cultivo,
       'vce-ajuste': ce.ajuste, 'vce-ciclo': ce.ciclo,
       'vce-modalidade': ce.modalidade, 'vce-nivel-cobertura': ce.nivel_cobertura,
@@ -1455,6 +1445,27 @@ async function confirmarAprovacaoCE() {
   } finally {
     btn.disabled = false;
     btn.innerHTML = '✅ Confirmar Aprovação';
+  }
+}
+
+function parseBR(val) {
+  if (!val) return 0;
+  return parseFloat(String(val).replace(',','.')) || 0;
+}
+function calcularCE() {
+  const prodEst  = parseBR(document.getElementById('ce-prod-estimada').value);
+  const prodIbge = parseBR(document.getElementById('ce-prod-ibge').value);
+  const nivelCob = parseBR(document.getElementById('ce-nivel-cobertura').value);
+  const area     = parseBR(document.getElementById('ce-area-solicitada').value);
+  const preco    = parseBR(document.getElementById('ce-preco-saca').value);
+  const cuota    = parseBR(document.getElementById('ce-cuota').value);
+  const dif = prodEst - prodIbge;
+  document.getElementById('ce-diferenca').value = dif !== 0 ? dif.toFixed(2) : '';
+  if (prodEst && nivelCob && area && preco && cuota) {
+    const premio = preco * ((prodEst * nivelCob) / 60) * area * cuota;
+    document.getElementById('ce-premio').value = 'R$ ' + premio.toLocaleString('pt-BR', {minimumFractionDigits:2,maximumFractionDigits:2});
+  } else {
+    document.getElementById('ce-premio').value = '';
   }
 }
 
@@ -1700,6 +1711,28 @@ async function verRelatorio(jobId) {
   </div>
 </div>
 
+
+<style>
+/* ── Formulário CE ── */
+.ce-label {
+  display:block;font-size:11px;font-weight:700;color:#1a3a2a;
+  text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px;
+}
+.ce-input {
+  width:100%;padding:9px 12px;border:1.5px solid #a8e0c0;border-radius:7px;
+  font-size:13px;color:#111;background:#f0faf4;outline:none;box-sizing:border-box;
+  transition:border-color .2s,box-shadow .2s;font-family:inherit;
+}
+.ce-input:focus { border-color:#1e6b40;box-shadow:0 0 0 3px rgba(30,107,64,.12);background:#fff; }
+.ce-input.ce-calc { background:#e8f5ee;color:#1e6b40;font-weight:700;cursor:default; }
+.ce-premio-destaque { font-size:15px !important;text-align:center;letter-spacing:.5px; }
+/* ── Visualização CE ── */
+.ce-field { display:flex;flex-direction:column;gap:3px; }
+.ce-field-label { font-size:10px;font-weight:800;color:#1e6b40;text-transform:uppercase;letter-spacing:.7px; }
+.ce-val { font-size:13px;font-weight:500;color:#111;background:#f0faf4;border:1.5px solid #a8e0c0;border-radius:7px;padding:8px 12px;min-height:34px; }
+.ce-val-destaque { background:#fff8e1;border-color:#fbbf24;color:#92400e;font-weight:700; }
+.ce-val-premio { background:#1a3a2a;border-color:#1a3a2a;color:#fff;font-weight:800;font-size:15px;text-align:center;letter-spacing:.5px; }
+</style>
 <!-- Modal: Tipo de Análise -->
 <div class="modal-overlay" id="modal-tipo-analise">
   <div class="modal-card" style="max-width:420px;width:100%">
@@ -1730,28 +1763,27 @@ async function verRelatorio(jobId) {
     </div>
     <div class="modal-body" style="padding:24px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-        <div><label class="form-label">Broker</label><input class="form-input" id="ce-broker" placeholder="Nome do broker"></div>
-        <div><label class="form-label">Município</label><input class="form-input" id="ce-municipio" placeholder="Município"></div>
-        <div><label class="form-label">Código IBGE</label><input class="form-input" id="ce-codigo-ibge" placeholder="0000000"></div>
-        <div><label class="form-label">UF</label><input class="form-input" id="ce-uf" placeholder="UF" maxlength="2"></div>
-        <div><label class="form-label">Cliente</label><input class="form-input" id="ce-cliente" placeholder="Nome do cliente"></div>
-        <div><label class="form-label">Status do Negócio</label><input class="form-input" id="ce-status-negocio" placeholder="Status"></div>
-        <div><label class="form-label">Cadastro de Cliente em Sistema</label><input class="form-input" id="ce-cadastro-sistema" placeholder="Sim / Não / Código"></div>
-        <div><label class="form-label">Prêmio</label><input class="form-input" id="ce-premio" placeholder="R$ 0,00"></div>
-        <div><label class="form-label">Área Solicitada por Cliente</label><input class="form-input" id="ce-area-solicitada" placeholder="ha"></div>
-        <div><label class="form-label">Cultivo</label><input class="form-input" id="ce-cultivo" placeholder="Cultivo"></div>
-        <div><label class="form-label">Ajuste</label><input class="form-input" id="ce-ajuste" placeholder="Ajuste"></div>
-        <div><label class="form-label">Ciclo</label><input class="form-input" id="ce-ciclo" placeholder="Ciclo"></div>
-        <div><label class="form-label">Modalidade</label><input class="form-input" id="ce-modalidade" placeholder="Modalidade"></div>
-        <div><label class="form-label">Nível de Cobertura Solicitado</label><input class="form-input" id="ce-nivel-cobertura" placeholder="%"></div>
-        <div><label class="form-label">Produtividade Estimada Bruta Solicitada (kg/ha)</label><input class="form-input" id="ce-prod-estimada" placeholder="kg/ha"></div>
-        <div><label class="form-label">Produtividade Estimada Bruta IBGE (kg/ha)</label><input class="form-input" id="ce-prod-ibge" placeholder="kg/ha"></div>
-        <div><label class="form-label">Diferença</label><input class="form-input" id="ce-diferenca" placeholder="kg/ha"></div>
-        <div><label class="form-label">Preço de Saca (000,00)</label><input class="form-input" id="ce-preco-saca" placeholder="000,00"></div>
-        <div><label class="form-label">Cuota (0,00%)</label><input class="form-input" id="ce-cuota" placeholder="0,00%"></div>
-        <div><label class="form-label">Replantio</label><input class="form-input" id="ce-replantio" placeholder="Sim / Não"></div>
-        <div><label class="form-label">Fecha de Siembra</label><input class="form-input" type="date" id="ce-fecha-siembra"></div>
-        <div><label class="form-label">Fecha de Cosecha</label><input class="form-input" type="date" id="ce-fecha-cosecha"></div>
+        <div><label class="ce-label">Broker</label><input class="ce-input" id="ce-broker" placeholder="Nome do broker"></div>
+        <div><label class="ce-label">Município</label><input class="ce-input" id="ce-municipio" placeholder="Município"></div>
+        <div><label class="ce-label">Código IBGE</label><input class="ce-input" id="ce-codigo-ibge" placeholder="0000000"></div>
+        <div><label class="ce-label">UF</label><input class="ce-input" id="ce-uf" placeholder="UF" maxlength="2" style="text-transform:uppercase"></div>
+        <div style="grid-column:1/-1"><label class="ce-label">Cliente</label><input class="ce-input" id="ce-cliente" placeholder="Nome do cliente"></div>
+        <div><label class="ce-label">Área Solicitada por Cliente (ha)</label><input class="ce-input" id="ce-area-solicitada" placeholder="ha" oninput="calcularCE()"></div>
+        <div><label class="ce-label">Cultivo</label><input class="ce-input" id="ce-cultivo" placeholder="Cultivo"></div>
+        <div><label class="ce-label">Ajuste</label><input class="ce-input" id="ce-ajuste" placeholder="Ajuste"></div>
+        <div><label class="ce-label">Ciclo</label><input class="ce-input" id="ce-ciclo" placeholder="Ciclo"></div>
+        <div><label class="ce-label">Modalidade</label><input class="ce-input" id="ce-modalidade" placeholder="Modalidade"></div>
+        <div><label class="ce-label">Nível de Cobertura Solicitado (ex: 0,70)</label><input class="ce-input" id="ce-nivel-cobertura" placeholder="0,70" oninput="calcularCE()"></div>
+        <div><label class="ce-label">Produtividade Estimada Bruta Solicitada (kg/ha)</label><input class="ce-input" id="ce-prod-estimada" placeholder="kg/ha" oninput="calcularCE()"></div>
+        <div><label class="ce-label">Produtividade Estimada Bruta IBGE (kg/ha)</label><input class="ce-input" id="ce-prod-ibge" placeholder="kg/ha" oninput="calcularCE()"></div>
+        <div><label class="ce-label">Diferença (calculado automaticamente)</label><input class="ce-input ce-calc" id="ce-diferenca" placeholder="—" readonly></div>
+        <div><label class="ce-label">Preço de Saca (000,00)</label><input class="ce-input" id="ce-preco-saca" placeholder="000,00" oninput="calcularCE()"></div>
+        <div><label class="ce-label">Cuota (ex: 0,13)</label><input class="ce-input" id="ce-cuota" placeholder="0,13" oninput="calcularCE()"></div>
+        <div style="grid-column:1/-1"><label class="ce-label">Prêmio (calculado automaticamente)</label><input class="ce-input ce-calc ce-premio-destaque" id="ce-premio" placeholder="—" readonly></div>
+        <div><label class="ce-label">Replantio</label><select class="ce-input" id="ce-replantio"><option value="">Selecione</option><option>Sim</option><option>Não</option></select></div>
+        <div></div>
+        <div><label class="ce-label">Fecha de Siembra</label><input class="ce-input" type="date" id="ce-fecha-siembra"></div>
+        <div><label class="ce-label">Fecha de Cosecha</label><input class="ce-input" type="date" id="ce-fecha-cosecha"></div>
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px">
         <button class="btn btn-outline" onclick="closeModal('modal-form-ce')">Cancelar</button>
@@ -1769,38 +1801,34 @@ async function verRelatorio(jobId) {
       <button class="modal-close" onclick="closeModal('modal-ver-ce')">✕</button>
     </div>
     <div class="modal-body" style="padding:24px">
-      <!-- Cabeçalho proposta -->
-      <div style="background:var(--gray50);border-radius:var(--r-sm);padding:14px;margin-bottom:20px;display:flex;gap:20px;flex-wrap:wrap">
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;letter-spacing:.5px">Proponente</div><div style="font-weight:600;color:var(--gray900);font-size:14px" id="vce-proponente">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;letter-spacing:.5px">Cultura</div><div style="font-weight:600;color:var(--gray900);font-size:14px" id="vce-cultura">—</div></div>
-        <div id="vce-decisao-badge" style="display:none;align-self:center;font-size:13px;font-weight:600"></div>
+      <div style="background:#1a3a2a;border-radius:10px;padding:16px 20px;margin-bottom:20px;display:flex;gap:24px;flex-wrap:wrap;align-items:center">
+        <div><div style="font-size:10px;color:#86efac;text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px">Proponente</div><div style="font-weight:700;color:#fff;font-size:14px" id="vce-proponente">—</div></div>
+        <div><div style="font-size:10px;color:#86efac;text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px">Cultura</div><div style="font-weight:700;color:#fff;font-size:14px" id="vce-cultura">—</div></div>
+        <div id="vce-decisao-badge" style="display:none;align-self:center;font-size:13px;font-weight:700;padding:4px 12px;border-radius:20px;background:#166534;color:#bbf7d0"></div>
       </div>
-      <!-- Dados somente leitura -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Broker</div><div class="ce-val" id="vce-broker">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Município</div><div class="ce-val" id="vce-municipio">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Código IBGE</div><div class="ce-val" id="vce-codigo-ibge">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">UF</div><div class="ce-val" id="vce-uf">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Cliente</div><div class="ce-val" id="vce-cliente">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Status do Negócio</div><div class="ce-val" id="vce-status-negocio">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Cadastro Cliente Sistema</div><div class="ce-val" id="vce-cadastro-sistema">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Prêmio</div><div class="ce-val" id="vce-premio">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Área Solicitada</div><div class="ce-val" id="vce-area-solicitada">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Cultivo</div><div class="ce-val" id="vce-cultivo">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Ajuste</div><div class="ce-val" id="vce-ajuste">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Ciclo</div><div class="ce-val" id="vce-ciclo">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Modalidade</div><div class="ce-val" id="vce-modalidade">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Nível de Cobertura</div><div class="ce-val" id="vce-nivel-cobertura">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Produtividade Estimada Bruta</div><div class="ce-val" id="vce-prod-estimada">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Produtividade IBGE</div><div class="ce-val" id="vce-prod-ibge">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Diferença</div><div class="ce-val" id="vce-diferenca">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Preço de Saca</div><div class="ce-val" id="vce-preco-saca">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Cuota</div><div class="ce-val" id="vce-cuota">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Replantio</div><div class="ce-val" id="vce-replantio">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Fecha de Siembra</div><div class="ce-val" id="vce-fecha-siembra">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Fecha de Cosecha</div><div class="ce-val" id="vce-fecha-cosecha">—</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+        <div class="ce-field"><div class="ce-field-label">Broker</div><div class="ce-val" id="vce-broker">—</div></div>
+        <div class="ce-field"><div class="ce-field-label">Município</div><div class="ce-val" id="vce-municipio">—</div></div>
+        <div class="ce-field"><div class="ce-field-label">Código IBGE</div><div class="ce-val" id="vce-codigo-ibge">—</div></div>
+        <div class="ce-field"><div class="ce-field-label">UF</div><div class="ce-val" id="vce-uf">—</div></div>
+        <div class="ce-field" style="grid-column:1/-1"><div class="ce-field-label">Cliente</div><div class="ce-val" id="vce-cliente">—</div></div>
+        <div class="ce-field"><div class="ce-field-label">Área Solicitada (ha)</div><div class="ce-val" id="vce-area-solicitada">—</div></div>
+        <div class="ce-field"><div class="ce-field-label">Cultivo</div><div class="ce-val" id="vce-cultivo">—</div></div>
+        <div class="ce-field"><div class="ce-field-label">Ajuste</div><div class="ce-val" id="vce-ajuste">—</div></div>
+        <div class="ce-field"><div class="ce-field-label">Ciclo</div><div class="ce-val" id="vce-ciclo">—</div></div>
+        <div class="ce-field"><div class="ce-field-label">Modalidade</div><div class="ce-val" id="vce-modalidade">—</div></div>
+        <div class="ce-field"><div class="ce-field-label">Nível de Cobertura</div><div class="ce-val" id="vce-nivel-cobertura">—</div></div>
+        <div class="ce-field"><div class="ce-field-label">Produtividade Estimada Bruta (kg/ha)</div><div class="ce-val" id="vce-prod-estimada">—</div></div>
+        <div class="ce-field"><div class="ce-field-label">Produtividade IBGE (kg/ha)</div><div class="ce-val" id="vce-prod-ibge">—</div></div>
+        <div class="ce-field"><div class="ce-field-label">Diferença (kg/ha)</div><div class="ce-val ce-val-destaque" id="vce-diferenca">—</div></div>
+        <div class="ce-field"><div class="ce-field-label">Preço de Saca</div><div class="ce-val" id="vce-preco-saca">—</div></div>
+        <div class="ce-field"><div class="ce-field-label">Cuota</div><div class="ce-val" id="vce-cuota">—</div></div>
+        <div class="ce-field" style="grid-column:1/-1"><div class="ce-field-label">Prêmio Calculado</div><div class="ce-val ce-val-premio" id="vce-premio">—</div></div>
+        <div class="ce-field"><div class="ce-field-label">Replantio</div><div class="ce-val" id="vce-replantio">—</div></div>
+        <div class="ce-field"><div class="ce-field-label"></div><div></div></div>
+        <div class="ce-field"><div class="ce-field-label">Fecha de Siembra</div><div class="ce-val" id="vce-fecha-siembra">—</div></div>
+        <div class="ce-field"><div class="ce-field-label">Fecha de Cosecha</div><div class="ce-val" id="vce-fecha-cosecha">—</div></div>
       </div>
-      <!-- Ações -->
       <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;border-top:1px solid var(--gray100);padding-top:16px">
         <button class="btn btn-outline" onclick="closeModal('modal-ver-ce');verRelatorio(_ceJobId)">📄 Ver Relatório</button>
         <button class="btn btn-outline" id="vce-btn-recusar" style="border-color:#fecaca;color:#c0392b" onclick="closeModal('modal-ver-ce');abrirDecisao(_ceJobId,'recusado')">❌ Recusar</button>
@@ -1810,21 +1838,9 @@ async function verRelatorio(jobId) {
   </div>
 </div>
 
-<style>
-.ce-val {
-  font-size:13px;
-  font-weight:500;
-  color:var(--gray900);
-  background:var(--gray50);
-  border:1px solid var(--gray200);
-  border-radius:6px;
-  padding:7px 10px;
-  min-height:32px;
-}
-</style>
 
 <!-- Modal: Aprovação de Condição Especial -->
-<div class="modal-overlay" id="modal-aprovacao-ce" style="align-items:flex-start;padding:20px;overflow-y:auto">
+<div class="modal-overlay" id="modal-aprovacao-ce" style="align-items:flex-start;padding:20px;overflow-y:auto;background:rgba(255,255,255,0.97)">
   <div class="modal-card" style="max-width:520px;width:100%;margin:auto">
     <div class="modal-header" style="background:#1a3a2a;border-radius:10px 10px 0 0">
       <div class="modal-title" style="color:#fff">✅ Aprovar Condição Especial</div>
