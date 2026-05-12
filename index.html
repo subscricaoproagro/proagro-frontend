@@ -252,6 +252,7 @@
       <button class="topbar-btn" onclick="showPage('nova-analise')">Nova Análise</button>
       <button class="topbar-btn" onclick="showPage('historico')">Histórico</button>
       <button class="topbar-btn" onclick="showPage('assistente')">Assistente IA</button>
+      <button class="topbar-btn" id="ce-btn" onclick="showPage('condicao-especial')" style="display:none">Condição Especial</button>
       <button class="topbar-btn" id="admin-btn" onclick="showPage('admin')" style="display:none">Admin</button>
     </nav>
     <div class="topbar-right">
@@ -373,6 +374,22 @@
           <table class="jobs-table">
             <thead><tr><th>Proposta</th><th>Proponente</th><th>Cultura</th><th>Analista</th><th>Iniciado</th><th>Status</th><th>Ações</th></tr></thead>
             <tbody id="jobs-tbody"><tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONDIÇÃO ESPECIAL -->
+    <div id="page-condicao-especial" class="page-section">
+      <div class="section-header">
+        <div class="section-title">Condição Especial</div>
+        <div class="section-sub">Análises marcadas como condição especial</div>
+      </div>
+      <div class="card">
+        <div class="overflow-x">
+          <table class="jobs-table">
+            <thead><tr><th>Proposta</th><th>Proponente</th><th>Cultura</th><th>Município</th><th>UF</th><th>Cliente</th><th>Status Negócio</th><th>Prêmio</th><th>Ações</th></tr></thead>
+            <tbody id="ce-tbody"><tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -590,6 +607,10 @@ function enterApp() {
 
   if (currentUser.role === 'admin') {
     document.getElementById('admin-btn').style.display = '';
+    document.getElementById('ce-btn').style.display = '';
+  }
+  if (currentUser.role === 'supervisor') {
+    document.getElementById('ce-btn').style.display = '';
     document.getElementById('backend-url-input').value = BACKEND_URL;
   }
 
@@ -678,6 +699,7 @@ async function verificarBackend() {
 // NAVEGAÇÃO
 // ══════════════════════════════════════════
 function showPage(page) {
+  if (page === 'condicao-especial') carregarCondicoesEspeciais();
   document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.topbar-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
@@ -719,17 +741,48 @@ async function iniciarAnalise() {
   if (!temKml) { showToast('Envie pelo menos um arquivo KML.', 'error'); return; }
 
   const btn = document.getElementById('btn-iniciar');
-  btn.innerHTML = '<div class="spinner" style="border-top-color:#fff"></div> Enviando…';
+  btn.innerHTML = '<div class="spinner" style="border-top-color:#fff"></div> Verificando…';
   btn.disabled = true;
 
   try {
+    // 1. Verifica se já existem relatórios para os proponentes do Excel
+    const formVerif = new FormData();
+    uploadedFiles.forEach(f => formVerif.append('arquivos', f));
+    const verificacao = await api('POST', '/jobs/verificar-existente', formVerif, true);
+
+    if (verificacao.existentes && verificacao.existentes.length > 0) {
+      // Mostra modal de confirmação
+      const nomes = verificacao.existentes.map(e =>
+        `<li><strong>#${e.id_proposta}</strong> — ${e.nome_proponente}</li>`
+      ).join('');
+      document.getElementById('modal-existente-lista').innerHTML = nomes;
+      openModal('modal-existente');
+      btn.innerHTML = '🚀 &nbsp; Iniciar Análise Completa';
+      btn.disabled = false;
+      return;
+    }
+
+    // Nenhum existente — prossegue direto
+    await _enviarJobsEfetivo();
+
+  } catch(e) {
+    showToast('Erro: ' + e.message, 'error');
+    btn.innerHTML = '🚀 &nbsp; Iniciar Análise Completa';
+    btn.disabled = false;
+  }
+}
+
+async function _enviarJobsEfetivo(forcar=false) {
+  const btn = document.getElementById('btn-iniciar');
+  btn.innerHTML = '<div class="spinner" style="border-top-color:#fff"></div> Enviando…';
+  btn.disabled = true;
+  try {
     const form = new FormData();
     uploadedFiles.forEach(f => form.append('arquivos', f));
-
-    const data = await api('POST', '/jobs/criar', form, true);
+    const url = '/jobs/criar' + (forcar ? '?forcar=true' : '');
+    const data = await api('POST', url, form, true);
     const total = data.total || 0;
     showToast(`${total} análise(s) iniciada(s)! Acompanhe no Histórico.`, 'success');
-
     uploadedFiles = []; renderFileList();
     showPage('historico');
   } catch(e) {
@@ -774,10 +827,12 @@ function renderJobsTable(jobs) {
       <td>
         <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
           <button class="btn-sm btn-outline" onclick="verJob('${j.id}')">Detalhes</button>
-          ${concluido ? `<button class="btn-sm btn-outline" onclick="verResumo('${j.id}')" title="Resumo analítico IA" style="font-size:14px">🔍</button>` : ''}
+          ${concluido ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${j.id}')" title="Visualizar relatório completo">📄 Ver</button>` : ''}
           ${concluido ? `<button class="btn-sm btn-green" onclick="baixarJob('${j.id}')">⬇ Baixar</button>` : ''}
-          ${semDecisao ? `<button class="btn-sm" style="background:#f0faf4;border:1px solid #a8e0c0;color:#1e6b40" onclick="abrirDecisao('${j.id}','aprovado')">✅ Aprovar</button>` : ''}
-          ${semDecisao ? `<button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="abrirDecisao('${j.id}','recusado')">❌ Recusar</button>` : ''}
+          ${concluido && !j.tipo_analise ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirTipoAnalise('${j.id}')">📋 Tipo de Análise</button>` : ''}
+          ${concluido && j.tipo_analise==='condicao_especial' ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="verCondicaoEspecial('${j.id}')">⭐ Cond. Especial</button>` : ''}
+          ${j.status==='processando' ? `<button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="cancelarJob('${j.id}')" title="Interromper análise">⏹ Parar</button>` : ''}
+          ${(j.status==='erro' || j.status==='cancelado') ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#2563eb" onclick="reprocessarJob('${j.id}')" title="Tentar novamente">🔄 Reprocessar</button>` : ''}
           <button class="btn-sm btn-danger" onclick="deletarJob('${j.id}')" title="Remover">🗑</button>
         </div>
       </td>
@@ -970,6 +1025,78 @@ function showToast(msg, type='success') {
 }
 
 // ══════════════════════════════════════════
+// REPROCESSAR JOB
+// ══════════════════════════════════════════
+async function reprocessarJob(id) {
+  if (!confirm('Reprocessar esta análise? O relatório anterior será substituído.')) return;
+  try {
+    await api('POST', '/jobs/' + id + '/reprocessar');
+    showToast('Análise recolocada na fila!', 'success');
+    carregarJobs();
+  } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════
+// REPROCESSAR JOB
+// ══════════════════════════════════════════
+async function reprocessarJob(id) {
+  if (!confirm('Reprocessar esta análise? O relatório anterior será substituído.')) return;
+  try {
+    await api('POST', '/jobs/' + id + '/reprocessar');
+    showToast('Análise recolocada na fila!', 'success');
+    carregarJobs();
+  } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════
+// CANCELAR JOB
+// ══════════════════════════════════════════
+async function cancelarJob(id) {
+  if (!confirm('Interromper esta análise em andamento?')) return;
+  try {
+    await api('POST', '/jobs/' + id + '/cancelar');
+    showToast('Análise interrompida.', 'warning');
+    carregarJobs();
+  } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════
+// REPROCESSAR JOB
+// ══════════════════════════════════════════
+async function reprocessarJob(id) {
+  if (!confirm('Reprocessar esta análise? O relatório anterior será substituído.')) return;
+  try {
+    await api('POST', '/jobs/' + id + '/reprocessar');
+    showToast('Análise recolocada na fila!', 'success');
+    carregarJobs();
+  } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════
+// REPROCESSAR JOB
+// ══════════════════════════════════════════
+async function reprocessarJob(id) {
+  if (!confirm('Reprocessar esta análise? O relatório anterior será substituído.')) return;
+  try {
+    await api('POST', '/jobs/' + id + '/reprocessar');
+    showToast('Análise recolocada na fila!', 'success');
+    carregarJobs();
+  } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════
+// CANCELAR JOB
+// ══════════════════════════════════════════
+async function cancelarJob(id) {
+  if (!confirm('Interromper esta análise em andamento?')) return;
+  try {
+    await api('POST', '/jobs/' + id + '/cancelar');
+    showToast('Análise interrompida.', 'warning');
+    carregarJobs();
+  } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════
 // DELETAR JOB
 // ══════════════════════════════════════════
 async function deletarJob(id) {
@@ -1073,21 +1200,279 @@ async function verResumo(jobId) {
   }
 }
 
+
+// ══════════════════════════════════════════
+// CHECKLIST DE CONFORMIDADE
+// ══════════════════════════════════════════
+
+
+let _checklistJobId = null;
+let _checklistDados = {};
+
+
+
+let _tipoGlobal = 'sistema';
+
+
+
+
+
+function setStatus(itemId, status) {
+  _checklistDados[itemId] = _checklistDados[itemId] || {};
+  _checklistDados[itemId].status = status;
+
+  // Atualiza visual dos botões
+  const cores = {
+    ok:  {bg:'var(--g600)', txt:'#fff', border:'var(--g200)'},
+    nok: {bg:'var(--red)',  txt:'#fff', border:'#fecaca'},
+    na:  {bg:'var(--gray600)', txt:'#fff', border:'var(--gray200)'}
+  };
+  const defaults = {
+    ok:  {bg:'#fff', txt:'var(--g600)', border:'var(--g200)'},
+    nok: {bg:'#fff', txt:'var(--red)', border:'#fecaca'},
+    na:  {bg:'#fff', txt:'var(--gray600)', border:'var(--gray200)'}
+  };
+
+  ['ok','nok','na'].forEach(s => {
+    const btn = document.getElementById('btn-' + s + '-' + itemId);
+    const c = s === status ? cores[s] : defaults[s];
+    btn.style.background = c.bg;
+    btn.style.color = c.txt;
+    btn.style.border = '1px solid ' + c.border;
+  });
+
+  // Mostra campo de observação só para Não Conforme
+  const obsWrap = document.getElementById('obs-wrap-' + itemId);
+  if (obsWrap) obsWrap.style.display = status === 'nok' ? 'block' : 'none';
+
+  // Atualiza background do card
+  const wrap = document.getElementById('check-wrap-' + itemId);
+  if (status === 'ok') wrap.style.background = '#f0fdf4';
+  else if (status === 'nok') wrap.style.background = '#fff5f5';
+  else wrap.style.background = 'var(--gray50)';
+}
+
+
+
+
+
+
+
+
+// ══════════════════════════════════════════
+// CONDIÇÃO ESPECIAL
+// ══════════════════════════════════════════
+let _ceJobId = null;
+
+function abrirTipoAnalise(jobId) {
+  _ceJobId = jobId;
+  openModal('modal-tipo-analise');
+}
+
+async function confirmarTipoAnalise(tipo) {
+  closeModal('modal-tipo-analise');
+  if (tipo === 'sistema') {
+    try {
+      await api('POST', '/jobs/' + _ceJobId + '/decisao', { decisao: null, tipo_analise: 'sistema' });
+      showToast('Análise marcada como Sistema.', 'success');
+      carregarJobs();
+    } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+  } else {
+    openModal('modal-form-ce');
+  }
+}
+
+async function salvarFormCE() {
+  const campos = [
+    'ce-broker','ce-municipio','ce-codigo-ibge','ce-uf','ce-cliente',
+    'ce-status-negocio','ce-cadastro-sistema','ce-premio','ce-area-solicitada',
+    'ce-cultivo','ce-ajuste','ce-ciclo','ce-modalidade','ce-nivel-cobertura',
+    'ce-prod-estimada','ce-prod-ibge','ce-diferenca','ce-preco-saca',
+    'ce-cuota','ce-replantio','ce-fecha-siembra','ce-fecha-cosecha'
+  ];
+  const body = {
+    broker: document.getElementById('ce-broker').value,
+    municipio: document.getElementById('ce-municipio').value,
+    codigo_ibge: document.getElementById('ce-codigo-ibge').value,
+    uf: document.getElementById('ce-uf').value,
+    cliente: document.getElementById('ce-cliente').value,
+    status_negocio: document.getElementById('ce-status-negocio').value,
+    cadastro_cliente_sistema: document.getElementById('ce-cadastro-sistema').value,
+    premio: document.getElementById('ce-premio').value,
+    area_solicitada: document.getElementById('ce-area-solicitada').value,
+    cultivo: document.getElementById('ce-cultivo').value,
+    ajuste: document.getElementById('ce-ajuste').value,
+    ciclo: document.getElementById('ce-ciclo').value,
+    modalidade: document.getElementById('ce-modalidade').value,
+    nivel_cobertura: document.getElementById('ce-nivel-cobertura').value,
+    produtividade_estimada_bruta: document.getElementById('ce-prod-estimada').value,
+    produtividade_ibge: document.getElementById('ce-prod-ibge').value,
+    diferenca: document.getElementById('ce-diferenca').value,
+    preco_saca: document.getElementById('ce-preco-saca').value,
+    cuota: document.getElementById('ce-cuota').value,
+    replantio: document.getElementById('ce-replantio').value,
+    fecha_siembra: document.getElementById('ce-fecha-siembra').value,
+    fecha_cosecha: document.getElementById('ce-fecha-cosecha').value
+  };
+  try {
+    await api('POST', '/jobs/' + _ceJobId + '/condicao-especial', body);
+    closeModal('modal-form-ce');
+    showToast('Condição especial salva com sucesso!', 'success');
+    carregarJobs();
+    if (currentUser.role === 'admin' || currentUser.role === 'supervisor') {
+      showPage('condicao-especial');
+    }
+  } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function verCondicaoEspecial(jobId) {
+  _ceJobId = jobId;
+  try {
+    const [ce, job] = await Promise.all([
+      api('GET', '/jobs/' + jobId + '/condicao-especial'),
+      api('GET', '/jobs/' + jobId)
+    ]);
+    // Preenche visualização somente leitura
+    const campos = {
+      'vce-broker': ce.broker, 'vce-municipio': ce.municipio,
+      'vce-codigo-ibge': ce.codigo_ibge, 'vce-uf': ce.uf,
+      'vce-cliente': ce.cliente, 'vce-status-negocio': ce.status_negocio,
+      'vce-cadastro-sistema': ce.cadastro_cliente_sistema, 'vce-premio': ce.premio,
+      'vce-area-solicitada': ce.area_solicitada, 'vce-cultivo': ce.cultivo,
+      'vce-ajuste': ce.ajuste, 'vce-ciclo': ce.ciclo,
+      'vce-modalidade': ce.modalidade, 'vce-nivel-cobertura': ce.nivel_cobertura,
+      'vce-prod-estimada': ce.produtividade_estimada_bruta, 'vce-prod-ibge': ce.produtividade_ibge,
+      'vce-diferenca': ce.diferenca, 'vce-preco-saca': ce.preco_saca,
+      'vce-cuota': ce.cuota, 'vce-replantio': ce.replantio,
+      'vce-fecha-siembra': ce.fecha_siembra, 'vce-fecha-cosecha': ce.fecha_cosecha
+    };
+    for (const [id, val] of Object.entries(campos)) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val || '—';
+    }
+    document.getElementById('vce-proponente').textContent = job.nome_proponente + ' — Proposta #' + job.id_proposta;
+    document.getElementById('vce-cultura').textContent = job.cultura_desejada;
+    // Botões decisão
+    const semDecisao = !job.decisao;
+    document.getElementById('vce-btn-aprovar').style.display = semDecisao ? '' : 'none';
+    document.getElementById('vce-btn-recusar').style.display = semDecisao ? '' : 'none';
+    if (job.decisao) {
+      document.getElementById('vce-decisao-badge').textContent = job.decisao === 'aprovado' ? '✅ Aprovado' : '❌ Recusado';
+      document.getElementById('vce-decisao-badge').style.display = '';
+    } else {
+      document.getElementById('vce-decisao-badge').style.display = 'none';
+    }
+    openModal('modal-ver-ce');
+  } catch(e) { showToast('Erro ao carregar condição especial: ' + e.message, 'error'); }
+}
+
+async function carregarCondicoesEspeciais() {
+  const tbody = document.getElementById('ce-tbody');
+  if (!tbody) return;
+  try {
+    const lista = await api('GET', '/condicoes-especiais');
+    if (!lista.length) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial registrada.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = lista.map(ce => {
+      const job = ce.job || {};
+      return `<tr>
+        <td><strong>${job.id_proposta || '—'}</strong></td>
+        <td>${job.nome_proponente || '—'}</td>
+        <td>${job.cultura_desejada || '—'}</td>
+        <td>${ce.municipio || '—'}</td>
+        <td>${ce.uf || '—'}</td>
+        <td>${ce.cliente || '—'}</td>
+        <td>${ce.status_negocio || '—'}</td>
+        <td>${ce.premio || '—'}</td>
+        <td>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <button class="btn-sm btn-outline" onclick="verCondicaoEspecial('${ce.job_id}')">⭐ Ver CE</button>
+            <button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${ce.job_id}')">📄 Relatório</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:40px">Erro ao carregar.</td></tr>';
+  }
+}
+
+// ── Aprovação de Condição Especial ──
+let _ceAprovJobId = null;
+
+function abrirAprovacaoCE(jobId) {
+  _ceAprovJobId = jobId;
+  // Limpa campos
+  ['aprov-taxa','aprov-nc','aprov-prod-bruta','aprov-replantio','aprov-obs'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('aprov-prod-garantida').value = '';
+  openModal('modal-aprovacao-ce');
+}
+
+function calcularProdGarantida() {
+  const prodBruta = parseFloat(String(document.getElementById('aprov-prod-bruta').value).replace(',','.')) || 0;
+  const nc        = parseFloat(String(document.getElementById('aprov-nc').value).replace(',','.')) || 0;
+  const garantida = prodBruta && nc ? (prodBruta * nc).toFixed(2) : '';
+  document.getElementById('aprov-prod-garantida').value = garantida;
+}
+
+async function confirmarAprovacaoCE() {
+  const taxa      = document.getElementById('aprov-taxa').value.trim();
+  const nc        = document.getElementById('aprov-nc').value.trim();
+  const prodBruta = document.getElementById('aprov-prod-bruta').value.trim();
+  const replantio = document.getElementById('aprov-replantio').value.trim();
+  const obs       = document.getElementById('aprov-obs').value.trim();
+
+  if (!taxa || !nc || !prodBruta || !replantio) {
+    showToast('Preencha todos os campos obrigatórios.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btn-confirmar-aprovacao-ce');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="border-top-color:#fff;width:14px;height:14px"></div> Aprovando…';
+
+  try {
+    const res = await api('POST', '/jobs/' + _ceAprovJobId + '/aprovar-condicao-especial', {
+      taxa_aprovada: taxa,
+      nivel_cobertura_aprovado: nc,
+      prod_bruta_aprovada: prodBruta,
+      replantio_aprovado: replantio,
+      observacoes: obs
+    });
+
+    closeModal('modal-aprovacao-ce');
+    const garantida = res.prod_garantida || '—';
+    showToast(`✅ Condição Especial aprovada! Prod. Garantida: ${garantida} kg/ha. Email enviado para subscricao@proagroseguros.com.`, 'success');
+    carregarJobs();
+    if (document.getElementById('ce-tbody')) carregarCondicoesEspeciais();
+  } catch(e) {
+    showToast('Erro ao aprovar: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '✅ Confirmar Aprovação';
+  }
+}
+
 </script>
 
-<!-- Modal decisao -->
+<!-- Modal decisão -->
 <div class="modal-overlay" id="modal-decisao">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title" id="modal-decisao-title">Registrar Decisao</div>
-      <button class="modal-close" onclick="closeModal('modal-decisao')">&#10005;</button>
+      <div class="modal-title" id="modal-decisao-title">Registrar Decisão</div>
+      <button class="modal-close" onclick="closeModal('modal-decisao')">✕</button>
     </div>
     <div class="modal-body">
       <div id="modal-decisao-info" style="background:var(--gray50);border-radius:var(--r-sm);padding:12px;margin-bottom:16px;font-size:13px;color:var(--gray600)"></div>
       <div id="modal-justificativa-wrap" style="display:none">
         <div class="form-group">
           <label class="form-label">Motivo da recusa <span style="color:var(--red)">*</span></label>
-          <textarea class="form-input" id="modal-justificativa" rows="4" placeholder="Descreva o motivo da recusa da proposta..." style="resize:vertical"></textarea>
+          <textarea class="form-input" id="modal-justificativa" rows="4" placeholder="Descreva o motivo da recusa..." style="resize:vertical"></textarea>
         </div>
       </div>
       <div id="modal-decisao-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px"></div>
@@ -1099,12 +1484,12 @@ async function verResumo(jobId) {
   </div>
 </div>
 
-<!-- Modal resumo analitico -->
+<!-- Modal resumo analítico -->
 <div class="modal-overlay" id="modal-resumo">
   <div class="modal" style="max-width:600px">
     <div class="modal-header">
-      <div class="modal-title">Resumo Analitico - IA</div>
-      <button class="modal-close" onclick="closeModal('modal-resumo')">&#10005;</button>
+      <div class="modal-title">🔍 Resumo Analítico — IA</div>
+      <button class="modal-close" onclick="closeModal('modal-resumo')">✕</button>
     </div>
     <div class="modal-body">
       <div id="modal-resumo-content" style="font-size:14px;line-height:1.7;color:var(--gray800)">
@@ -1113,4 +1498,393 @@ async function verResumo(jobId) {
     </div>
   </div>
 </div>
-</body>
+
+
+<!-- Modal Visualizar Relatório -->
+<div class="modal-overlay" id="modal-relatorio" style="align-items:flex-start;padding:20px;overflow-y:auto">
+  <div class="modal" style="max-width:960px;margin:auto;width:100%">
+    <div class="modal-header" style="position:sticky;top:0;background:var(--white);z-index:10;border-bottom:2px solid #1e5c2e">
+      <div>
+        <div class="modal-title" style="color:#1e5c2e">📄 Relatório de Subscrição</div>
+        <div style="font-size:12px;color:var(--gray400);margin-top:2px" id="relatorio-subtitulo"></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div id="relatorio-loading" style="display:none;font-size:12px;color:var(--gray400)">⏳ Carregando…</div>
+        <button class="modal-close" onclick="closeModal('modal-relatorio')">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" id="relatorio-body" style="padding:24px;background:#fff;padding-bottom:100px">
+      <div style="text-align:center;padding:40px;color:var(--gray400)">Carregando relatório…</div>
+    </div>
+    <!-- Rodapé fixo com decisão -->
+    <div id="relatorio-footer" style="display:none;position:sticky;bottom:0;background:#fff;border-top:2px solid #e5e7eb;padding:14px 24px;display:flex;gap:10px;align-items:center;z-index:10">
+      <div style="flex:1;font-size:13px;color:var(--gray600)" id="relatorio-decisao-info"></div>
+      <button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;padding:10px 20px;font-size:14px" id="btn-relatorio-aprovar" onclick="decisaoRelatorio('aprovado')">✅ Aprovar</button>
+      <button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b;padding:10px 20px;font-size:14px" id="btn-relatorio-recusar" onclick="decisaoRelatorio('recusado')">❌ Recusar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// VISUALIZAR RELATÓRIO COMPLETO
+// ══════════════════════════════════════════
+function renderRuns(runs) {
+  if (!runs || !runs.length) return '';
+  let txt = runs.map(r => r.bold ? `<strong>${r.txt}</strong>` : r.txt).join('');
+  // Título de cada Polígono em destaque verde com espaçamento
+  txt = txt.replace(/(Polígono\s+1\s+[—-][^P<]*)/g, '<div style="margin-top:6px;color:#1e5c2e;font-weight:700;font-size:12px">$1</div>');
+  txt = txt.replace(/(Polígono\s+[2-9]\s+[—-][^P<]*)/g, '<div style="margin-top:14px;color:#1e5c2e;font-weight:700;font-size:12px">$1</div>');
+  // Quebra de linha antes de "CAR:" com indentação
+  txt = txt.replace(/(🟢\s+CAR:|🟡\s+CAR:|🔴\s+CAR:)/g, '<br><span style="padding-left:10px">$1');
+  // Quebra de linha antes de linhas específicas do relatório
+  txt = txt.replace(/(PRODES:|CNFP:|Assentamento:|Renovagro \(|Auto de Infração|Cadastro de Empregadores|Embargos ICMBio \(|Unidades de Conservação|Áreas de Quilombolas|Terras Indígenas|Sítios Arqueológicos|Embargos IBAMA \()/g, '<br>$1');
+  return txt;
+}
+
+let _relatorioJobIdGlobal = null;
+
+function decisaoRelatorio(tipo) {
+  _relatorioJobIdGlobal = _relatorioJobIdGlobal;
+  closeModal('modal-relatorio');
+  abrirDecisao(_relatorioJobIdGlobal, tipo);
+}
+
+async function verRelatorio(jobId) {
+  _relatorioJobIdGlobal = jobId;
+  openModal('modal-relatorio');
+  document.getElementById('relatorio-loading').style.display = 'block';
+  document.getElementById('relatorio-subtitulo').textContent = 'Carregando…';
+  document.getElementById('relatorio-body').innerHTML =
+    '<div style="text-align:center;padding:60px;color:var(--gray400)">⏳ Carregando relatório…</div>';
+
+  let _relatorioJobId = jobId;
+
+  try {
+    const data = await api('GET', '/jobs/' + jobId + '/relatorio');
+    document.getElementById('relatorio-subtitulo').textContent =
+      data.proponente + ' · Proposta ' + data.proposta + ' · ' + data.cultura;
+
+    // Busca status de decisão
+    const job = await api('GET', '/jobs/' + jobId);
+    const footer = document.getElementById('relatorio-footer');
+    const info = document.getElementById('relatorio-decisao-info');
+    footer.style.display = 'flex';
+    if (job.decisao === 'aprovado') {
+      info.innerHTML = '<span style="color:#166534;font-weight:600">✅ Proposta Aprovada</span>' + (job.decisao_por ? ' por ' + job.decisao_por : '');
+      document.getElementById('btn-relatorio-aprovar').style.display = 'none';
+      document.getElementById('btn-relatorio-recusar').style.display = 'none';
+    } else if (job.decisao === 'recusado') {
+      info.innerHTML = '<span style="color:#c0392b;font-weight:600">❌ Proposta Recusada</span>' + (job.decisao_por ? ' por ' + job.decisao_por : '') + (job.justificativa ? '<br><span style="font-size:12px">' + job.justificativa + '</span>' : '');
+      document.getElementById('btn-relatorio-aprovar').style.display = 'none';
+      document.getElementById('btn-relatorio-recusar').style.display = 'none';
+    } else {
+      info.textContent = 'Registre sua decisão:';
+      document.getElementById('btn-relatorio-aprovar').style.display = '';
+      document.getElementById('btn-relatorio-recusar').style.display = '';
+    }
+
+
+    let html = `<div style="font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a;line-height:1.6;max-width:860px;margin:0 auto">`;
+
+    for (const sec of data.secoes) {
+
+      if (sec.tipo === 'secao') {
+        html += `<h2 style="font-size:15px;font-weight:700;color:#1e5c2e;border-bottom:2px solid #1e5c2e;padding-bottom:6px;margin:28px 0 14px;letter-spacing:.01em">${sec.texto}</h2>`;
+
+      } else if (sec.tipo === 'imagem') {
+        html += `<div style="margin:10px 0;text-align:center">
+          <img src="data:image/${sec.ext};base64,${sec.b64}"
+            style="width:100%;border-radius:4px;border:1px solid #e5e7eb"
+            loading="lazy">
+        </div>`;
+
+      } else if (sec.tipo === 'tabela') {
+        html += '<div style="margin:8px 0 16px;border:1px solid #d1d5db;border-radius:4px;overflow:hidden">';
+
+        for (let ri = 0; ri < sec.rows.length; ri++) {
+          const row = sec.rows[ri];
+          const bg = ri % 2 === 0 ? '#f9fafb' : '#ffffff';
+
+          // Verificar se alguma célula desta linha tem imagem
+          const rowTemImagem = row.some(c => c.imagens && c.imagens.length);
+          // Verificar se é linha com label + imagem (ex: "Cultivo desejado:" + imagem)
+          const isLabelImgRow = row.length === 2 && row[0].texto.endsWith(':') && row[1].imagens && row[1].imagens.length;
+          // Verificar se a célula sozinha tem imagem (sem label)
+          const isSoloImgRow = row.length === 1 && row[0].imagens && row[0].imagens.length;
+          // Linha só com imagem na segunda coluna e label na primeira
+          const isLabelRow = row.length === 2 && row[0].texto.endsWith(':') && !rowTemImagem;
+
+          if (isLabelImgRow) {
+            // Label em linha própria + imagem abaixo em largura total
+            html += `<div style="background:#f0fdf4;padding:8px 14px;font-weight:600;color:#166534;font-size:13px;border-bottom:1px solid #e5e7eb">${row[0].texto}</div>`;
+            row[1].imagens.forEach(img => {
+              html += `<div style="padding:12px;background:#fff;border-bottom:1px solid #e5e7eb"><img src="data:image/${img.ext};base64,${img.b64}" style="width:100%;border-radius:4px" loading="lazy"></div>`;
+            });
+          } else if (isSoloImgRow) {
+            row[0].imagens.forEach(img => {
+              html += `<div style="padding:12px;background:#fff;border-bottom:1px solid #e5e7eb"><img src="data:image/${img.ext};base64,${img.b64}" style="width:100%;border-radius:4px" loading="lazy"></div>`;
+            });
+          } else {
+            // Se segunda coluna estiver vazia, tratar como título de seção em largura total
+            const segundaVazia = row.length === 2 && !row[1].texto && !(row[1].imagens && row[1].imagens.length);
+            if (segundaVazia) {
+              const txt = (row[0].runs && row[0].runs.length) ? renderRuns(row[0].runs) : row[0].texto;
+              html += `<div style="background:#f0fdf4;padding:8px 14px;font-weight:600;color:#166534;font-size:13px;border-bottom:1px solid #e5e7eb;width:100%">${txt}</div>`;
+              continue;
+            }
+            // Linha normal com texto
+            html += `<div style="display:grid;grid-template-columns:${row.length === 2 ? '200px 1fr' : '1fr'};background:${bg};border-bottom:1px solid #e5e7eb">`;
+            for (let ci = 0; ci < row.length; ci++) {
+              const cell = row[ci];
+              const isLabel = ci === 0 && row.length === 2 && cell.texto.endsWith(':');
+              const cellStyle = isLabel
+                ? 'padding:8px 14px;font-weight:600;color:#166534;background:#f0fdf4;text-align:right;font-size:13px;display:flex;align-items:flex-start;justify-content:flex-end;padding-top:10px'
+                : 'padding:8px 14px;font-size:13px;line-height:1.6';
+
+              let cellContent = '';
+              if (cell.runs && cell.runs.length) {
+                cellContent = renderRuns(cell.runs);
+              } else {
+                cellContent = cell.texto || '';
+              }
+
+              // Imagens inline na célula
+              if (cell.imagens && cell.imagens.length) {
+                cell.imagens.forEach(img => {
+                  cellContent += `<div style="margin-top:8px"><img src="data:image/${img.ext};base64,${img.b64}" style="width:100%;border-radius:4px" loading="lazy"></div>`;
+                });
+              }
+
+              html += `<div style="${cellStyle}">${cellContent}</div>`;
+            }
+            html += '</div>';
+          }
+        }
+        html += '</div>';
+      }
+    }
+
+    html += '</div>';
+    document.getElementById('relatorio-body').innerHTML = html;
+
+  } catch(e) {
+    document.getElementById('relatorio-body').innerHTML =
+      `<div style="color:var(--red);padding:20px;font-size:13px">❌ Erro ao carregar relatório: ${e.message}</div>`;
+  } finally {
+    document.getElementById('relatorio-loading').style.display = 'none';
+  }
+}
+</script>
+
+<!-- Modal: Relatório já existe -->
+<div class="modal-overlay" id="modal-existente">
+  <div class="modal-card" style="max-width:480px;width:100%">
+    <div class="modal-header">
+      <div class="modal-title">⚠️ Relatório já existente</div>
+      <button class="modal-close" onclick="closeModal('modal-existente')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <p style="margin:0 0 12px;color:var(--gray700);font-size:14px">
+        Já existe relatório gerado para os seguintes proponentes:
+      </p>
+      <ul id="modal-existente-lista" style="margin:0 0 20px;padding-left:20px;font-size:14px;color:var(--gray800);line-height:2"></ul>
+      <p style="margin:0 0 24px;color:var(--gray600);font-size:13px">
+        Deseja substituir os relatórios existentes e processar novamente?
+      </p>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-outline" onclick="closeModal('modal-existente')">Cancelar</button>
+        <button class="btn btn-primary" onclick="closeModal('modal-existente');_enviarJobsEfetivo(true)">✅ Sim, substituir</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Tipo de Análise -->
+<div class="modal-overlay" id="modal-tipo-analise">
+  <div class="modal-card" style="max-width:420px;width:100%">
+    <div class="modal-header">
+      <div class="modal-title">📋 Tipo de Análise</div>
+      <button class="modal-close" onclick="closeModal('modal-tipo-analise')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <p style="margin:0 0 20px;color:var(--gray600);font-size:14px">Selecione o tipo de análise para esta proposta:</p>
+      <div style="display:flex;gap:12px;flex-direction:column">
+        <button class="btn btn-outline" style="justify-content:center;padding:16px;font-size:15px" onclick="confirmarTipoAnalise('sistema')">
+          🖥️ Sistema<br><span style="font-size:12px;color:var(--gray400);font-weight:400">Análise padrão do sistema</span>
+        </button>
+        <button class="btn btn-primary" style="justify-content:center;padding:16px;font-size:15px" onclick="confirmarTipoAnalise('condicao_especial')">
+          ⭐ Condição Especial<br><span style="font-size:12px;opacity:0.8;font-weight:400">Requer preenchimento de dados adicionais</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Formulário Condição Especial -->
+<div class="modal-overlay" id="modal-form-ce" style="align-items:flex-start;padding:20px;overflow-y:auto">
+  <div class="modal-card" style="max-width:700px;width:100%;margin:auto">
+    <div class="modal-header" style="position:sticky;top:0;z-index:10;background:var(--white)">
+      <div class="modal-title">⭐ Condição Especial — Dados da Proposta</div>
+      <button class="modal-close" onclick="closeModal('modal-form-ce')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div><label class="form-label">Broker</label><input class="form-input" id="ce-broker" placeholder="Nome do broker"></div>
+        <div><label class="form-label">Município</label><input class="form-input" id="ce-municipio" placeholder="Município"></div>
+        <div><label class="form-label">Código IBGE</label><input class="form-input" id="ce-codigo-ibge" placeholder="0000000"></div>
+        <div><label class="form-label">UF</label><input class="form-input" id="ce-uf" placeholder="UF" maxlength="2"></div>
+        <div><label class="form-label">Cliente</label><input class="form-input" id="ce-cliente" placeholder="Nome do cliente"></div>
+        <div><label class="form-label">Status do Negócio</label><input class="form-input" id="ce-status-negocio" placeholder="Status"></div>
+        <div><label class="form-label">Cadastro de Cliente em Sistema</label><input class="form-input" id="ce-cadastro-sistema" placeholder="Sim / Não / Código"></div>
+        <div><label class="form-label">Prêmio</label><input class="form-input" id="ce-premio" placeholder="R$ 0,00"></div>
+        <div><label class="form-label">Área Solicitada por Cliente</label><input class="form-input" id="ce-area-solicitada" placeholder="ha"></div>
+        <div><label class="form-label">Cultivo</label><input class="form-input" id="ce-cultivo" placeholder="Cultivo"></div>
+        <div><label class="form-label">Ajuste</label><input class="form-input" id="ce-ajuste" placeholder="Ajuste"></div>
+        <div><label class="form-label">Ciclo</label><input class="form-input" id="ce-ciclo" placeholder="Ciclo"></div>
+        <div><label class="form-label">Modalidade</label><input class="form-input" id="ce-modalidade" placeholder="Modalidade"></div>
+        <div><label class="form-label">Nível de Cobertura Solicitado</label><input class="form-input" id="ce-nivel-cobertura" placeholder="%"></div>
+        <div><label class="form-label">Produtividade Estimada Bruta Solicitada (kg/ha)</label><input class="form-input" id="ce-prod-estimada" placeholder="kg/ha"></div>
+        <div><label class="form-label">Produtividade Estimada Bruta IBGE (kg/ha)</label><input class="form-input" id="ce-prod-ibge" placeholder="kg/ha"></div>
+        <div><label class="form-label">Diferença</label><input class="form-input" id="ce-diferenca" placeholder="kg/ha"></div>
+        <div><label class="form-label">Preço de Saca (000,00)</label><input class="form-input" id="ce-preco-saca" placeholder="000,00"></div>
+        <div><label class="form-label">Cuota (0,00%)</label><input class="form-input" id="ce-cuota" placeholder="0,00%"></div>
+        <div><label class="form-label">Replantio</label><input class="form-input" id="ce-replantio" placeholder="Sim / Não"></div>
+        <div><label class="form-label">Fecha de Siembra</label><input class="form-input" type="date" id="ce-fecha-siembra"></div>
+        <div><label class="form-label">Fecha de Cosecha</label><input class="form-input" type="date" id="ce-fecha-cosecha"></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px">
+        <button class="btn btn-outline" onclick="closeModal('modal-form-ce')">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarFormCE()">💾 Salvar Condição Especial</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Visualização Condição Especial -->
+<div class="modal-overlay" id="modal-ver-ce" style="align-items:flex-start;padding:20px;overflow-y:auto;background:rgba(255,255,255,0.97)">
+  <div class="modal-card" style="max-width:750px;width:100%;margin:auto">
+    <div class="modal-header" style="position:sticky;top:0;z-index:10;background:var(--white)">
+      <div class="modal-title">⭐ Análise — Condição Especial</div>
+      <button class="modal-close" onclick="closeModal('modal-ver-ce')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <!-- Cabeçalho proposta -->
+      <div style="background:var(--gray50);border-radius:var(--r-sm);padding:14px;margin-bottom:20px;display:flex;gap:20px;flex-wrap:wrap">
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;letter-spacing:.5px">Proponente</div><div style="font-weight:600;color:var(--gray900);font-size:14px" id="vce-proponente">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;letter-spacing:.5px">Cultura</div><div style="font-weight:600;color:var(--gray900);font-size:14px" id="vce-cultura">—</div></div>
+        <div id="vce-decisao-badge" style="display:none;align-self:center;font-size:13px;font-weight:600"></div>
+      </div>
+      <!-- Dados somente leitura -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Broker</div><div class="ce-val" id="vce-broker">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Município</div><div class="ce-val" id="vce-municipio">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Código IBGE</div><div class="ce-val" id="vce-codigo-ibge">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">UF</div><div class="ce-val" id="vce-uf">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Cliente</div><div class="ce-val" id="vce-cliente">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Status do Negócio</div><div class="ce-val" id="vce-status-negocio">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Cadastro Cliente Sistema</div><div class="ce-val" id="vce-cadastro-sistema">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Prêmio</div><div class="ce-val" id="vce-premio">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Área Solicitada</div><div class="ce-val" id="vce-area-solicitada">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Cultivo</div><div class="ce-val" id="vce-cultivo">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Ajuste</div><div class="ce-val" id="vce-ajuste">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Ciclo</div><div class="ce-val" id="vce-ciclo">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Modalidade</div><div class="ce-val" id="vce-modalidade">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Nível de Cobertura</div><div class="ce-val" id="vce-nivel-cobertura">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Produtividade Estimada Bruta</div><div class="ce-val" id="vce-prod-estimada">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Produtividade IBGE</div><div class="ce-val" id="vce-prod-ibge">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Diferença</div><div class="ce-val" id="vce-diferenca">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Preço de Saca</div><div class="ce-val" id="vce-preco-saca">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Cuota</div><div class="ce-val" id="vce-cuota">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Replantio</div><div class="ce-val" id="vce-replantio">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Fecha de Siembra</div><div class="ce-val" id="vce-fecha-siembra">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Fecha de Cosecha</div><div class="ce-val" id="vce-fecha-cosecha">—</div></div>
+      </div>
+      <!-- Ações -->
+      <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;border-top:1px solid var(--gray100);padding-top:16px">
+        <button class="btn btn-outline" onclick="closeModal('modal-ver-ce');verRelatorio(_ceJobId)">📄 Ver Relatório</button>
+        <button class="btn btn-outline" id="vce-btn-recusar" style="border-color:#fecaca;color:#c0392b" onclick="closeModal('modal-ver-ce');abrirDecisao(_ceJobId,'recusado')">❌ Recusar</button>
+        <button class="btn btn-primary" id="vce-btn-aprovar" onclick="closeModal('modal-ver-ce');abrirAprovacaoCE(_ceJobId)">✅ Aprovar Condição Especial</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.ce-val {
+  font-size:13px;
+  font-weight:500;
+  color:var(--gray900);
+  background:var(--gray50);
+  border:1px solid var(--gray200);
+  border-radius:6px;
+  padding:7px 10px;
+  min-height:32px;
+}
+</style>
+
+<!-- Modal: Aprovação de Condição Especial -->
+<div class="modal-overlay" id="modal-aprovacao-ce" style="align-items:flex-start;padding:20px;overflow-y:auto">
+  <div class="modal-card" style="max-width:520px;width:100%;margin:auto">
+    <div class="modal-header" style="background:#1a3a2a;border-radius:10px 10px 0 0">
+      <div class="modal-title" style="color:#fff">✅ Aprovar Condição Especial</div>
+      <button class="modal-close" style="color:#fff;opacity:.8" onclick="closeModal('modal-aprovacao-ce')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+
+      <div style="background:#f0faf4;border:1px solid #a8e0c0;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#1a3a2a">
+        <strong>Atenção:</strong> Preencha as condições aprovadas para esta proposta.
+        Um email será enviado automaticamente para <strong>subscricao@proagroseguros.com</strong> ao confirmar.
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+        <div>
+          <label class="ce-label">Taxa Aprovada <span style="color:#c0392b">*</span></label>
+          <input class="ce-input" id="aprov-taxa" placeholder="ex: 0,13 ou 13%">
+        </div>
+
+        <div>
+          <label class="ce-label">Nível de Cobertura Aprovado <span style="color:#c0392b">*</span></label>
+          <input class="ce-input" id="aprov-nc" placeholder="ex: 0,70" oninput="calcularProdGarantida()">
+        </div>
+
+        <div>
+          <label class="ce-label">Produtividade Bruta Aprovada (kg/ha) <span style="color:#c0392b">*</span></label>
+          <input class="ce-input" id="aprov-prod-bruta" placeholder="kg/ha" oninput="calcularProdGarantida()">
+        </div>
+
+        <div>
+          <label class="ce-label">Produtividade Garantida (calculada)</label>
+          <input class="ce-input ce-calc" id="aprov-prod-garantida" placeholder="—" readonly
+            title="Produtividade Bruta Aprovada × Nível de Cobertura">
+        </div>
+
+        <div style="grid-column:1/-1">
+          <label class="ce-label">Replantio <span style="color:#c0392b">*</span></label>
+          <select class="ce-input" id="aprov-replantio">
+            <option value="">Selecione</option>
+            <option>Sim</option>
+            <option>Não</option>
+          </select>
+        </div>
+
+        <div style="grid-column:1/-1">
+          <label class="ce-label">Observações</label>
+          <textarea class="ce-input" id="aprov-obs" rows="3" placeholder="Observações adicionais sobre a aprovação (opcional)"
+            style="resize:vertical"></textarea>
+        </div>
+
+      </div>
+
+      <div style="background:#fff8e1;border:1px solid #fbbf24;border-radius:8px;padding:10px 14px;margin-top:16px;font-size:12px;color:#92400e">
+        📧 Após confirmar, um email detalhado com as condições aprovadas e os dados da proposta será enviado automaticamente para a equipe de subscrição.
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+        <button class="btn btn-outline" onclick="closeModal('modal-aprovacao-ce')">Cancelar</button>
+        <button class="btn btn-primary" id="btn-confirmar-aprovacao-ce" onclick="confirmarAprovacaoCE()">✅ Confirmar Aprovação</button>
+      </div>
+    </div>
+  </div>
+</div>
