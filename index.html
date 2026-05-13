@@ -1402,11 +1402,7 @@ async function carregarCondicoesEspeciais() {
           <div style="display:flex;gap:5px;flex-wrap:wrap">
             <button class="btn-sm btn-outline" onclick="verCondicaoEspecial('${ce.job_id}')">👁 Ver</button>
             <button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${ce.job_id}')">📄 Relatório</button>
-            ${!ce.job?.decisao_risco ? `
-              <button class="btn-sm btn-primary" onclick="abrirAprovacaoCE('${ce.job_id}')">✅ Aprovar CE</button>
-              <button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="abrirBalcao('${ce.job_id}')">🏦 Balcão</button>
-              <button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="abrirRecusaCE('${ce.job_id}')">❌ Recusar</button>
-            ` : `<span style="font-size:12px;font-weight:600;color:${ce.job?.decisao_risco==='aprovado'?'#166534':ce.job?.decisao_risco==='balcao'?'#1d4ed8':'#c0392b'}">${ce.job?.decisao_risco==='aprovado'?'✅ CE Aprovada':ce.job?.decisao_risco==='balcao'?'🏦 Balcão':'❌ Recusada'}</span>`}
+            ${renderBtnsCE(ce)}
           </div>
         </td>
       </tr>`;
@@ -1600,6 +1596,21 @@ async function confirmarBalcao() {
     carregarCondicoesEspeciais(); carregarJobs();
   } catch(e) { showToast('Erro: ' + e.message, 'error'); }
   finally { btn.disabled = false; btn.innerHTML = '🏦 Confirmar Balcão'; }
+}
+
+
+
+function renderBtnsCE(ce) {
+  var jobId = ce.job_id;
+  if (!ce.job || !ce.job.decisao_risco) {
+    return '<button class="btn-sm btn-primary" onclick="abrirAprovacaoCE(\'' + jobId + '\')">✅ Aprovar CE</button>' +
+           '<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="abrirBalcao(\'' + jobId + '\')">🏦 Balcão</button>' +
+           '<button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="abrirRecusaCE(\'' + jobId + '\')">❌ Recusar</button>';
+  }
+  var dr = ce.job.decisao_risco;
+  var cor = dr==='aprovado' ? '#166534' : dr==='balcao' ? '#1d4ed8' : '#c0392b';
+  var label = dr==='aprovado' ? '✅ CE Aprovada' : dr==='balcao' ? '🏦 Balcão' : '❌ Recusada';
+  return '<span style="font-size:12px;font-weight:600;color:' + cor + '">' + label + '</span>';
 }
 
 </script>
