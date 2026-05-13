@@ -830,7 +830,8 @@ function renderJobsTable(jobs) {
           ${concluido ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${j.id}')" title="Visualizar relatório completo">📄 Ver</button>` : ''}
           ${concluido ? `<button class="btn-sm btn-green" onclick="baixarJob('${j.id}')">⬇ Baixar</button>` : ''}
           ${concluido && !j.tipo_analise ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirTipoAnalise('${j.id}')">📋 Tipo de Análise</button>` : ''}
-          ${concluido && j.tipo_analise==='condicao_especial' ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="verCondicaoEspecial('${j.id}')">⭐ Cond. Especial</button>` : ''}
+          ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="verCondicaoEspecial('${j.id}')">⭐ Cond. Especial</button>` : ''}
+          ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="verDecisaoAR('${j.id}')">👁 Ver Decisão AR</button>` : ''}
           ${j.status==='processando' ? `<button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="cancelarJob('${j.id}')" title="Interromper análise">⏹ Parar</button>` : ''}
           ${(j.status==='erro' || j.status==='cancelado') ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#2563eb" onclick="reprocessarJob('${j.id}')" title="Tentar novamente">🔄 Reprocessar</button>` : ''}
           <button class="btn-sm btn-danger" onclick="deletarJob('${j.id}')" title="Remover">🗑</button>
@@ -1368,10 +1369,10 @@ async function verCondicaoEspecial(jobId) {
       badge.textContent = labels[job.decisao_risco] || job.decisao_risco;
       badge.style.display = '';
     }
-    if (job.decisao) {
-      document.getElementById('vce-decisao-badge').textContent = aprovado ? '✅ Aprovado' : '❌ Recusado';
+    if (!job.decisao_risco && job.decisao) {
+      document.getElementById('vce-decisao-badge').textContent = job.decisao === 'aprovado' ? '✅ Aprovado' : '❌ Recusado';
       document.getElementById('vce-decisao-badge').style.display = '';
-    } else {
+    } else if (!job.decisao_risco) {
       document.getElementById('vce-decisao-badge').style.display = 'none';
     }
     openModal('modal-ver-ce');
@@ -1400,7 +1401,6 @@ async function carregarCondicoesEspeciais() {
         <td>${ce.premio || '—'}</td>
         <td>
           <div style="display:flex;gap:5px;flex-wrap:wrap">
-            <button class="btn-sm btn-outline" onclick="verCondicaoEspecial('${ce.job_id}')">👁 Ver</button>
             <button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${ce.job_id}')">📄 Relatório</button>
             ${renderBtnsCE(ce)}
           </div>
@@ -1602,15 +1602,70 @@ async function confirmarBalcao() {
 
 function renderBtnsCE(ce) {
   var jobId = ce.job_id;
-  if (!ce.job || !ce.job.decisao_risco) {
+  var dr = (ce.job && ce.job.decisao_risco) ? ce.job.decisao_risco : null;
+  if (!dr) {
     return '<button class="btn-sm btn-primary" onclick="abrirAprovacaoCE(\'' + jobId + '\')">✅ Aprovar CE</button>' +
            '<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="abrirBalcao(\'' + jobId + '\')">🏦 Balcão</button>' +
            '<button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="abrirRecusaCE(\'' + jobId + '\')">❌ Recusar</button>';
   }
-  var dr = ce.job.decisao_risco;
   var cor = dr==='aprovado' ? '#166534' : dr==='balcao' ? '#1d4ed8' : '#c0392b';
   var label = dr==='aprovado' ? '✅ CE Aprovada' : dr==='balcao' ? '🏦 Balcão' : '❌ Recusada';
-  return '<span style="font-size:12px;font-weight:600;color:' + cor + '">' + label + '</span>';
+  return '<button class="btn-sm btn-outline" onclick="verCondicaoEspecial(\'' + jobId + '\')">👁 Ver</button> ' +
+         '<span style="font-size:12px;font-weight:600;color:' + cor + '">' + label + '</span>';
+}
+
+async function verDecisaoAR(jobId) {
+  _ceJobId = jobId;
+  try {
+    const [ce, job] = await Promise.all([
+      api('GET', '/jobs/' + jobId + '/condicao-especial'),
+      api('GET', '/jobs/' + jobId)
+    ]);
+    // Preenche modal com dados + decisão do AR
+    const campos = {
+      'vce-broker': ce.broker, 'vce-municipio': ce.municipio,
+      'vce-codigo-ibge': ce.codigo_ibge, 'vce-uf': ce.uf,
+      'vce-cliente': ce.cliente, 'vce-premio': ce.premio,
+      'vce-area-solicitada': ce.area_solicitada, 'vce-cultivo': ce.cultivo,
+      'vce-ajuste': ce.ajuste, 'vce-ciclo': ce.ciclo,
+      'vce-modalidade': ce.modalidade, 'vce-nivel-cobertura': ce.nivel_cobertura,
+      'vce-prod-estimada': ce.produtividade_estimada_bruta, 'vce-prod-ibge': ce.produtividade_ibge,
+      'vce-diferenca': ce.diferenca, 'vce-preco-saca': ce.preco_saca,
+      'vce-cuota': ce.cuota, 'vce-replantio': ce.replantio,
+      'vce-fecha-siembra': ce.fecha_siembra, 'vce-fecha-cosecha': ce.fecha_cosecha
+    };
+    for (const [id, val] of Object.entries(campos)) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val || '—';
+    }
+    document.getElementById('vce-proponente').textContent = job.nome_proponente + ' — Proposta #' + job.id_proposta;
+    document.getElementById('vce-cultura').textContent = job.cultura_desejada;
+
+    // Obs subscritor
+    const obsSubscritor = job.justificativa || '';
+    const obsBloco = document.getElementById('vce-obs-subscritor');
+    if (obsSubscritor && obsBloco) {
+      document.getElementById('vce-obs-subscritor-texto').textContent = obsSubscritor;
+      obsBloco.style.display = 'block';
+    } else if (obsBloco) { obsBloco.style.display = 'none'; }
+
+    // Badge decisão AR
+    const dr = job.decisao_risco;
+    const badge = document.getElementById('vce-decisao-badge');
+    if (dr) {
+      const labels = {aprovado:'✅ CE Aprovada', balcao:'🏦 Balcão', recusado:'❌ Recusada'};
+      badge.textContent = labels[dr] || dr;
+      badge.style.display = '';
+    } else { badge.style.display = 'none'; }
+
+    // Esconder todos os botões de decisão (só visualização)
+    ['vce-btn-aprovar','vce-btn-recusar','vce-btn-balcao','vce-btn-reavaliar'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+
+    openModal('modal-ver-ce');
+  } catch(e) { showToast('Erro ao carregar: ' + e.message, 'error'); }
 }
 
 </script>
