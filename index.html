@@ -1287,21 +1287,12 @@ async function confirmarTipoAnalise(tipo) {
 }
 
 async function salvarFormCE() {
-  const campos = [
-    'ce-broker','ce-municipio','ce-codigo-ibge','ce-uf','ce-cliente',
-    'ce-status-negocio','ce-cadastro-sistema','ce-premio','ce-area-solicitada',
-    'ce-cultivo','ce-ajuste','ce-ciclo','ce-modalidade','ce-nivel-cobertura',
-    'ce-prod-estimada','ce-prod-ibge','ce-diferenca','ce-preco-saca',
-    'ce-cuota','ce-replantio','ce-fecha-siembra','ce-fecha-cosecha'
-  ];
   const body = {
     broker: document.getElementById('ce-broker').value,
     municipio: document.getElementById('ce-municipio').value,
     codigo_ibge: document.getElementById('ce-codigo-ibge').value,
     uf: document.getElementById('ce-uf').value,
     cliente: document.getElementById('ce-cliente').value,
-    status_negocio: document.getElementById('ce-status-negocio').value,
-    cadastro_cliente_sistema: document.getElementById('ce-cadastro-sistema').value,
     premio: document.getElementById('ce-premio').value,
     area_solicitada: document.getElementById('ce-area-solicitada').value,
     cultivo: document.getElementById('ce-cultivo').value,
@@ -1340,8 +1331,7 @@ async function verCondicaoEspecial(jobId) {
     const campos = {
       'vce-broker': ce.broker, 'vce-municipio': ce.municipio,
       'vce-codigo-ibge': ce.codigo_ibge, 'vce-uf': ce.uf,
-      'vce-cliente': ce.cliente, 'vce-status-negocio': ce.status_negocio,
-      'vce-cadastro-sistema': ce.cadastro_cliente_sistema, 'vce-premio': ce.premio,
+      'vce-cliente': ce.cliente, 'vce-premio': ce.premio,
       'vce-area-solicitada': ce.area_solicitada, 'vce-cultivo': ce.cultivo,
       'vce-ajuste': ce.ajuste, 'vce-ciclo': ce.ciclo,
       'vce-modalidade': ce.modalidade, 'vce-nivel-cobertura': ce.nivel_cobertura,
@@ -1366,11 +1356,18 @@ async function verCondicaoEspecial(jobId) {
       obsBloco.style.display = 'none';
     }
     // Botões decisão
-    const semDecisao = !job.decisao;
-    const aprovado = job.decisao === 'aprovado';
-    document.getElementById('vce-btn-aprovar').style.display = semDecisao ? '' : 'none';
-    document.getElementById('vce-btn-recusar').style.display = semDecisao ? '' : 'none';
-    document.getElementById('vce-btn-reavaliar').style.display = aprovado ? '' : 'none';
+    const semDecisaoRisco = !job.decisao_risco;
+    const aprovadoRisco = job.decisao_risco === 'aprovado';
+    document.getElementById('vce-btn-aprovar').style.display = semDecisaoRisco ? '' : 'none';
+    document.getElementById('vce-btn-recusar').style.display = semDecisaoRisco ? '' : 'none';
+    document.getElementById('vce-btn-balcao').style.display = semDecisaoRisco ? '' : 'none';
+    document.getElementById('vce-btn-reavaliar').style.display = aprovadoRisco ? '' : 'none';
+    if (job.decisao_risco) {
+      const badge = document.getElementById('vce-decisao-badge');
+      const labels = {aprovado:'✅ CE Aprovada', balcao:'🏦 Balcão', recusado:'❌ Recusada'};
+      badge.textContent = labels[job.decisao_risco] || job.decisao_risco;
+      badge.style.display = '';
+    }
     if (job.decisao) {
       document.getElementById('vce-decisao-badge').textContent = aprovado ? '✅ Aprovado' : '❌ Recusado';
       document.getElementById('vce-decisao-badge').style.display = '';
@@ -1403,8 +1400,13 @@ async function carregarCondicoesEspeciais() {
         <td>${ce.premio || '—'}</td>
         <td>
           <div style="display:flex;gap:5px;flex-wrap:wrap">
-            <button class="btn-sm btn-outline" onclick="verCondicaoEspecial('${ce.job_id}')">⭐ Ver CE</button>
+            <button class="btn-sm btn-outline" onclick="verCondicaoEspecial('${ce.job_id}')">👁 Ver</button>
             <button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${ce.job_id}')">📄 Relatório</button>
+            ${!ce.job?.decisao_risco ? `
+              <button class="btn-sm btn-primary" onclick="abrirAprovacaoCE('${ce.job_id}')">✅ Aprovar CE</button>
+              <button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="abrirBalcao('${ce.job_id}')">🏦 Balcão</button>
+              <button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="abrirRecusaCE('${ce.job_id}')">❌ Recusar</button>
+            ` : `<span style="font-size:12px;font-weight:600;color:${ce.job?.decisao_risco==='aprovado'?'#166534':ce.job?.decisao_risco==='balcao'?'#1d4ed8':'#c0392b'}">${ce.job?.decisao_risco==='aprovado'?'✅ CE Aprovada':ce.job?.decisao_risco==='balcao'?'🏦 Balcão':'❌ Recusada'}</span>`}
           </div>
         </td>
       </tr>`;
@@ -1499,6 +1501,107 @@ function calcularCE() {
   }
 }
 
+function parseBR(val) {
+  if (!val) return 0;
+  return parseFloat(String(val).replace(',', '.')) || 0;
+}
+
+function calcularCE() {
+  const prodEst  = parseBR(document.getElementById('ce-prod-estimada')?.value);
+  const prodIbge = parseBR(document.getElementById('ce-prod-ibge')?.value);
+  const nivelCob = parseBR(document.getElementById('ce-nivel-cobertura')?.value);
+  const area     = parseBR(document.getElementById('ce-area-solicitada')?.value);
+  const preco    = parseBR(document.getElementById('ce-preco-saca')?.value);
+  const cuota    = parseBR(document.getElementById('ce-cuota')?.value);
+
+  const dif = prodEst - prodIbge;
+  const elDif = document.getElementById('ce-diferenca');
+  if (elDif) elDif.value = dif !== 0 ? dif.toFixed(2) : '';
+
+  const elPremio = document.getElementById('ce-premio');
+  if (prodEst && nivelCob && area && preco && cuota) {
+    const premio = preco * ((prodEst * nivelCob) / 60) * area * cuota;
+    if (elPremio) elPremio.value = 'R$ ' + premio.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  } else {
+    if (elPremio) elPremio.value = '';
+  }
+}
+
+async function abrirEdicaoCE(jobId) {
+  _ceJobId = jobId;
+  try {
+    const ce = await api('GET', '/jobs/' + jobId + '/condicao-especial');
+    const map = {
+      'ce-broker': ce.broker,
+      'ce-municipio': ce.municipio,
+      'ce-codigo-ibge': ce.codigo_ibge,
+      'ce-uf': ce.uf,
+      'ce-cliente': ce.cliente,
+      'ce-area-solicitada': ce.area_solicitada,
+      'ce-cultivo': ce.cultivo,
+      'ce-ajuste': ce.ajuste,
+      'ce-ciclo': ce.ciclo,
+      'ce-modalidade': ce.modalidade,
+      'ce-nivel-cobertura': ce.nivel_cobertura,
+      'ce-prod-estimada': ce.produtividade_estimada_bruta,
+      'ce-prod-ibge': ce.produtividade_ibge,
+      'ce-preco-saca': ce.preco_saca,
+      'ce-cuota': ce.cuota,
+      'ce-replantio': ce.replantio,
+      'ce-fecha-siembra': ce.fecha_siembra,
+      'ce-fecha-cosecha': ce.fecha_cosecha
+    };
+    for (const [id, val] of Object.entries(map)) {
+      const el = document.getElementById(id);
+      if (el) el.value = val || '';
+    }
+    calcularCE();
+    openModal('modal-form-ce');
+  } catch(e) {
+    showToast('Erro ao carregar dados: ' + e.message, 'error');
+  }
+}
+
+// ── Recusa CE ──
+let _ceRecusaJobId = null;
+function abrirRecusaCE(jobId) {
+  _ceRecusaJobId = jobId;
+  openModal('modal-recusa-ce');
+}
+async function confirmarRecusaCE() {
+  const motivo = document.getElementById('recusa-ce-motivo').value.trim();
+  if (!motivo) { showToast('Informe o motivo da recusa.', 'error'); return; }
+  const btn = document.getElementById('btn-confirmar-recusa-ce');
+  btn.disabled = true; btn.innerHTML = '⏳ Recusando…';
+  try {
+    await api('POST', '/jobs/' + _ceRecusaJobId + '/decisao-risco', { decisao: 'recusado', observacoes: motivo });
+    closeModal('modal-recusa-ce');
+    showToast('Proposta recusada.', 'success');
+    carregarCondicoesEspeciais(); carregarJobs();
+  } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+  finally { btn.disabled = false; btn.innerHTML = '❌ Confirmar Recusa'; }
+}
+
+// ── Balcão ──
+let _ceBalcaoJobId = null;
+function abrirBalcao(jobId) {
+  _ceBalcaoJobId = jobId;
+  document.getElementById('balcao-obs').value = '';
+  openModal('modal-balcao-ce');
+}
+async function confirmarBalcao() {
+  const obs = document.getElementById('balcao-obs').value.trim();
+  const btn = document.getElementById('btn-confirmar-balcao');
+  btn.disabled = true; btn.innerHTML = '⏳ Enviando…';
+  try {
+    await api('POST', '/jobs/' + _ceBalcaoJobId + '/decisao-risco', { decisao: 'balcao', observacoes: obs });
+    closeModal('modal-balcao-ce');
+    showToast('🏦 Condição de Balcão enviada! Email disparado.', 'success');
+    carregarCondicoesEspeciais(); carregarJobs();
+  } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+  finally { btn.disabled = false; btn.innerHTML = '🏦 Confirmar Balcão'; }
+}
+
 </script>
 
 <!-- Modal decisão -->
@@ -1512,8 +1615,8 @@ function calcularCE() {
       <div id="modal-decisao-info" style="background:var(--gray50);border-radius:var(--r-sm);padding:12px;margin-bottom:16px;font-size:13px;color:var(--gray600)"></div>
       <div id="modal-justificativa-wrap" style="display:none">
         <div class="form-group">
-          <label class="form-label">Motivo da recusa <span style="color:var(--red)">*</span></label>
-          <textarea class="form-input" id="modal-justificativa" rows="4" placeholder="Descreva o motivo da recusa..." style="resize:vertical"></textarea>
+          <label class="form-label" id="modal-justificativa-label">Observações</label>
+          <textarea class="form-input" id="modal-justificativa" rows="4" placeholder="Observações (opcional)..." style="resize:vertical"></textarea>
         </div>
       </div>
       <div id="modal-decisao-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px"></div>
@@ -1742,7 +1845,7 @@ async function verRelatorio(jobId) {
 </div>
 
 <!-- Modal: Tipo de Análise -->
-<div class="modal-overlay" id="modal-tipo-analise">
+<div class="modal-overlay" id="modal-tipo-analise" style="background:rgba(255,255,255,0.97)">
   <div class="modal-card" style="max-width:420px;width:100%">
     <div class="modal-header">
       <div class="modal-title">📋 Tipo de Análise</div>
@@ -1763,7 +1866,7 @@ async function verRelatorio(jobId) {
 </div>
 
 <!-- Modal: Formulário Condição Especial -->
-<div class="modal-overlay" id="modal-form-ce" style="align-items:flex-start;padding:20px;overflow-y:auto">
+<div class="modal-overlay" id="modal-form-ce" style="align-items:flex-start;padding:20px;overflow-y:auto;background:rgba(255,255,255,0.97)">
   <div class="modal-card" style="max-width:700px;width:100%;margin:auto">
     <div class="modal-header" style="position:sticky;top:0;z-index:10;background:var(--white)">
       <div class="modal-title">⭐ Condição Especial — Dados da Proposta</div>
@@ -1771,32 +1874,31 @@ async function verRelatorio(jobId) {
     </div>
     <div class="modal-body" style="padding:24px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-        <div><label class="form-label">Broker</label><input class="form-input" id="ce-broker" placeholder="Nome do broker"></div>
-        <div><label class="form-label">Município</label><input class="form-input" id="ce-municipio" placeholder="Município"></div>
-        <div><label class="form-label">Código IBGE</label><input class="form-input" id="ce-codigo-ibge" placeholder="0000000"></div>
-        <div><label class="form-label">UF</label><input class="form-input" id="ce-uf" placeholder="UF" maxlength="2"></div>
-        <div><label class="form-label">Cliente</label><input class="form-input" id="ce-cliente" placeholder="Nome do cliente"></div>
-        <div><label class="form-label">Status do Negócio</label><input class="form-input" id="ce-status-negocio" placeholder="Status"></div>
-        <div><label class="form-label">Cadastro de Cliente em Sistema</label><input class="form-input" id="ce-cadastro-sistema" placeholder="Sim / Não / Código"></div>
-        <div><label class="form-label">Prêmio</label><input class="form-input" id="ce-premio" placeholder="R$ 0,00"></div>
-        <div><label class="form-label">Área Solicitada por Cliente</label><input class="form-input" id="ce-area-solicitada" placeholder="ha"></div>
-        <div><label class="form-label">Cultivo</label><input class="form-input" id="ce-cultivo" placeholder="Cultivo"></div>
-        <div><label class="form-label">Ajuste</label><input class="form-input" id="ce-ajuste" placeholder="Ajuste"></div>
-        <div><label class="form-label">Ciclo</label><input class="form-input" id="ce-ciclo" placeholder="Ciclo"></div>
-        <div><label class="form-label">Modalidade</label><input class="form-input" id="ce-modalidade" placeholder="Modalidade"></div>
-        <div><label class="form-label">Nível de Cobertura Solicitado</label><input class="form-input" id="ce-nivel-cobertura" placeholder="%"></div>
-        <div><label class="form-label">Produtividade Estimada Bruta Solicitada (kg/ha)</label><input class="form-input" id="ce-prod-estimada" placeholder="kg/ha"></div>
-        <div><label class="form-label">Produtividade Estimada Bruta IBGE (kg/ha)</label><input class="form-input" id="ce-prod-ibge" placeholder="kg/ha"></div>
-        <div><label class="form-label">Diferença</label><input class="form-input" id="ce-diferenca" placeholder="kg/ha"></div>
-        <div><label class="form-label">Preço de Saca (000,00)</label><input class="form-input" id="ce-preco-saca" placeholder="000,00"></div>
-        <div><label class="form-label">Cuota (0,00%)</label><input class="form-input" id="ce-cuota" placeholder="0,00%"></div>
-        <div><label class="form-label">Replantio</label><input class="form-input" id="ce-replantio" placeholder="Sim / Não"></div>
-        <div><label class="form-label">Fecha de Siembra</label><input class="form-input" type="date" id="ce-fecha-siembra"></div>
-        <div><label class="form-label">Fecha de Cosecha</label><input class="form-input" type="date" id="ce-fecha-cosecha"></div>
+        <div><label class="ce-label">Broker</label><input class="ce-input" id="ce-broker" placeholder="Nome do broker"></div>
+        <div><label class="ce-label">Município</label><input class="ce-input" id="ce-municipio" placeholder="Município"></div>
+        <div><label class="ce-label">Código IBGE</label><input class="ce-input" id="ce-codigo-ibge" placeholder="0000000"></div>
+        <div><label class="ce-label">UF</label><input class="ce-input" id="ce-uf" placeholder="UF" maxlength="2" style="text-transform:uppercase"></div>
+        <div style="grid-column:1/-1"><label class="ce-label">Cliente</label><input class="ce-input" id="ce-cliente" placeholder="Nome do cliente"></div>
+        <div><label class="ce-label">Área Solicitada (ha)</label><input class="ce-input" id="ce-area-solicitada" placeholder="ha" oninput="calcularCE()"></div>
+        <div><label class="ce-label">Cultivo</label><input class="ce-input" id="ce-cultivo" placeholder="Cultivo"></div>
+        <div><label class="ce-label">Ajuste</label><input class="ce-input" id="ce-ajuste" placeholder="Ajuste"></div>
+        <div><label class="ce-label">Ciclo</label><input class="ce-input" id="ce-ciclo" placeholder="Ciclo"></div>
+        <div><label class="ce-label">Modalidade</label><input class="ce-input" id="ce-modalidade" placeholder="Modalidade"></div>
+        <div><label class="ce-label">Nível de Cobertura (ex: 0,70)</label><input class="ce-input" id="ce-nivel-cobertura" placeholder="0,70" oninput="calcularCE()"></div>
+        <div><label class="ce-label">Produtividade Estimada Bruta (kg/ha)</label><input class="ce-input" id="ce-prod-estimada" placeholder="kg/ha" oninput="calcularCE()"></div>
+        <div><label class="ce-label">Produtividade IBGE (kg/ha)</label><input class="ce-input" id="ce-prod-ibge" placeholder="kg/ha" oninput="calcularCE()"></div>
+        <div><label class="ce-label">Diferença (calculado)</label><input class="ce-input ce-calc" id="ce-diferenca" placeholder="—" readonly></div>
+        <div><label class="ce-label">Preço de Saca (000,00)</label><input class="ce-input" id="ce-preco-saca" placeholder="000,00" oninput="calcularCE()"></div>
+        <div><label class="ce-label">Cuota (ex: 0,13)</label><input class="ce-input" id="ce-cuota" placeholder="0,13" oninput="calcularCE()"></div>
+        <div style="grid-column:1/-1"><label class="ce-label">Prêmio (calculado automaticamente)</label><input class="ce-input ce-calc ce-premio-destaque" id="ce-premio" placeholder="—" readonly></div>
+        <div><label class="ce-label">Replantio</label><select class="ce-input" id="ce-replantio"><option value="">Selecione</option><option>Sim</option><option>Não</option></select></div>
+        <div></div>
+        <div><label class="ce-label">Fecha de Siembra</label><input class="ce-input" type="date" id="ce-fecha-siembra"></div>
+        <div><label class="ce-label">Fecha de Cosecha</label><input class="ce-input" type="date" id="ce-fecha-cosecha"></div>
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px">
         <button class="btn btn-outline" onclick="closeModal('modal-form-ce')">Cancelar</button>
-        <button class="btn btn-primary" onclick="salvarFormCE()">💾 Salvar Condição Especial</button>
+        <button class="btn btn-primary" onclick="salvarFormCE()">💾 Salvar</button>
       </div>
     </div>
   </div>
@@ -1848,9 +1950,10 @@ async function verRelatorio(jobId) {
       <!-- Ações -->
       <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;border-top:1px solid var(--gray100);padding-top:16px">
         <button class="btn btn-outline" onclick="closeModal('modal-ver-ce');verRelatorio(_ceJobId)">📄 Ver Relatório</button>
-        <button class="btn btn-outline" id="vce-btn-reavaliar" style="display:none;border-color:#fbbf24;color:#92400e" onclick="closeModal('modal-ver-ce');abrirAprovacaoCE(_ceJobId)">🔄 Reavaliar</button>
-        <button class="btn btn-outline" id="vce-btn-recusar" style="border-color:#fecaca;color:#c0392b" onclick="closeModal('modal-ver-ce');abrirDecisao(_ceJobId,'recusado')">❌ Recusar</button>
-        <button class="btn btn-primary" id="vce-btn-aprovar" onclick="closeModal('modal-ver-ce');abrirAprovacaoCE(_ceJobId)">✅ Aprovar Condição Especial</button>
+        <button class="btn btn-outline" id="vce-btn-reavaliar" style="display:none;border-color:#fbbf24;color:#92400e" onclick="closeModal('modal-ver-ce');abrirEdicaoCE(_ceJobId)">🔄 Reavaliar Dados</button>
+        <button class="btn btn-outline" id="vce-btn-recusar" style="display:none;border-color:#fecaca;color:#c0392b" onclick="closeModal('modal-ver-ce');abrirRecusaCE(_ceJobId)">❌ Recusar</button>
+        <button class="btn btn-outline" id="vce-btn-balcao" style="display:none;background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8" onclick="closeModal('modal-ver-ce');abrirBalcao(_ceJobId)">🏦 Oferecer Balcão</button>
+        <button class="btn btn-primary" id="vce-btn-aprovar" style="display:none" onclick="closeModal('modal-ver-ce');abrirAprovacaoCE(_ceJobId)">✅ Aprovar CE</button>
       </div>
     </div>
   </div>
@@ -1993,6 +2096,45 @@ async function verRelatorio(jobId) {
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
         <button class="btn btn-outline" onclick="closeModal('modal-aprovacao-ce')">Cancelar</button>
         <button class="btn btn-primary" id="btn-confirmar-aprovacao-ce" onclick="confirmarAprovacaoCE()">✅ Confirmar Aprovação</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Recusa CE -->
+<div class="modal-overlay" id="modal-recusa-ce" style="background:rgba(255,255,255,0.97)">
+  <div class="modal-card" style="max-width:460px;width:100%">
+    <div class="modal-header" style="background:#c0392b;border-radius:10px 10px 0 0">
+      <div class="modal-title" style="color:#fff">❌ Recusar Proposta</div>
+      <button class="modal-close" style="color:#fff" onclick="closeModal('modal-recusa-ce')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <label class="ce-label">Motivo da recusa <span style="color:#c0392b">*</span></label>
+      <textarea class="ce-input" id="recusa-ce-motivo" rows="4" placeholder="Descreva o motivo da recusa..." style="resize:vertical"></textarea>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+        <button class="btn btn-outline" onclick="closeModal('modal-recusa-ce')">Cancelar</button>
+        <button class="btn" style="background:#c0392b;color:#fff" id="btn-confirmar-recusa-ce" onclick="confirmarRecusaCE()">❌ Confirmar Recusa</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Oferecer Balcão -->
+<div class="modal-overlay" id="modal-balcao-ce" style="background:rgba(255,255,255,0.97)">
+  <div class="modal-card" style="max-width:460px;width:100%">
+    <div class="modal-header" style="background:#1a3c5e;border-radius:10px 10px 0 0">
+      <div class="modal-title" style="color:#fff">🏦 Oferecer Condição de Balcão</div>
+      <button class="modal-close" style="color:#fff" onclick="closeModal('modal-balcao-ce')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#1d4ed8">
+        A proposta será atendida nas <strong>condições padrão de balcão</strong>. Um email será enviado automaticamente.
+      </div>
+      <label class="ce-label">Observações (opcional)</label>
+      <textarea class="ce-input" id="balcao-obs" rows="3" placeholder="Observações sobre a oferta de balcão..." style="resize:vertical"></textarea>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+        <button class="btn btn-outline" onclick="closeModal('modal-balcao-ce')">Cancelar</button>
+        <button class="btn" style="background:#1a3c5e;color:#fff" id="btn-confirmar-balcao" onclick="confirmarBalcao()">🏦 Confirmar Balcão</button>
       </div>
     </div>
   </div>
