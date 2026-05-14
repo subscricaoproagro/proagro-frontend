@@ -248,10 +248,11 @@
       ProAgro Seguros
     </div>
     <nav class="topbar-nav">
-      <button class="topbar-btn active" onclick="showPage('dashboard')">Dashboard</button>
-      <button class="topbar-btn" onclick="showPage('nova-analise')">Nova Análise</button>
-      <button class="topbar-btn" onclick="showPage('historico')">Histórico</button>
-      <button class="topbar-btn" onclick="showPage('assistente')">Assistente IA</button>
+      <button class="topbar-btn active" id="dashboard-btn" onclick="showPage('dashboard')">Dashboard</button>
+      <button class="topbar-btn" id="dashboard-sv-btn" onclick="showPage('dashboard-supervisor')" style="display:none">Dashboard</button>
+      <button class="topbar-btn" id="nova-analise-btn" onclick="showPage('nova-analise')" style="display:none">Nova Análise</button>
+      <button class="topbar-btn" id="historico-btn" onclick="showPage('historico')" style="display:none">Histórico</button>
+      <button class="topbar-btn" id="assistente-btn" onclick="showPage('assistente')" style="display:none">Assistente IA</button>
       <button class="topbar-btn" id="ce-btn" onclick="showPage('condicao-especial')" style="display:none">Condição Especial</button>
       <button class="topbar-btn" id="admin-btn" onclick="showPage('admin')" style="display:none">Admin</button>
     </nav>
@@ -277,7 +278,7 @@
         <div class="stat-card"><div class="stat-label">Análises hoje</div><div class="stat-value" id="stat-hoje">—</div><div class="stat-delta">atualizado agora</div></div>
         <div class="stat-card"><div class="stat-label">Esta semana</div><div class="stat-value" id="stat-semana">—</div><div class="stat-delta">todos os usuários</div></div>
         <div class="stat-card"><div class="stat-label">Em processamento</div><div class="stat-value" id="stat-proc">—</div><div class="stat-delta">jobs ativos</div></div>
-        <div class="stat-card"><div class="stat-label">Usuários ativos</div><div class="stat-value" id="stat-users">—</div><div class="stat-delta">com acesso aprovado</div></div>
+        <div class="stat-card" id="card-stat-users"><div class="stat-label">Usuários ativos</div><div class="stat-value" id="stat-users">—</div><div class="stat-delta">com acesso aprovado</div></div>
       </div>
       <div class="two-col">
         <div class="card">
@@ -293,6 +294,51 @@
               <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;color:var(--gray600)">🛰️ Google Earth Engine</span><span class="badge badge-success"><span class="badge-dot"></span>Online</span></div>
               <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;color:var(--gray600)">🌦️ Servidor SFTP</span><span class="badge badge-success"><span class="badge-dot"></span>Online</span></div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- DASHBOARD SUPERVISOR -->
+    <div id="page-dashboard-supervisor" class="page-section">
+      <div class="section-header">
+        <div class="section-title">Painel — Analista de Risco</div>
+        <div class="section-sub">Condições especiais sob sua responsabilidade</div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card" style="cursor:pointer" onclick="showPage('condicao-especial')">
+          <div class="stat-label">Pendentes de análise</div>
+          <div class="stat-value" id="sv-stat-pendentes" style="color:#f59e0b">—</div>
+          <div class="stat-delta">aguardando decisão</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">CE Aprovadas</div>
+          <div class="stat-value" id="sv-stat-aprovadas" style="color:#166534">—</div>
+          <div class="stat-delta">condição especial</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Balcão</div>
+          <div class="stat-value" id="sv-stat-balcao" style="color:#1d4ed8">—</div>
+          <div class="stat-delta">ofertadas em balcão</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Recusadas</div>
+          <div class="stat-value" id="sv-stat-recusadas" style="color:#c0392b">—</div>
+          <div class="stat-delta">propostas recusadas</div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:20px">
+        <div class="card-header">
+          <div class="card-title">Condições recentes</div>
+          <button class="btn-sm btn-outline" onclick="showPage('condicao-especial')">Ver todas →</button>
+        </div>
+        <div class="card-body">
+          <div class="overflow-x">
+            <table class="jobs-table">
+              <thead><tr><th>Proposta</th><th>Cliente</th><th>Cultura</th><th>Município/UF</th><th>Decisão</th><th>Ações</th></tr></thead>
+              <tbody id="sv-dash-tbody"><tr><td colspan="6" style="text-align:center;color:var(--gray400);padding:30px">Carregando…</td></tr></tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -608,15 +654,36 @@ function enterApp() {
   if (currentUser.role === 'admin') {
     document.getElementById('admin-btn').style.display = '';
     document.getElementById('ce-btn').style.display = '';
+    document.getElementById('assistente-btn').style.display = '';
+    document.getElementById('nova-analise-btn').style.display = '';
+    document.getElementById('historico-btn').style.display = '';
+  }
+  if (currentUser.role === 'analista') {
+    document.getElementById('nova-analise-btn').style.display = '';
+    document.getElementById('historico-btn').style.display = '';
+    document.getElementById('card-stat-users').style.display = 'none';
+    document.getElementById('ce-btn').style.display = 'none';
+    document.getElementById('admin-btn').style.display = 'none';
+    document.getElementById('assistente-btn').style.display = 'none';
   }
   if (currentUser.role === 'supervisor') {
     document.getElementById('ce-btn').style.display = '';
-    document.getElementById('backend-url-input').value = BACKEND_URL;
+    document.getElementById('dashboard-sv-btn').style.display = '';
+    document.getElementById('dashboard-btn').style.display = 'none';
+    document.getElementById('nova-analise-btn').style.display = 'none';
+    document.getElementById('historico-btn').style.display = 'none';
   }
 
   carregarStats();
-  carregarJobs();
+  if (currentUser.role !== 'supervisor') carregarJobs();
   verificarBackend();
+
+  // Redirecionar para o dashboard correto
+  if (currentUser.role === 'supervisor') {
+    showPage('dashboard-supervisor');
+  } else if (currentUser.role === 'analista') {
+    showPage('historico');
+  }
 
   // Polling a cada 10s para atualizar jobs em processamento
   pollingInterval = setInterval(() => {
@@ -700,10 +767,11 @@ async function verificarBackend() {
 // ══════════════════════════════════════════
 function showPage(page) {
   if (page === 'condicao-especial') carregarCondicoesEspeciais();
+  if (page === 'dashboard-supervisor') carregarDashboardSupervisor();
   document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.topbar-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
-  const pages = ['dashboard','nova-analise','historico','assistente','admin'];
+  const pages = ['dashboard','dashboard-supervisor','nova-analise','historico','assistente','admin','condicao-especial'];
   const btns = document.querySelectorAll('.topbar-nav .topbar-btn');
   const i = pages.indexOf(page);
   if(i !== -1 && btns[i]) btns[i].classList.add('active');
@@ -793,9 +861,11 @@ async function _enviarJobsEfetivo(forcar=false) {
   }
 }
 
+let _jobsCache = [];
 async function carregarJobs() {
   try {
     const jobs = await api('GET', '/jobs');
+    _jobsCache = jobs;
     const filter = document.getElementById('hist-filter')?.value || '';
     const filtered = filter ? jobs.filter(j=>j.status===filter) : jobs;
     renderJobsTable(filtered);
@@ -829,9 +899,10 @@ function renderJobsTable(jobs) {
           <button class="btn-sm btn-outline" onclick="verJob('${j.id}')">Detalhes</button>
           ${concluido ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${j.id}')" title="Visualizar relatório completo">📄 Ver</button>` : ''}
           ${concluido ? `<button class="btn-sm btn-green" onclick="baixarJob('${j.id}')">⬇ Baixar</button>` : ''}
-          ${concluido && !j.tipo_analise ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirTipoAnalise('${j.id}')">📋 Tipo de Análise</button>` : ''}
+
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="verCondicaoEspecial('${j.id}')">⭐ Cond. Especial</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="verDecisaoAR('${j.id}')">👁 Ver Decisão AR</button>` : ''}
+          ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="reavaliarCE('${j.id}')">🔄 Reavaliar</button>` : ''}
           ${j.status==='processando' ? `<button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="cancelarJob('${j.id}')" title="Interromper análise">⏹ Parar</button>` : ''}
           ${(j.status==='erro' || j.status==='cancelado') ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#2563eb" onclick="reprocessarJob('${j.id}')" title="Tentar novamente">🔄 Reprocessar</button>` : ''}
           <button class="btn-sm btn-danger" onclick="deletarJob('${j.id}')" title="Remover">🗑</button>
@@ -1278,16 +1349,39 @@ async function confirmarTipoAnalise(tipo) {
   closeModal('modal-tipo-analise');
   if (tipo === 'sistema') {
     try {
-      await api('POST', '/jobs/' + _ceJobId + '/decisao', { decisao: null, tipo_analise: 'sistema' });
-      showToast('Análise marcada como Sistema.', 'success');
-      carregarJobs();
+      // Aprova o job E marca como sistema
+      await api('POST', '/jobs/' + _ceJobId + '/decisao', { decisao: 'aprovado', justificativa: '' });
+      await api('POST', '/jobs/' + _ceJobId + '/marcar-sistema');
+      await carregarJobs();
+      openModal('modal-aviso-sistema');
     } catch(e) { showToast('Erro: ' + e.message, 'error'); }
   } else {
+    // Condição especial → aprova o job e abre formulário CE para preenchimento
+    try {
+      await api('POST', '/jobs/' + _ceJobId + '/decisao', { decisao: 'aprovado', justificativa: '' });
+    } catch(e) {}
+    // Limpa formulário antes de abrir
+    const camposLimpar = ['ce-broker','ce-municipio','ce-codigo-ibge','ce-uf','ce-cliente',
+      'ce-area-solicitada','ce-cultivo','ce-ajuste','ce-ciclo','ce-modalidade',
+      'ce-nivel-cobertura','ce-prod-estimada','ce-prod-ibge','ce-diferenca',
+      'ce-preco-saca','ce-cuota','ce-premio'];
+    camposLimpar.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+    const rep = document.getElementById('ce-replantio'); if(rep) rep.value = '';
+    const fs = document.getElementById('ce-fecha-siembra'); if(fs) fs.value = '';
+    const fc = document.getElementById('ce-fecha-cosecha'); if(fc) fc.value = '';
     openModal('modal-form-ce');
   }
 }
 
 async function salvarFormCE() {
+  // Validação dos campos obrigatórios
+  const broker  = document.getElementById('ce-broker').value.trim();
+  const cliente = document.getElementById('ce-cliente').value.trim();
+  const municipio = document.getElementById('ce-municipio').value.trim();
+  if (!broker || !cliente || !municipio) {
+    showToast('Preencha pelo menos Broker, Cliente e Município antes de salvar.', 'error');
+    return;
+  }
   const body = {
     broker: document.getElementById('ce-broker').value,
     municipio: document.getElementById('ce-municipio').value,
@@ -1314,10 +1408,8 @@ async function salvarFormCE() {
     await api('POST', '/jobs/' + _ceJobId + '/condicao-especial', body);
     closeModal('modal-form-ce');
     showToast('Condição especial salva com sucesso!', 'success');
-    carregarJobs();
-    if (currentUser.role === 'admin' || currentUser.role === 'supervisor') {
-      showPage('condicao-especial');
-    }
+    await carregarJobs();
+    await carregarCondicoesEspeciais();
   } catch(e) { showToast('Erro: ' + e.message, 'error'); }
 }
 
@@ -1357,12 +1449,12 @@ async function verCondicaoEspecial(jobId) {
       obsBloco.style.display = 'none';
     }
     // Botões decisão
-    const semDecisaoRisco = !job.decisao_risco;
-    const aprovadoRisco = job.decisao_risco === 'aprovado';
-    document.getElementById('vce-btn-aprovar').style.display = semDecisaoRisco ? '' : 'none';
-    document.getElementById('vce-btn-recusar').style.display = semDecisaoRisco ? '' : 'none';
-    document.getElementById('vce-btn-balcao').style.display = semDecisaoRisco ? '' : 'none';
-    document.getElementById('vce-btn-reavaliar').style.display = aprovadoRisco ? '' : 'none';
+    // Botões de decisão sempre ocultos — ações ficam só na aba CE
+    document.getElementById('vce-btn-aprovar').style.display = 'none';
+    document.getElementById('vce-btn-recusar').style.display = 'none';
+    document.getElementById('vce-btn-balcao').style.display = 'none';
+    // Reavaliar aparece sempre que não tiver decisão do AR ainda
+    document.getElementById('vce-btn-reavaliar').style.display = !job.decisao_risco ? '' : 'none';
     if (job.decisao_risco) {
       const badge = document.getElementById('vce-decisao-badge');
       const labels = {aprovado:'✅ CE Aprovada', balcao:'🏦 Balcão', recusado:'❌ Recusada'};
@@ -1375,7 +1467,11 @@ async function verCondicaoEspecial(jobId) {
     } else if (!job.decisao_risco) {
       document.getElementById('vce-decisao-badge').style.display = 'none';
     }
-    openModal('modal-ver-ce');
+    if (job.decisao_risco) {
+      abrirModalEmail(ce, job);
+    } else {
+      openModal('modal-ver-ce');
+    }
   } catch(e) { showToast('Erro ao carregar condição especial: ' + e.message, 'error'); }
 }
 
@@ -1450,19 +1546,20 @@ async function confirmarAprovacaoCE() {
   btn.innerHTML = '<div class="spinner" style="border-top-color:#fff;width:14px;height:14px"></div> Aprovando…';
 
   try {
-    const res = await api('POST', '/jobs/' + _ceAprovJobId + '/aprovar-condicao-especial', {
+    // Registra decisão do AR e dispara email (sem sobrescrever dados da CE)
+    const res = await api('POST', '/jobs/' + _ceAprovJobId + '/decisao-risco', {
+      decisao: 'aprovado',
+      observacoes: obs,
       taxa_aprovada: taxa,
       nivel_cobertura_aprovado: nc,
       prod_bruta_aprovada: prodBruta,
-      replantio_aprovado: replantio,
-      observacoes: obs
+      replantio_aprovado: replantio
     });
 
     closeModal('modal-aprovacao-ce');
-    const garantida = res.prod_garantida || '—';
-    showToast(`✅ Condição Especial aprovada! Prod. Garantida: ${garantida} kg/ha. Email enviado para subscricao@proagroseguros.com.`, 'success');
-    carregarJobs();
-    if (document.getElementById('ce-tbody')) carregarCondicoesEspeciais();
+    showToast('✅ Condição Especial aprovada! Email enviado!', 'success');
+    await carregarJobs();
+    await carregarCondicoesEspeciais();
   } catch(e) {
     showToast('Erro ao aprovar: ' + e.message, 'error');
   } finally {
@@ -1573,7 +1670,8 @@ async function confirmarRecusaCE() {
     await api('POST', '/jobs/' + _ceRecusaJobId + '/decisao-risco', { decisao: 'recusado', observacoes: motivo });
     closeModal('modal-recusa-ce');
     showToast('Proposta recusada.', 'success');
-    carregarCondicoesEspeciais(); carregarJobs();
+    await carregarJobs();
+    await carregarCondicoesEspeciais();
   } catch(e) { showToast('Erro: ' + e.message, 'error'); }
   finally { btn.disabled = false; btn.innerHTML = '❌ Confirmar Recusa'; }
 }
@@ -1593,7 +1691,8 @@ async function confirmarBalcao() {
     await api('POST', '/jobs/' + _ceBalcaoJobId + '/decisao-risco', { decisao: 'balcao', observacoes: obs });
     closeModal('modal-balcao-ce');
     showToast('🏦 Condição de Balcão enviada! Email disparado.', 'success');
-    carregarCondicoesEspeciais(); carregarJobs();
+    await carregarJobs();
+    await carregarCondicoesEspeciais();
   } catch(e) { showToast('Erro: ' + e.message, 'error'); }
   finally { btn.disabled = false; btn.innerHTML = '🏦 Confirmar Balcão'; }
 }
@@ -1602,6 +1701,7 @@ async function confirmarBalcao() {
 
 function renderBtnsCE(ce) {
   var jobId = ce.job_id;
+  console.log('CE:', jobId, 'job:', ce.job, 'decisao_risco:', ce.job && ce.job.decisao_risco);
   var dr = (ce.job && ce.job.decisao_risco) ? ce.job.decisao_risco : null;
   if (!dr) {
     return '<button class="btn-sm btn-primary" onclick="abrirAprovacaoCE(\'' + jobId + '\')">✅ Aprovar CE</button>' +
@@ -1621,51 +1721,150 @@ async function verDecisaoAR(jobId) {
       api('GET', '/jobs/' + jobId + '/condicao-especial'),
       api('GET', '/jobs/' + jobId)
     ]);
-    // Preenche modal com dados + decisão do AR
-    const campos = {
-      'vce-broker': ce.broker, 'vce-municipio': ce.municipio,
-      'vce-codigo-ibge': ce.codigo_ibge, 'vce-uf': ce.uf,
-      'vce-cliente': ce.cliente, 'vce-premio': ce.premio,
-      'vce-area-solicitada': ce.area_solicitada, 'vce-cultivo': ce.cultivo,
-      'vce-ajuste': ce.ajuste, 'vce-ciclo': ce.ciclo,
-      'vce-modalidade': ce.modalidade, 'vce-nivel-cobertura': ce.nivel_cobertura,
-      'vce-prod-estimada': ce.produtividade_estimada_bruta, 'vce-prod-ibge': ce.produtividade_ibge,
-      'vce-diferenca': ce.diferenca, 'vce-preco-saca': ce.preco_saca,
-      'vce-cuota': ce.cuota, 'vce-replantio': ce.replantio,
-      'vce-fecha-siembra': ce.fecha_siembra, 'vce-fecha-cosecha': ce.fecha_cosecha
-    };
-    for (const [id, val] of Object.entries(campos)) {
-      const el = document.getElementById(id);
-      if (el) el.textContent = val || '—';
-    }
-    document.getElementById('vce-proponente').textContent = job.nome_proponente + ' — Proposta #' + job.id_proposta;
-    document.getElementById('vce-cultura').textContent = job.cultura_desejada;
-
-    // Obs subscritor
-    const obsSubscritor = job.justificativa || '';
-    const obsBloco = document.getElementById('vce-obs-subscritor');
-    if (obsSubscritor && obsBloco) {
-      document.getElementById('vce-obs-subscritor-texto').textContent = obsSubscritor;
-      obsBloco.style.display = 'block';
-    } else if (obsBloco) { obsBloco.style.display = 'none'; }
-
-    // Badge decisão AR
-    const dr = job.decisao_risco;
-    const badge = document.getElementById('vce-decisao-badge');
-    if (dr) {
-      const labels = {aprovado:'✅ CE Aprovada', balcao:'🏦 Balcão', recusado:'❌ Recusada'};
-      badge.textContent = labels[dr] || dr;
-      badge.style.display = '';
-    } else { badge.style.display = 'none'; }
-
-    // Esconder todos os botões de decisão (só visualização)
-    ['vce-btn-aprovar','vce-btn-recusar','vce-btn-balcao','vce-btn-reavaliar'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = 'none';
-    });
-
-    openModal('modal-ver-ce');
+    abrirModalEmail(ce, job);
   } catch(e) { showToast('Erro ao carregar: ' + e.message, 'error'); }
+}
+
+function abrirModalEmail(ce, job) {
+  const dr = job.decisao_risco;
+  const obsSubscritor = job.justificativa || '';
+  const obsRisco = ce.observacoes || '';
+  const partes = [obsSubscritor, obsRisco].filter(Boolean);
+  const obsHtml = partes.length
+    ? `<div style="border-left:3px solid #1a3c5e;padding:12px 16px;border-radius:0 8px 8px 0;background:#f8fafb;margin-top:16px">
+        <p style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;margin:0 0 6px">Observações</p>
+        <p style="font-size:13px;color:#374151;line-height:1.75;margin:0">${partes.join('<br><br>')}</p>
+       </div>` : '';
+
+  let bodyHtml = '';
+
+  if (dr === 'aprovado') {
+    // Calcular sacas
+    const prodBruta = parseFloat(String(ce.taxa_aprovada || ce.produtividade_estimada_bruta || '0').replace(',','.')) || 0;
+    const prodGar   = parseFloat(String(ce.prod_garantida || '0').replace(',','.')) || 0;
+    const nc        = parseFloat(String(ce.nivel_cobertura_aprovado || ce.nivel_cobertura || '0').replace(',','.')) || 0;
+    const ncPct     = nc <= 1 ? Math.round(nc * 100) + '%' : nc + '%';
+    const prodBrutaVal = ce.prod_bruta_aprovada || ce.produtividade_estimada_bruta || '—';
+    const prodBrutaNum = parseFloat(String(prodBrutaVal).replace(',','.')) || 0;
+    const prodGarNum   = parseFloat(String(ce.prod_garantida || '0').replace(',','.')) || 0;
+    const scBruta   = prodBrutaNum ? (prodBrutaNum/60).toFixed(2).replace('.',',') + ' sc/ha' : '—';
+    const scGar     = prodGarNum   ? (prodGarNum/60).toFixed(2).replace('.',',') + ' sc/ha' : '—';
+
+    bodyHtml = `
+      <p style="font-size:14px;color:#374151;line-height:1.75;margin:0 0 20px">
+        A condição especial foi disponibilizada para o cliente <strong>${ce.cliente || '—'}</strong>,
+        atendido pelo broker <strong>${ce.broker || '—'}</strong>.
+      </p>
+      <div style="background:#f8fafb;border-radius:8px;padding:16px 0;margin-bottom:16px;border:1px solid #e5e7eb">
+        <p style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.7px;margin:0 0 12px;padding:0 16px">Condições aprovadas</p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <tr style="background:#f0faf4"><td style="padding:8px 16px;color:#555">Taxa aprovada</td><td style="padding:8px 16px;font-weight:600">${ce.taxa_aprovada || '—'}</td></tr>
+          <tr><td style="padding:8px 16px;color:#555">Nível de cobertura</td><td style="padding:8px 16px;font-weight:600">${ncPct}</td></tr>
+          <tr style="background:#f0faf4"><td style="padding:8px 16px;color:#555">Produtividade bruta aprovada</td><td style="padding:8px 16px;font-weight:600">${prodBrutaVal} kg/ha <span style="color:#888;font-size:12px">(${scBruta})</span></td></tr>
+          <tr><td style="padding:8px 16px;color:#555">Produtividade garantida</td><td style="padding:8px 16px;font-weight:600">${ce.prod_garantida || '—'} kg/ha <span style="color:#888;font-size:12px">(${scGar})</span></td></tr>
+          <tr style="background:#f0faf4"><td style="padding:8px 16px;color:#555">Replantio</td><td style="padding:8px 16px;font-weight:600">${ce.replantio_aprovado || ce.replantio || '—'}</td></tr>
+        </table>
+      </div>
+      ${obsHtml}`;
+  } else if (dr === 'balcao') {
+    bodyHtml = `
+      <p style="font-size:14px;color:#374151;line-height:1.75;margin:0 0 16px">
+        A proposta do cliente <strong>${ce.cliente || '—'}</strong>,
+        atendido pelo broker <strong>${ce.broker || '—'}</strong>, foi analisada pela equipe de subscrição.
+      </p>
+      <div style="background:#f8fafb;border-radius:8px;padding:16px 20px;border:1px solid #e5e7eb">
+        <p style="font-size:14px;color:#374151;line-height:1.75;margin:0">
+          Após análise técnica, esta proposta será atendida nas <strong>condições padrão de balcão</strong>
+          da seguradora, não sendo possível a concessão de condição especial diferenciada.
+        </p>
+      </div>
+      ${obsHtml}`;
+  } else if (dr === 'recusado') {
+    bodyHtml = `
+      <p style="font-size:14px;color:#374151;line-height:1.75;margin:0 0 16px">
+        A proposta do cliente <strong>${ce.cliente || '—'}</strong> foi <strong style="color:#c0392b">recusada</strong>.
+      </p>
+      ${obsHtml}`;
+  }
+
+  const corHeader = dr === 'aprovado' ? '#1a3a2a' : dr === 'balcao' ? '#1a3c5e' : '#c0392b';
+  const tituloHeader = dr === 'aprovado' ? 'Devolutiva de Condição Especial'
+                      : dr === 'balcao'  ? 'Devolutiva — Condição de Balcão'
+                      : 'Proposta Recusada';
+
+  document.getElementById('modal-email-preview-body').innerHTML = `
+    <div style="max-width:580px;margin:auto;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #e5e7eb">
+      <div style="background:${corHeader};padding:18px 24px">
+        <p style="color:#fff;font-size:16px;font-weight:600;margin:0">${tituloHeader}</p>
+      </div>
+      <div style="padding:20px 24px">${bodyHtml}</div>
+    </div>`;
+
+  openModal('modal-email-preview');
+}
+
+async function reavaliarCE(jobId) {
+  _ceJobId = jobId;
+  try {
+    // Zera a decisão do AR no backend para voltar à fila
+    await api('POST', '/jobs/' + jobId + '/zerar-decisao-risco');
+    // Abre formulário editável com dados atuais
+    await abrirEdicaoCE(jobId);
+    showToast('Proposta devolvida para análise. Edite os dados e salve.', 'success');
+    await carregarJobs();
+    await carregarCondicoesEspeciais();
+  } catch(e) {
+    showToast('Erro ao reavaliar: ' + e.message, 'error');
+  }
+}
+
+async function carregarDashboardSupervisor() {
+  try {
+    const lista = await api('GET', '/condicoes-especiais');
+
+    const pendentes  = lista.filter(ce => ce.job && !ce.job.decisao_risco).length;
+    const aprovadas  = lista.filter(ce => ce.job && ce.job.decisao_risco === 'aprovado').length;
+    const balcao     = lista.filter(ce => ce.job && ce.job.decisao_risco === 'balcao').length;
+    const recusadas  = lista.filter(ce => ce.job && ce.job.decisao_risco === 'recusado').length;
+
+    document.getElementById('sv-stat-pendentes').textContent  = pendentes;
+    document.getElementById('sv-stat-aprovadas').textContent  = aprovadas;
+    document.getElementById('sv-stat-balcao').textContent     = balcao;
+    document.getElementById('sv-stat-recusadas').textContent  = recusadas;
+
+    const tbody = document.getElementById('sv-dash-tbody');
+    const recentes = lista.slice(0, 10);
+
+    if (!recentes.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray400);padding:30px">Nenhuma condição especial ainda.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = recentes.map(ce => {
+      const job = ce.job || {};
+      const dr = job.decisao_risco;
+      const badge = dr === 'aprovado'
+        ? '<span style="color:#166534;font-weight:600">✅ CE Aprovada</span>'
+        : dr === 'balcao'
+        ? '<span style="color:#1d4ed8;font-weight:600">🏦 Balcão</span>'
+        : dr === 'recusado'
+        ? '<span style="color:#c0392b;font-weight:600">❌ Recusada</span>'
+        : '<span style="color:#f59e0b;font-weight:600">⏳ Pendente</span>';
+
+      return `<tr>
+        <td><strong>${job.id_proposta || '—'}</strong></td>
+        <td>${ce.cliente || '—'}</td>
+        <td>${job.cultura_desejada || '—'}</td>
+        <td>${ce.municipio || '—'}/${ce.uf || '—'}</td>
+        <td>${badge}</td>
+        <td>
+          <button class="btn-sm btn-outline" onclick="showPage('condicao-especial')">Ver CE</button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    console.warn('Erro dashboard supervisor:', e.message);
+  }
 }
 
 </script>
@@ -1755,7 +1954,14 @@ function renderRuns(runs) {
 let _relatorioJobIdGlobal = null;
 
 function decisaoRelatorio(tipo) {
-  _relatorioJobIdGlobal = _relatorioJobIdGlobal;
+  if (tipo === 'aprovado') {
+    // Ao aprovar → primeiro pergunta se é Sistema ou CE
+    _ceJobId = _relatorioJobIdGlobal;
+    closeModal('modal-relatorio');
+    openModal('modal-tipo-analise');
+    return;
+  }
+  // Recusa → fluxo normal
   closeModal('modal-relatorio');
   abrirDecisao(_relatorioJobIdGlobal, tipo);
 }
@@ -1995,8 +2201,6 @@ async function verRelatorio(jobId) {
         <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Código IBGE</div><div class="ce-val" id="vce-codigo-ibge">—</div></div>
         <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">UF</div><div class="ce-val" id="vce-uf">—</div></div>
         <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Cliente</div><div class="ce-val" id="vce-cliente">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Status do Negócio</div><div class="ce-val" id="vce-status-negocio">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Cadastro Cliente Sistema</div><div class="ce-val" id="vce-cadastro-sistema">—</div></div>
         <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Prêmio</div><div class="ce-val" id="vce-premio">—</div></div>
         <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Área Solicitada</div><div class="ce-val" id="vce-area-solicitada">—</div></div>
         <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Cultivo</div><div class="ce-val" id="vce-cultivo">—</div></div>
@@ -2016,7 +2220,7 @@ async function verRelatorio(jobId) {
       <!-- Ações -->
       <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;border-top:1px solid var(--gray100);padding-top:16px">
         <button class="btn btn-outline" onclick="closeModal('modal-ver-ce');verRelatorio(_ceJobId)">📄 Ver Relatório</button>
-        <button class="btn btn-outline" id="vce-btn-reavaliar" style="display:none;border-color:#fbbf24;color:#92400e" onclick="closeModal('modal-ver-ce');abrirEdicaoCE(_ceJobId)">🔄 Reavaliar Dados</button>
+        <button class="btn btn-outline" id="vce-btn-reavaliar" style="display:none;border-color:#fbbf24;color:#92400e" onclick="closeModal('modal-ver-ce');abrirEdicaoCE(_ceJobId)">🔄 Reavaliar</button>
         <button class="btn btn-outline" id="vce-btn-recusar" style="display:none;border-color:#fecaca;color:#c0392b" onclick="closeModal('modal-ver-ce');abrirRecusaCE(_ceJobId)">❌ Recusar</button>
         <button class="btn btn-outline" id="vce-btn-balcao" style="display:none;background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8" onclick="closeModal('modal-ver-ce');abrirBalcao(_ceJobId)">🏦 Oferecer Balcão</button>
         <button class="btn btn-primary" id="vce-btn-aprovar" style="display:none" onclick="closeModal('modal-ver-ce');abrirAprovacaoCE(_ceJobId)">✅ Aprovar CE</button>
@@ -2202,6 +2406,47 @@ async function verRelatorio(jobId) {
         <button class="btn btn-outline" onclick="closeModal('modal-balcao-ce')">Cancelar</button>
         <button class="btn" style="background:#1a3c5e;color:#fff" id="btn-confirmar-balcao" onclick="confirmarBalcao()">🏦 Confirmar Balcão</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Aviso Sistema -->
+<div class="modal-overlay" id="modal-aviso-sistema" style="background:rgba(255,255,255,0.97)">
+  <div class="modal-card" style="max-width:460px;width:100%">
+    <div class="modal-header" style="background:#1a3a2a;border-radius:10px 10px 0 0">
+      <div class="modal-title" style="color:#fff">🖥️ Análise via Sistema</div>
+      <button class="modal-close" style="color:#fff" onclick="closeModal('modal-aviso-sistema')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:28px 24px;text-align:center">
+      <div style="font-size:48px;margin-bottom:16px">🖥️</div>
+      <p style="font-size:15px;font-weight:600;color:#1a3a2a;margin:0 0 10px">Proposta marcada como Sistema</p>
+      <p style="font-size:13px;color:#6b7280;line-height:1.7;margin:0 0 24px">
+        Esta proposta deve ser processada e aprovada diretamente no sistema ProAgro.<
+        Acesse o sistema para realizar a aprovação da proposta.
+      </p>
+      <a href="https://brasil.proagroinsur.tech/Auth/login?ReturnUrl=%2F"
+         target="_blank"
+         style="display:inline-block;background:#1a3a2a;color:#fff;font-size:14px;font-weight:600;padding:12px 24px;border-radius:8px;text-decoration:none;margin-bottom:12px">
+        🔗 Acessar Sistema ProAgro
+      </a>
+      <br>
+      <button class="btn btn-outline" style="margin-top:8px" onclick="closeModal('modal-aviso-sistema')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Preview Email Enviado -->
+<div class="modal-overlay" id="modal-email-preview" style="align-items:flex-start;padding:20px;overflow-y:auto;background:rgba(255,255,255,0.97)">
+  <div class="modal-card" style="max-width:640px;width:100%;margin:auto">
+    <div class="modal-header" style="position:sticky;top:0;z-index:10;background:var(--white)">
+      <div class="modal-title">📧 Email Enviado</div>
+      <button class="modal-close" onclick="closeModal('modal-email-preview')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px;background:#f3f4f6">
+      <div id="modal-email-preview-body"></div>
+    </div>
+    <div style="padding:16px 20px;display:flex;justify-content:flex-end;border-top:1px solid var(--gray100)">
+      <button class="btn btn-outline" onclick="closeModal('modal-email-preview')">Fechar</button>
     </div>
   </div>
 </div>
