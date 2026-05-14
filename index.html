@@ -1551,6 +1551,10 @@ async function confirmarAprovacaoCE() {
       replantio_aprovado: replantio
     });
 
+    // Upload da planilha se houver
+    if (_planilhaCEFile) {
+      await uploadPlanilhaCE(_ceAprovJobId);
+    }
     closeModal('modal-aprovacao-ce');
     showToast('✅ Condição Especial aprovada! Email enviado!', 'success');
     await carregarJobs();
@@ -1928,6 +1932,20 @@ async function abrirDadosCE(jobId) {
       obsBloco.style.display = 'none';
     }
 
+    // Verificar se há planilha enviada
+    try {
+      const planilha = await api('GET', '/jobs/' + jobId + '/dados-ce/planilha');
+      const btnPlanilha = document.getElementById('dce-btn-planilha');
+      if (btnPlanilha) {
+        btnPlanilha.style.display = planilha.planilha_url ? '' : 'none';
+        if (planilha.planilha_url) {
+          btnPlanilha.title = 'Enviada por ' + (planilha.planilha_enviada_por || '—') + ' em ' + (planilha.planilha_enviada_em ? new Date(planilha.planilha_enviada_em).toLocaleString('pt-BR') : '—');
+        }
+      }
+    } catch(e) {
+      const btnPlanilha = document.getElementById('dce-btn-planilha');
+      if (btnPlanilha) btnPlanilha.style.display = 'none';
+    }
     openModal('modal-dados-ce');
   } catch(e) {
     showToast('Erro ao carregar dados CE: ' + e.message, 'error');
@@ -2010,6 +2028,63 @@ async function downloadDadosCE(formato) {
     </body></html>`);
     win.document.close();
     setTimeout(() => { win.focus(); win.print(); }, 400);
+  }
+}
+
+// ══════════════════════════════════════════
+// UPLOAD PLANILHA CE
+// ══════════════════════════════════════════
+let _planilhaCEFile = null;
+
+function selecionarPlanilhaCE(input) {
+  const file = input.files[0];
+  if (!file) return;
+  _planilhaCEFile = file;
+  document.getElementById('aprov-planilha-nome').textContent = file.name;
+  document.getElementById('aprov-planilha-file').style.display = 'flex';
+  document.getElementById('aprov-upload-label').textContent = '✅ Arquivo selecionado';
+  document.getElementById('aprov-upload-zone').style.borderColor = '#16a34a';
+  document.getElementById('aprov-upload-zone').style.background = '#f0fdf4';
+}
+
+function removerPlanilhaCE() {
+  _planilhaCEFile = null;
+  document.getElementById('aprov-planilha-input').value = '';
+  document.getElementById('aprov-planilha-file').style.display = 'none';
+  document.getElementById('aprov-upload-label').textContent = 'Clique para selecionar o Excel preenchido';
+  document.getElementById('aprov-upload-zone').style.borderColor = '#a8e0c0';
+  document.getElementById('aprov-upload-zone').style.background = '#f0faf4';
+}
+
+async function uploadPlanilhaCE(jobId) {
+  if (!_planilhaCEFile) return;
+  try {
+    const form = new FormData();
+    form.append('arquivo', _planilhaCEFile);
+    const res = await fetch(BACKEND_URL + '/jobs/' + jobId + '/dados-ce/upload-planilha', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN, 'ngrok-skip-browser-warning': '1' },
+      body: form
+    });
+    if (!res.ok) throw new Error('Erro no upload');
+    showToast('📎 Planilha enviada com sucesso!', 'success');
+    _planilhaCEFile = null;
+  } catch(e) {
+    showToast('Aviso: planilha não enviada (' + e.message + '). Tente novamente via Dados CE.', 'warning');
+  }
+}
+
+async function verPlanilhaCE() {
+  if (!_dadosCeData) return;
+  try {
+    const data = await api('GET', '/jobs/' + _dadosCeData.job.id + '/dados-ce/planilha');
+    if (data.planilha_url) {
+      window.open(data.planilha_url, '_blank');
+    } else {
+      showToast('Nenhuma planilha enviada ainda.', 'warning');
+    }
+  } catch(e) {
+    showToast('Erro ao buscar planilha: ' + e.message, 'error');
   }
 }
 
@@ -2627,6 +2702,22 @@ async function verRelatorio(jobId) {
         📧 Após confirmar, um email detalhado com as condições aprovadas e os dados da proposta será enviado automaticamente para a equipe de subscrição.
       </div>
 
+      <!-- Upload planilha preenchida -->
+      <div style="margin-top:16px;border-top:1px solid var(--gray100);padding-top:16px">
+        <label class="ce-label">📎 Anexar Planilha de Análise Preenchida (opcional)</label>
+        <div id="aprov-upload-zone" onclick="document.getElementById('aprov-planilha-input').click()"
+          style="border:2px dashed #a8e0c0;border-radius:8px;padding:14px;text-align:center;cursor:pointer;background:#f0faf4;transition:all .2s">
+          <div id="aprov-upload-label" style="font-size:13px;color:#1a3a2a">Clique para selecionar o Excel preenchido</div>
+          <div style="font-size:11px;color:var(--gray400);margin-top:3px">.xlsx · .xls · .csv · máx. 10MB</div>
+          <input type="file" id="aprov-planilha-input" style="display:none" accept=".xlsx,.xls,.csv" onchange="selecionarPlanilhaCE(this)">
+        </div>
+        <div id="aprov-planilha-file" style="display:none;margin-top:8px;background:#f0faf4;border:1px solid #a8e0c0;border-radius:6px;padding:8px 12px;align-items:center;gap:8px;font-size:13px">
+          <span>📊</span>
+          <span id="aprov-planilha-nome" style="flex:1;color:#1a3a2a;font-weight:500"></span>
+          <button onclick="removerPlanilhaCE()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">✕</button>
+        </div>
+      </div>
+
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
         <button class="btn btn-outline" onclick="closeModal('modal-aprovacao-ce')">Cancelar</button>
         <button class="btn btn-primary" id="btn-confirmar-aprovacao-ce" onclick="confirmarAprovacaoCE()">✅ Confirmar Aprovação</button>
@@ -2768,6 +2859,7 @@ async function verRelatorio(jobId) {
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--gray100);padding-top:16px;flex-wrap:wrap">
         <button class="btn-sm btn-outline" onclick="closeModal('modal-dados-ce')">Fechar</button>
+        <button class="btn-sm btn-outline" id="dce-btn-planilha" style="display:none;border-color:#7c3aed;color:#7c3aed" onclick="verPlanilhaCE()">📎 Ver Planilha AR</button>
         <button class="btn-sm btn-outline" style="border-color:#16a34a;color:#16a34a" onclick="downloadDadosCE('excel')">⬇ Baixar Excel (.xlsx)</button>
         <button class="btn-sm btn-green" onclick="downloadDadosCE('pdf')">🖨 Imprimir / PDF</button>
       </div>
