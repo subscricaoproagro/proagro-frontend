@@ -734,8 +734,16 @@ window.addEventListener('load', async () => {
 async function verificarBackend() {
   const el = document.getElementById('status-backend');
   if (!el) return;
+  if (!BACKEND_URL) {
+    el.textContent = 'Offline';
+    el.className = 'badge badge-error';
+    return;
+  }
   try {
-    const res = await fetch(BACKEND_URL + '/docs', { signal: AbortSignal.timeout(3000) });
+    const res = await fetch(BACKEND_URL + '/config/backend-url', {
+      signal: AbortSignal.timeout(5000),
+      headers: { 'ngrok-skip-browser-warning': 'true' }
+    });
     el.innerHTML = res.ok ? '<span class="badge-dot"></span>Online' : 'Offline';
     el.className = res.ok ? 'badge badge-success' : 'badge badge-error';
   } catch {
