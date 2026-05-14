@@ -581,7 +581,10 @@ async function api(method, path, body = null, isForm = false) {
   if (!BACKEND_URL) throw new Error('Backend não configurado. Configure a URL do servidor.');
   const opts = {
     method,
-    headers: { 'Authorization': `Bearer ${TOKEN}` }
+    headers: {
+      'Authorization': `Bearer ${TOKEN}`,
+      'ngrok-skip-browser-warning': 'true'
+    }
   };
   if (body && !isForm) {
     opts.headers['Content-Type'] = 'application/json';
