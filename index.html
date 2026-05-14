@@ -234,7 +234,7 @@
         @proagroseguros.com &nbsp;·&nbsp; @proagroinsur.tech
       </div>
       <div style="margin-top:16px;text-align:center">
-
+        <button onclick="openModal('modal-config')" style="background:none;border:none;font-size:12px;color:var(--gray400);cursor:pointer;text-decoration:underline">Configurar URL do servidor</button>
       </div>
     </div>
   </div>
@@ -581,10 +581,7 @@ async function api(method, path, body = null, isForm = false) {
   if (!BACKEND_URL) throw new Error('Backend não configurado. Configure a URL do servidor.');
   const opts = {
     method,
-    headers: {
-      'Authorization': `Bearer ${TOKEN}`,
-      'ngrok-skip-browser-warning': 'true'
-    }
+    headers: { 'Authorization': `Bearer ${TOKEN}` }
   };
   if (body && !isForm) {
     opts.headers['Content-Type'] = 'application/json';
@@ -709,45 +706,74 @@ function handleLogout() {
 
 // Auto-restore
 window.addEventListener('load', async () => {
-  // Busca URL do Supabase automaticamente
+  // Tenta descobrir URL do backend automaticamente
   if (!BACKEND_URL) {
-    try {
-      const r = await fetch(
-        'https://nczwrgzsvxdrkmdnzqld.supabase.co/rest/v1/config?chave=eq.backend_url&select=valor',
-        { headers: {
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jendyZ3pzdnhkcmttZG56cWxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDI2OTgsImV4cCI6MjA5MzUxODY5OH0.2W9tvtflmpaShQmhhCyy4QC_GOxaaOdcNY04Wp4l9oA',
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jendyZ3pzdnhkcmttZG56cWxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDI2OTgsImV4cCI6MjA5MzUxODY5OH0.2W9tvtflmpaShQmhhCyy4QC_GOxaaOdcNY04Wp4l9oA'
-          }, signal: AbortSignal.timeout(5000) }
-      );
-      if (r.ok) {
-        const data = await r.json();
-        if (data && data[0] && data[0].valor) {
-          BACKEND_URL = data[0].valor.trim();
-          localStorage.setItem('pa_backend_url', BACKEND_URL);
-          console.log('[ProAgro] URL carregada do Supabase:', BACKEND_URL);
+    const servidores = [
+      'http://localhost:8000',
+      'http://127.0.0.1:8000'
+    ];
+    for (const url of servidores) {
+      try {
+        const r = await fetch(url + '/config/backend-url', { signal: AbortSignal.timeout(2000) });
+        if (r.ok) {
+          const data = await r.json();
+          const novaUrl = data.url || url;
+          localStorage.setItem('pa_backend', novaUrl);
+          BACKEND_URL = novaUrl;
+          document.getElementById('backend-url-modal').value = BACKEND_URL;
+          console.log('[ProAgro] URL detectada automaticamente:', BACKEND_URL);
+          break;
         }
-      }
-    } catch(e) { console.warn('[ProAgro] Erro ao buscar URL:', e.message); }
+      } catch(e) {}
+    }
   }
   if (BACKEND_URL) document.getElementById('backend-url-modal').value = BACKEND_URL;
   if (!BACKEND_URL) document.getElementById('config-warning').style.display = 'flex';
   if (TOKEN && currentUser) enterApp();
 });
 
+document.getElementById('auth-password').addEventListener('keydown', e => { if(e.key==='Enter') handleLogin(); });
+document.getElementById('auth-email').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('auth-password').focus(); });
+
+// ══════════════════════════════════════════
+// BACKEND URL CONFIG
+// ══════════════════════════════════════════
+function salvarBackendUrl() {
+  const url = document.getElementById('backend-url-input').value.trim().replace(/\/$/, '');
+  if (!url) { showToast('Informe a URL.', 'error'); return; }
+  BACKEND_URL = url;
+  localStorage.setItem('pa_backend_url', url);
+  showToast('URL salva!', 'success');
+  verificarBackend();
+}
+
+function salvarBackendUrlModal() {
+  const url = document.getElementById('backend-url-modal').value.trim().replace(/\/$/, '');
+  if (!url) { showToast('Informe a URL.', 'error'); return; }
+  BACKEND_URL = url;
+  localStorage.setItem('pa_backend_url', url);
+  document.getElementById('config-warning').style.display = 'none';
+  closeModal('modal-config');
+  showToast('URL do servidor salva!', 'success');
+}
+
+async function testarConexao() {
+  try {
+    const res = await fetch(`${BACKEND_URL}/docs`);
+    if (res.ok) showToast('Servidor respondendo!', 'success');
+    else showToast('Servidor não encontrado.', 'error');
+  } catch(e) {
+    showToast('Não foi possível conectar: ' + e.message, 'error');
+  }
+}
+
 async function verificarBackend() {
   const el = document.getElementById('status-backend');
   if (!el) return;
-  if (!BACKEND_URL) {
-    el.textContent = 'Offline';
-    el.className = 'badge badge-error';
-    return;
-  }
   try {
-    const res = await fetch(BACKEND_URL + '/config/backend-url', {
-      signal: AbortSignal.timeout(5000),
-      headers: { 'ngrok-skip-browser-warning': 'true' }
-    });
-    el.innerHTML = res.ok ? '<span class="badge-dot"></span>Online' : 'Offline';
+    const res = await fetch(`${BACKEND_URL}/docs`);
+    if (res.ok) el.innerHTML = '<span class="badge-dot"></span>Online';
+    else el.innerHTML = 'Offline';
     el.className = res.ok ? 'badge badge-success' : 'badge badge-error';
   } catch {
     el.textContent = 'Offline';
@@ -1698,14 +1724,17 @@ function renderBtnsCE(ce) {
   var jobId = ce.job_id;
   console.log('CE:', jobId, 'job:', ce.job, 'decisao_risco:', ce.job && ce.job.decisao_risco);
   var dr = (ce.job && ce.job.decisao_risco) ? ce.job.decisao_risco : null;
+  var btnDados = '<button class="btn-sm" style="background:#f0f9ff;border:1px solid #bae6fd;color:#0369a1" onclick="abrirDadosCE(\'' + jobId + '\')">📋 Dados CE</button>';
   if (!dr) {
-    return '<button class="btn-sm btn-primary" onclick="abrirAprovacaoCE(\'' + jobId + '\')">✅ Aprovar CE</button>' +
-           '<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="abrirBalcao(\'' + jobId + '\')">🏦 Balcão</button>' +
-           '<button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="abrirRecusaCE(\'' + jobId + '\')">❌ Recusar</button>';
+    return btnDados +
+           ' <button class="btn-sm btn-primary" onclick="abrirAprovacaoCE(\'' + jobId + '\')">✅ Aprovar CE</button>' +
+           ' <button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="abrirBalcao(\'' + jobId + '\')">🏦 Balcão</button>' +
+           ' <button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="abrirRecusaCE(\'' + jobId + '\')">❌ Recusar</button>';
   }
   var cor = dr==='aprovado' ? '#166534' : dr==='balcao' ? '#1d4ed8' : '#c0392b';
   var label = dr==='aprovado' ? '✅ CE Aprovada' : dr==='balcao' ? '🏦 Balcão' : '❌ Recusada';
-  return '<button class="btn-sm btn-outline" onclick="verCondicaoEspecial(\'' + jobId + '\')">👁 Ver</button> ' +
+  return btnDados +
+         ' <button class="btn-sm btn-outline" onclick="verCondicaoEspecial(\'' + jobId + '\')">👁 Ver</button> ' +
          '<span style="font-size:12px;font-weight:600;color:' + cor + '">' + label + '</span>';
 }
 
@@ -1859,6 +1888,203 @@ async function carregarDashboardSupervisor() {
     }).join('');
   } catch(e) {
     console.warn('Erro dashboard supervisor:', e.message);
+  }
+}
+
+
+// ══════════════════════════════════════════
+// DADOS CE — Modal com download
+// ══════════════════════════════════════════
+let _dadosCeData = null;  // cache para download
+
+async function abrirDadosCE(jobId) {
+  try {
+    const [ce, job] = await Promise.all([
+      api('GET', '/jobs/' + jobId + '/condicao-especial'),
+      api('GET', '/jobs/' + jobId)
+    ]);
+    _dadosCeData = { ce, job };
+
+    // Preenche header
+    document.getElementById('dce-proponente').textContent = job.nome_proponente || '—';
+    document.getElementById('dce-proposta').textContent   = '#' + (job.id_proposta || '—');
+    document.getElementById('dce-cultura').textContent    = job.cultura_desejada || '—';
+    document.getElementById('dce-analista').textContent   = job.analista_email || '—';
+
+    // Status decisão AR
+    const drMap = { aprovado: '✅ CE Aprovada', balcao: '🏦 Balcão', recusado: '❌ Recusada' };
+    const drBadge = document.getElementById('dce-status-badge');
+    if (job.decisao_risco) {
+      drBadge.textContent = drMap[job.decisao_risco] || job.decisao_risco;
+      drBadge.style.display = '';
+      drBadge.style.background = job.decisao_risco === 'aprovado' ? '#dcfce7' : job.decisao_risco === 'balcao' ? '#dbeafe' : '#fee2e2';
+      drBadge.style.color = job.decisao_risco === 'aprovado' ? '#166534' : job.decisao_risco === 'balcao' ? '#1d4ed8' : '#c0392b';
+    } else {
+      drBadge.textContent = '⏳ Aguardando AR';
+      drBadge.style.display = '';
+      drBadge.style.background = '#fef9c3';
+      drBadge.style.color = '#92400e';
+    }
+
+    // Preenche campos
+    const campos = {
+      'dce-broker':         ce.broker,
+      'dce-cliente':        ce.cliente,
+      'dce-municipio':      ce.municipio,
+      'dce-uf':             ce.uf,
+      'dce-codigo-ibge':    ce.codigo_ibge,
+      'dce-area':           ce.area_solicitada,
+      'dce-cultivo':        ce.cultivo,
+      'dce-modalidade':     ce.modalidade,
+      'dce-ciclo':          ce.ciclo,
+      'dce-ajuste':         ce.ajuste,
+      'dce-nivel-cobertura':ce.nivel_cobertura,
+      'dce-prod-estimada':  ce.produtividade_estimada_bruta,
+      'dce-prod-ibge':      ce.produtividade_ibge,
+      'dce-diferenca':      ce.diferenca,
+      'dce-preco-saca':     ce.preco_saca,
+      'dce-cuota':          ce.cuota,
+      'dce-premio':         ce.premio,
+      'dce-status-negocio': ce.status_negocio,
+      'dce-replantio':      ce.replantio,
+      'dce-fecha-siembra':  ce.fecha_siembra,
+      'dce-fecha-cosecha':  ce.fecha_cosecha,
+    };
+    for (const [id, val] of Object.entries(campos)) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val || '—';
+    }
+
+    // Observações
+    const obsBloco = document.getElementById('dce-obs-bloco');
+    const obsTexto = document.getElementById('dce-obs-texto');
+    const obs = job.justificativa || '';
+    if (obs) {
+      obsTexto.textContent = obs;
+      obsBloco.style.display = '';
+    } else {
+      obsBloco.style.display = 'none';
+    }
+
+    openModal('modal-dados-ce');
+  } catch(e) {
+    showToast('Erro ao carregar dados CE: ' + e.message, 'error');
+  }
+}
+
+function downloadDadosCE(formato) {
+  if (!_dadosCeData) return;
+  const { ce, job } = _dadosCeData;
+
+  if (formato === 'excel') {
+    // Gera CSV com BOM UTF-8 (abre corretamente no Excel)
+    const bom = '\uFEFF';
+    const linhas = [
+      ['Campo', 'Valor'],
+      ['Proponente', job.nome_proponente || ''],
+      ['Proposta', job.id_proposta || ''],
+      ['Cultura', job.cultura_desejada || ''],
+      ['Analista', job.analista_email || ''],
+      [''],
+      ['── DADOS DA CONDIÇÃO ESPECIAL ──', ''],
+      ['Broker', ce.broker || ''],
+      ['Cliente', ce.cliente || ''],
+      ['Município', ce.municipio || ''],
+      ['UF', ce.uf || ''],
+      ['Código IBGE', ce.codigo_ibge || ''],
+      ['Área Solicitada', ce.area_solicitada || ''],
+      ['Cultivo', ce.cultivo || ''],
+      ['Modalidade', ce.modalidade || ''],
+      ['Ciclo', ce.ciclo || ''],
+      ['Ajuste', ce.ajuste || ''],
+      ['Nível de Cobertura', ce.nivel_cobertura || ''],
+      ['Produtividade Estimada Bruta', ce.produtividade_estimada_bruta || ''],
+      ['Produtividade IBGE', ce.produtividade_ibge || ''],
+      ['Diferença', ce.diferenca || ''],
+      ['Preço de Saca', ce.preco_saca || ''],
+      ['Cuota', ce.cuota || ''],
+      ['Prêmio', ce.premio || ''],
+      ['Status Negócio', ce.status_negocio || ''],
+      ['Replantio', ce.replantio || ''],
+      ['Fecha de Siembra', ce.fecha_siembra || ''],
+      ['Fecha de Cosecha', ce.fecha_cosecha || ''],
+      [''],
+      ['Observação Subscritor', job.justificativa || ''],
+      [''],
+      ['Status AR', job.decisao_risco || 'Aguardando'],
+      ['Decisão AR por', job.decisao_risco_por || ''],
+    ];
+    const csv = bom + linhas.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(';')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'DadosCE_' + (job.id_proposta || 'proposta') + '_' + (ce.cliente || 'cliente').replace(/\s+/g,'_') + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Download iniciado!', 'success');
+  }
+
+  if (formato === 'pdf') {
+    const win = window.open('', '_blank');
+    const agora = new Date().toLocaleString('pt-BR');
+    win.document.write(`<!DOCTYPE html><html><head>
+      <meta charset="UTF-8">
+      <title>Dados CE — ${job.id_proposta || ''}</title>
+      <style>
+        body { font-family: Arial, sans-serif; font-size: 12px; color: #111; margin: 0; padding: 24px; }
+        .header { background: #1a3a2a; color: #fff; padding: 16px 20px; border-radius: 8px; margin-bottom: 20px; }
+        .header h1 { margin: 0 0 4px; font-size: 16px; }
+        .header p  { margin: 0; font-size: 11px; opacity: .75; }
+        .badge { display:inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; margin-left: 8px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; margin-bottom: 20px; }
+        .field { border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
+        .label { font-size: 9px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 2px; }
+        .value { font-size: 13px; color: #111; font-weight: 500; }
+        .section { font-size: 10px; font-weight: 700; color: #1a3a2a; text-transform: uppercase; letter-spacing: .08em; border-bottom: 2px solid #1a3a2a; padding-bottom: 4px; margin: 16px 0 12px; }
+        .obs { background: #f8f9fa; border-left: 3px solid #6b7280; padding: 10px 14px; border-radius: 0 6px 6px 0; font-size: 12px; color: #374151; line-height: 1.6; }
+        .footer { margin-top: 24px; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+        @media print { body { padding: 12px; } }
+      </style>
+    </head><body>
+      <div class="header">
+        <h1>📋 Condição Especial — ${job.nome_proponente || ''}</h1>
+        <p>Proposta #${job.id_proposta || '—'} · ${job.cultura_desejada || ''} · Analista: ${job.analista_email || ''}</p>
+      </div>
+      <div class="section">Identificação da Proposta</div>
+      <div class="grid">
+        <div class="field"><div class="label">Broker</div><div class="value">${ce.broker || '—'}</div></div>
+        <div class="field"><div class="label">Cliente</div><div class="value">${ce.cliente || '—'}</div></div>
+        <div class="field"><div class="label">Município / UF</div><div class="value">${ce.municipio || '—'} / ${ce.uf || '—'}</div></div>
+        <div class="field"><div class="label">Código IBGE</div><div class="value">${ce.codigo_ibge || '—'}</div></div>
+        <div class="field"><div class="label">Área Solicitada</div><div class="value">${ce.area_solicitada || '—'}</div></div>
+        <div class="field"><div class="label">Status Negócio</div><div class="value">${ce.status_negocio || '—'}</div></div>
+        <div class="field"><div class="label">Prêmio</div><div class="value">${ce.premio || '—'}</div></div>
+      </div>
+      <div class="section">Parâmetros da Cultura</div>
+      <div class="grid">
+        <div class="field"><div class="label">Cultivo</div><div class="value">${ce.cultivo || '—'}</div></div>
+        <div class="field"><div class="label">Modalidade</div><div class="value">${ce.modalidade || '—'}</div></div>
+        <div class="field"><div class="label">Ciclo</div><div class="value">${ce.ciclo || '—'}</div></div>
+        <div class="field"><div class="label">Ajuste</div><div class="value">${ce.ajuste || '—'}</div></div>
+        <div class="field"><div class="label">Nível de Cobertura</div><div class="value">${ce.nivel_cobertura || '—'}</div></div>
+        <div class="field"><div class="label">Replantio</div><div class="value">${ce.replantio || '—'}</div></div>
+        <div class="field"><div class="label">Fecha de Siembra</div><div class="value">${ce.fecha_siembra || '—'}</div></div>
+        <div class="field"><div class="label">Fecha de Cosecha</div><div class="value">${ce.fecha_cosecha || '—'}</div></div>
+      </div>
+      <div class="section">Produtividade e Preço</div>
+      <div class="grid">
+        <div class="field"><div class="label">Produtividade Estimada Bruta</div><div class="value">${ce.produtividade_estimada_bruta || '—'}</div></div>
+        <div class="field"><div class="label">Produtividade IBGE</div><div class="value">${ce.produtividade_ibge || '—'}</div></div>
+        <div class="field"><div class="label">Diferença</div><div class="value">${ce.diferenca || '—'}</div></div>
+        <div class="field"><div class="label">Preço de Saca</div><div class="value">${ce.preco_saca || '—'}</div></div>
+        <div class="field"><div class="label">Cuota</div><div class="value">${ce.cuota || '—'}</div></div>
+      </div>
+      ${job.justificativa ? `<div class="section">Observação do Subscritor</div><div class="obs">${job.justificativa}</div>` : ''}
+      <div class="footer">Gerado em ${agora} · ProAgro Seguros — Sistema de Subscrição</div>
+    </body></html>`);
+    win.document.close();
+    setTimeout(() => { win.focus(); win.print(); }, 400);
   }
 }
 
@@ -2442,6 +2668,90 @@ async function verRelatorio(jobId) {
     </div>
     <div style="padding:16px 20px;display:flex;justify-content:flex-end;border-top:1px solid var(--gray100)">
       <button class="btn btn-outline" onclick="closeModal('modal-email-preview')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- MODAL: DADOS DA CONDIÇÃO ESPECIAL          -->
+<!-- ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-dados-ce" style="align-items:flex-start;padding:20px;overflow-y:auto;background:rgba(0,0,0,.5)">
+  <div class="modal-card" style="max-width:760px;width:100%;margin:auto;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+
+    <!-- Header sticky -->
+    <div style="position:sticky;top:0;z-index:10;background:#1a3a2a;border-radius:16px 16px 0 0;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:#fff">📋 Dados da Condição Especial</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.65);margin-top:2px">
+          <span id="dce-proponente">—</span> &nbsp;·&nbsp; Proposta <span id="dce-proposta">—</span> &nbsp;·&nbsp; <span id="dce-cultura">—</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="dce-status-badge" style="display:none;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700"></span>
+        <button class="modal-close" style="background:rgba(255,255,255,.15);color:#fff;border:none;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px" onclick="closeModal('modal-dados-ce')">✕</button>
+      </div>
+    </div>
+
+    <div style="padding:24px">
+
+      <!-- Analista -->
+      <div style="font-size:11px;color:var(--gray400);margin-bottom:20px">
+        Preenchido pelo analista: <strong id="dce-analista">—</strong>
+      </div>
+
+      <!-- Seção: Identificação -->
+      <div style="font-size:10px;font-weight:700;color:#1a3a2a;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #1a3a2a;padding-bottom:4px;margin-bottom:14px">Identificação</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;margin-bottom:20px">
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Broker</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-broker">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Cliente</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-cliente">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Município</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-municipio">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">UF</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-uf">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Código IBGE</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-codigo-ibge">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Área Solicitada</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-area">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Prêmio</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-premio">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Status Negócio</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-status-negocio">—</div></div>
+      </div>
+
+      <!-- Seção: Parâmetros -->
+      <div style="font-size:10px;font-weight:700;color:#1a3a2a;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #1a3a2a;padding-bottom:4px;margin-bottom:14px">Parâmetros da Cultura</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;margin-bottom:20px">
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Cultivo</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-cultivo">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Modalidade</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-modalidade">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Ciclo</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-ciclo">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Ajuste</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-ajuste">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Nível de Cobertura</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-nivel-cobertura">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Replantio</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-replantio">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Fecha de Siembra</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-fecha-siembra">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Fecha de Cosecha</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-fecha-cosecha">—</div></div>
+      </div>
+
+      <!-- Seção: Produtividade -->
+      <div style="font-size:10px;font-weight:700;color:#1a3a2a;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #1a3a2a;padding-bottom:4px;margin-bottom:14px">Produtividade e Preço</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;margin-bottom:20px">
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Produtividade Estimada Bruta</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-prod-estimada">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Produtividade IBGE</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-prod-ibge">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Diferença</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-diferenca">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Preço de Saca</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-preco-saca">—</div></div>
+        <div><div style="font-size:10px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Cuota</div><div style="font-size:14px;font-weight:500;color:var(--gray900)" id="dce-cuota">—</div></div>
+      </div>
+
+      <!-- Observação subscritor -->
+      <div id="dce-obs-bloco" style="display:none;border-left:3px solid #6b7280;padding:10px 14px;border-radius:0 8px 8px 0;background:#f8f9fa;margin-bottom:20px">
+        <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Observação do Subscritor</div>
+        <div style="font-size:13px;color:#374151;line-height:1.7" id="dce-obs-texto">—</div>
+      </div>
+
+      <!-- Ações / Download -->
+      <div style="display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--gray100);padding-top:16px;flex-wrap:wrap">
+        <button class="btn-sm btn-outline" onclick="closeModal('modal-dados-ce')">Fechar</button>
+        <button class="btn-sm btn-outline" style="border-color:#16a34a;color:#16a34a" onclick="downloadDadosCE('excel')">
+          ⬇ Baixar Excel (CSV)
+        </button>
+        <button class="btn-sm btn-green" onclick="downloadDadosCE('pdf')">
+          🖨 Imprimir / PDF
+        </button>
+      </div>
+
     </div>
   </div>
 </div>
