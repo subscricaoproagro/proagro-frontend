@@ -1941,7 +1941,7 @@ async function downloadDadosCE(formato) {
   if (formato === 'excel') {
     try {
       const url = BACKEND_URL + '/jobs/' + job.id + '/dados-ce/exportar';
-      const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+      const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + TOKEN, 'ngrok-skip-browser-warning': '1' } });
       if (!res.ok) throw new Error('Erro ao gerar Excel');
       const blob = await res.blob();
       const a = document.createElement('a');
