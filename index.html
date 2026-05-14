@@ -706,74 +706,37 @@ function handleLogout() {
 
 // Auto-restore
 window.addEventListener('load', async () => {
-  // Tenta descobrir URL do backend automaticamente
+  // Busca URL do Supabase automaticamente
   if (!BACKEND_URL) {
-    const servidores = [
-      'http://localhost:8000',
-      'http://127.0.0.1:8000'
-    ];
-    for (const url of servidores) {
-      try {
-        const r = await fetch(url + '/config/backend-url', { signal: AbortSignal.timeout(2000) });
-        if (r.ok) {
-          const data = await r.json();
-          const novaUrl = data.url || url;
-          localStorage.setItem('pa_backend', novaUrl);
-          BACKEND_URL = novaUrl;
-          document.getElementById('backend-url-modal').value = BACKEND_URL;
-          console.log('[ProAgro] URL detectada automaticamente:', BACKEND_URL);
-          break;
+    try {
+      const r = await fetch(
+        'https://nczwrgzsvxdrkmdnzqld.supabase.co/rest/v1/config?chave=eq.backend_url&select=valor',
+        { headers: {
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jendyZ3pzdnhkcmttZG56cWxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDI2OTgsImV4cCI6MjA5MzUxODY5OH0.2W9tvtflmpaShQmhhCyy4QC_GOxaaOdcNY04Wp4l9oA',
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jendyZ3pzdnhkcmttZG56cWxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDI2OTgsImV4cCI6MjA5MzUxODY5OH0.2W9tvtflmpaShQmhhCyy4QC_GOxaaOdcNY04Wp4l9oA'
+          }, signal: AbortSignal.timeout(5000) }
+      );
+      if (r.ok) {
+        const data = await r.json();
+        if (data && data[0] && data[0].valor) {
+          BACKEND_URL = data[0].valor.trim();
+          localStorage.setItem('pa_backend_url', BACKEND_URL);
+          console.log('[ProAgro] URL carregada do Supabase:', BACKEND_URL);
         }
-      } catch(e) {}
-    }
+      }
+    } catch(e) { console.warn('[ProAgro] Erro ao buscar URL:', e.message); }
   }
   if (BACKEND_URL) document.getElementById('backend-url-modal').value = BACKEND_URL;
   if (!BACKEND_URL) document.getElementById('config-warning').style.display = 'flex';
   if (TOKEN && currentUser) enterApp();
 });
 
-document.getElementById('auth-password').addEventListener('keydown', e => { if(e.key==='Enter') handleLogin(); });
-document.getElementById('auth-email').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('auth-password').focus(); });
-
-// ══════════════════════════════════════════
-// BACKEND URL CONFIG
-// ══════════════════════════════════════════
-function salvarBackendUrl() {
-  const url = document.getElementById('backend-url-input').value.trim().replace(/\/$/, '');
-  if (!url) { showToast('Informe a URL.', 'error'); return; }
-  BACKEND_URL = url;
-  localStorage.setItem('pa_backend_url', url);
-  showToast('URL salva!', 'success');
-  verificarBackend();
-}
-
-function salvarBackendUrlModal() {
-  const url = document.getElementById('backend-url-modal').value.trim().replace(/\/$/, '');
-  if (!url) { showToast('Informe a URL.', 'error'); return; }
-  BACKEND_URL = url;
-  localStorage.setItem('pa_backend_url', url);
-  document.getElementById('config-warning').style.display = 'none';
-  closeModal('modal-config');
-  showToast('URL do servidor salva!', 'success');
-}
-
-async function testarConexao() {
-  try {
-    const res = await fetch(`${BACKEND_URL}/docs`);
-    if (res.ok) showToast('Servidor respondendo!', 'success');
-    else showToast('Servidor não encontrado.', 'error');
-  } catch(e) {
-    showToast('Não foi possível conectar: ' + e.message, 'error');
-  }
-}
-
 async function verificarBackend() {
   const el = document.getElementById('status-backend');
   if (!el) return;
   try {
-    const res = await fetch(`${BACKEND_URL}/docs`);
-    if (res.ok) el.innerHTML = '<span class="badge-dot"></span>Online';
-    else el.innerHTML = 'Offline';
+    const res = await fetch(BACKEND_URL + '/docs', { signal: AbortSignal.timeout(3000) });
+    el.innerHTML = res.ok ? '<span class="badge-dot"></span>Online' : 'Offline';
     el.className = res.ok ? 'badge badge-success' : 'badge badge-error';
   } catch {
     el.textContent = 'Offline';
