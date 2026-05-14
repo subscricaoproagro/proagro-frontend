@@ -705,7 +705,28 @@ function handleLogout() {
 }
 
 // Auto-restore
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
+  // Tenta descobrir URL do backend automaticamente
+  if (!BACKEND_URL) {
+    const servidores = [
+      'http://localhost:8000',
+      'http://127.0.0.1:8000'
+    ];
+    for (const url of servidores) {
+      try {
+        const r = await fetch(url + '/config/backend-url', { signal: AbortSignal.timeout(2000) });
+        if (r.ok) {
+          const data = await r.json();
+          const novaUrl = data.url || url;
+          localStorage.setItem('pa_backend', novaUrl);
+          BACKEND_URL = novaUrl;
+          document.getElementById('backend-url-modal').value = BACKEND_URL;
+          console.log('[ProAgro] URL detectada automaticamente:', BACKEND_URL);
+          break;
+        }
+      } catch(e) {}
+    }
+  }
   if (BACKEND_URL) document.getElementById('backend-url-modal').value = BACKEND_URL;
   if (!BACKEND_URL) document.getElementById('config-warning').style.display = 'flex';
   if (TOKEN && currentUser) enterApp();
