@@ -1742,7 +1742,7 @@ function abrirModalEmail(ce, job) {
 
   if (dr === 'aprovado') {
     // Calcular sacas
-    const prodBruta = parseFloat(String(ce.taxa_aprovada || ce.produtividade_estimada_bruta || '0').replace(',','.')) || 0;
+    const prodBruta = parseFloat(String(ce.prod_bruta_aprovada || ce.produtividade_estimada_bruta || '0').replace(',','.')) || 0;
     const prodGar   = parseFloat(String(ce.prod_garantida || '0').replace(',','.')) || 0;
     const nc        = parseFloat(String(ce.nivel_cobertura_aprovado || ce.nivel_cobertura || '0').replace(',','.')) || 0;
     const ncPct     = nc <= 1 ? Math.round(nc * 100) + '%' : nc + '%';
