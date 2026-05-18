@@ -449,7 +449,10 @@
           <div class="section-title">Endossos</div>
           <div class="section-sub">Solicitações de alteração de apólice</div>
         </div>
-        <button class="btn btn-primary" onclick="abrirNovoEndosso()">+ Novo Endosso</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="abrirNovoEndosso()">📐 Ajuste de Área</button>
+          <button class="btn btn-primary" style="background:#7c3aed" onclick="abrirEndossoCancelamento()">🚫 Cancelamento</button>
+        </div>
       </div>
       <div class="card">
         <div class="overflow-x">
@@ -2406,6 +2409,80 @@ function traduzirEndosso() {
   document.getElementById('btn-traduzir-label').textContent = t.btnTraduzir;
 }
 
+function toggleMotivoCancelCustom() {
+  const sel = document.getElementById('canc-motivo');
+  const txt = document.getElementById('canc-motivo-custom');
+  txt.style.display = sel.value === 'outro' ? '' : 'none';
+  if (sel.value !== 'outro') txt.value = '';
+}
+
+function abrirEndossoCancelamento() {
+  ['canc-apolice-proagro','canc-apolice-hdi','canc-proposta-hdi','canc-endosso-num',
+   'canc-endosso-cancel','canc-cpf','canc-cliente','canc-motivo-custom'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const sel = document.getElementById('canc-motivo');
+  if (sel) sel.value = '';
+  const txt = document.getElementById('canc-motivo-custom');
+  if (txt) txt.style.display = 'none';
+  ['canc-data-emissao','canc-vig-ini','canc-vig-fim'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = new Date().toISOString().split('T')[0];
+  });
+  const btn = document.getElementById('btn-confirmar-cancelamento');
+  if (btn) { btn.disabled = false; btn.textContent = '🚫 Gerar Cancelamento'; }
+  openModal('modal-endosso-cancelamento');
+}
+
+async function confirmarEndossoCancelamento() {
+  const apolice     = document.getElementById('canc-apolice-proagro').value.trim();
+  const endossoNum  = document.getElementById('canc-endosso-num').value.trim();
+  const dataEmissao = document.getElementById('canc-data-emissao').value;
+  const cpf         = document.getElementById('canc-cpf').value.trim();
+  const cliente     = document.getElementById('canc-cliente').value.trim();
+  const motivoSel   = document.getElementById('canc-motivo').value;
+  const motivoCustom = document.getElementById('canc-motivo-custom').value.trim();
+  const motivo      = motivoSel === 'outro' ? motivoCustom : motivoSel;
+
+  if (!apolice || !endossoNum || !dataEmissao || !cpf || !cliente) {
+    showToast('Preencha os campos obrigatórios (marcados com *).', 'error'); return;
+  }
+  if (!motivo) {
+    showToast('Informe o motivo do cancelamento.', 'error'); return;
+  }
+
+  const body = {
+    tipo:              'cancelamento',
+    apolice_proagro:   apolice,
+    apolice_hdi:       document.getElementById('canc-apolice-hdi').value.trim(),
+    proposta_hdi:      document.getElementById('canc-proposta-hdi').value.trim(),
+    endosso_numero:    endossoNum,
+    endosso_cancelamento: document.getElementById('canc-endosso-cancel').value.trim(),
+    data_emissao:      dataEmissao,
+    vigencia_ini:      document.getElementById('canc-vig-ini').value,
+    vigencia_fim:      document.getElementById('canc-vig-fim').value,
+    cpf_cnpj:          cpf,
+    nome_cliente:      cliente,
+    motivo:            motivo
+  };
+
+  const btn = document.getElementById('btn-confirmar-cancelamento');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="border-top-color:#fff;width:14px;height:14px"></div> Gerando…';
+
+  try {
+    await api('POST', '/endossos', body);
+    closeModal('modal-endosso-cancelamento');
+    showToast('✅ Cancelamento gerado e enviado por email!', 'success');
+    carregarEndossos();
+  } catch(e) {
+    showToast('Erro: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚫 Gerar Cancelamento';
+  }
+}
+
 async function carregarEndossos() {
   const tbody = document.getElementById('endosso-tbody');
   if (!tbody) return;
@@ -3267,6 +3344,59 @@ async function verRelatorio(jobId) {
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
         <button id="end-btn-cancelar" class="btn btn-outline" onclick="closeModal('modal-endosso-reducao')">Cancelar</button>
         <button class="btn btn-primary" id="btn-confirmar-endosso" onclick="confirmarEndossoReducao()">📐 Gerar Endosso</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Endosso Cancelamento -->
+<div class="modal-overlay" id="modal-endosso-cancelamento" style="align-items:flex-start;padding:20px;overflow-y:auto;background:rgba(255,255,255,0.97)">
+  <div class="modal-card" style="max-width:560px;width:100%;margin:auto">
+    <div class="modal-header" style="background:#7c3aed;border-radius:10px 10px 0 0">
+      <div class="modal-title" style="color:#fff">🚫 Endosso — Cancelamento</div>
+      <button class="modal-close" style="color:#fff;opacity:.8;background:none;border:none;font-size:18px;cursor:pointer" onclick="closeModal('modal-endosso-cancelamento')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+
+      <div style="background:#faf5ff;border:1px solid #d8b4fe;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#6d28d9">
+        <strong>Cancelamento de Endosso:</strong> preencha os dados da apólice e o motivo do cancelamento.
+      </div>
+
+      <div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #7c3aed;padding-bottom:4px;margin-bottom:14px">Identificação</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+        <div><label class="ce-label">Apólice ProAgro <span style="color:#c0392b">*</span></label><input class="ce-input" id="canc-apolice-proagro" placeholder="ex: 10-SP-1-01292"></div>
+        <div><label class="ce-label">Apólice HDI</label><input class="ce-input" id="canc-apolice-hdi" placeholder="ex: 01025129000289000000"></div>
+        <div><label class="ce-label">Proposta HDI</label><input class="ce-input" id="canc-proposta-hdi" placeholder="ex: 94258"></div>
+        <div><label class="ce-label">Endosso nº <span style="color:#c0392b">*</span></label><input class="ce-input" id="canc-endosso-num" placeholder="ex: 000001"></div>
+        <div><label class="ce-label">Endosso de Cancelamento</label><input class="ce-input" id="canc-endosso-cancel" placeholder="ex: Endosso de cancelamento:000000"></div>
+        <div><label class="ce-label">Data de Emissão <span style="color:#c0392b">*</span></label><input class="ce-input" id="canc-data-emissao" type="date"></div>
+        <div><label class="ce-label">Vigência Início</label><input class="ce-input" id="canc-vig-ini" type="date"></div>
+        <div><label class="ce-label">Vigência Fim</label><input class="ce-input" id="canc-vig-fim" type="date"></div>
+        <div><label class="ce-label">CPF / CNPJ <span style="color:#c0392b">*</span></label><input class="ce-input" id="canc-cpf" placeholder="ex: 79598587134"></div>
+        <div><label class="ce-label">Nome do Cliente <span style="color:#c0392b">*</span></label><input class="ce-input" id="canc-cliente" placeholder="Nome completo"></div>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #7c3aed;padding-bottom:4px;margin-bottom:14px">Motivo</div>
+      <div style="margin-bottom:16px">
+        <label class="ce-label">Motivo do Cancelamento <span style="color:#c0392b">*</span></label>
+        <select class="ce-input" id="canc-motivo" onchange="toggleMotivoCancelCustom()">
+          <option value="">Selecione...</option>
+          <option value="Cancelamento solicitado pelo corretor">Cancelamento solicitado pelo corretor</option>
+          <option value="Cancelamento solicitado pelo produtor">Cancelamento solicitado pelo produtor</option>
+          <option value="Cancelamento por inadimplência">Cancelamento por inadimplência</option>
+          <option value="Cancelamento por sinistro">Cancelamento por sinistro</option>
+          <option value="outro">Outro (especificar)</option>
+        </select>
+        <textarea class="ce-input" id="canc-motivo-custom" rows="2" placeholder="Descreva o motivo..." style="display:none;margin-top:8px;resize:vertical"></textarea>
+      </div>
+
+      <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-top:4px;font-size:12px;color:#991b1b">
+        ⚠️ O cancelamento será registrado e o Excel gerado será enviado por email.
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+        <button class="btn btn-outline" onclick="closeModal('modal-endosso-cancelamento')">Cancelar</button>
+        <button class="btn btn-primary" id="btn-confirmar-cancelamento" style="background:#7c3aed" onclick="confirmarEndossoCancelamento()">🚫 Gerar Cancelamento</button>
       </div>
     </div>
   </div>
