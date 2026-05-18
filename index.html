@@ -254,6 +254,7 @@
       <button class="topbar-btn" id="historico-btn" onclick="showPage('historico')" style="display:none">Histórico</button>
       <button class="topbar-btn" id="assistente-btn" onclick="showPage('assistente')" style="display:none">Assistente IA</button>
       <button class="topbar-btn" id="ce-btn" onclick="showPage('condicao-especial')" style="display:none">Condição Especial</button>
+      <button class="topbar-btn" id="endosso-btn" onclick="showPage('endosso')" style="display:none">Endosso</button>
       <button class="topbar-btn" id="admin-btn" onclick="showPage('admin')" style="display:none">Admin</button>
     </nav>
     <div class="topbar-right">
@@ -436,6 +437,25 @@
           <table class="jobs-table">
             <thead><tr><th>Proposta</th><th>Proponente</th><th>Cultura</th><th>Município</th><th>UF</th><th>Cliente</th><th>Status Negócio</th><th>Prêmio</th><th>Ações</th></tr></thead>
             <tbody id="ce-tbody"><tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENDOSSO -->
+    <div id="page-endosso" class="page-section">
+      <div class="section-header" style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div class="section-title">Endossos</div>
+          <div class="section-sub">Solicitações de alteração de apólice</div>
+        </div>
+        <button class="btn btn-primary" onclick="abrirNovoEndosso()">+ Novo Endosso</button>
+      </div>
+      <div class="card">
+        <div class="overflow-x">
+          <table class="jobs-table">
+            <thead><tr><th>Data</th><th>Tipo</th><th>Apólice ProAgro</th><th>Cliente</th><th>Endosso nº</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody id="endosso-tbody"><tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -656,6 +676,7 @@ function enterApp() {
 
   if (currentUser.role === 'admin') {
     document.getElementById('admin-btn').style.display = '';
+    document.getElementById('endosso-btn').style.display = '';
     document.getElementById('ce-btn').style.display = '';
     document.getElementById('assistente-btn').style.display = '';
     document.getElementById('nova-analise-btn').style.display = '';
@@ -762,11 +783,12 @@ async function verificarBackend() {
 // ══════════════════════════════════════════
 function showPage(page) {
   if (page === 'condicao-especial') carregarCondicoesEspeciais();
+  if (page === 'endosso') carregarEndossos();
   if (page === 'dashboard-supervisor') carregarDashboardSupervisor();
   document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.topbar-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
-  const pages = ['dashboard','dashboard-supervisor','nova-analise','historico','assistente','admin','condicao-especial'];
+  const pages = ['dashboard','dashboard-supervisor','nova-analise','historico','assistente','endosso','admin','condicao-especial'];
   const btns = document.querySelectorAll('.topbar-nav .topbar-btn');
   const i = pages.indexOf(page);
   if(i !== -1 && btns[i]) btns[i].classList.add('active');
@@ -2061,6 +2083,189 @@ function removerPlanilhaCE() {
   document.getElementById('aprov-upload-zone').style.background = '#f0faf4';
 }
 
+
+// ══════════════════════════════════════════
+// ENDOSSO
+// ══════════════════════════════════════════
+
+function parseBR(v) {
+  if (!v) return 0;
+  return parseFloat(String(v).replace(/\./g,'').replace(',','.')) || 0;
+}
+function fmtBR(n) {
+  return n.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function calcularEndossoReducao() {
+  const areaAntes  = parseBR(document.getElementById('end-area-antes').value);
+  const areaDepois = parseBR(document.getElementById('end-area-depois').value);
+  if (!areaAntes || !areaDepois || areaDepois >= areaAntes) {
+    ['end-lmi-basica-depois','end-lmi-replantio-depois','end-premio-basica-depois',
+     'end-premio-replantio-depois','end-premio-produtor-depois','end-subvencao-depois'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    ['end-restit-basica','end-restit-replantio','end-restit-total'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.textContent = 'R$ 0,00';
+    });
+    return;
+  }
+  const ratio = areaDepois / areaAntes;
+  const campos = [
+    ['end-lmi-basica-antes','end-lmi-basica-depois'],
+    ['end-lmi-replantio-antes','end-lmi-replantio-depois'],
+    ['end-premio-basica-antes','end-premio-basica-depois'],
+    ['end-premio-replantio-antes','end-premio-replantio-depois'],
+    ['end-premio-produtor-antes','end-premio-produtor-depois'],
+    ['end-subvencao-antes','end-subvencao-depois'],
+  ];
+  campos.forEach(([antesId, depoisId]) => {
+    const antesEl = document.getElementById(antesId);
+    const depoisEl = document.getElementById(depoisId);
+    if (!antesEl || !depoisEl) return;
+    const antes = parseBR(antesEl.value);
+    depoisEl.value = antes ? fmtBR(antes * ratio) : '';
+  });
+  const premioBasicaAntes    = parseBR(document.getElementById('end-premio-basica-antes').value);
+  const premioReplantioAntes = parseBR(document.getElementById('end-premio-replantio-antes').value);
+  const restitBasica    = premioBasicaAntes    * (1 - ratio);
+  const restitReplantio = premioReplantioAntes * (1 - ratio);
+  const restitTotal     = restitBasica + restitReplantio;
+  document.getElementById('end-restit-basica').textContent    = 'R$ ' + fmtBR(restitBasica);
+  document.getElementById('end-restit-replantio').textContent = 'R$ ' + fmtBR(restitReplantio);
+  document.getElementById('end-restit-total').textContent     = 'R$ ' + fmtBR(restitTotal);
+}
+
+function abrirNovoEndosso() {
+  ['end-apolice-proagro','end-apolice-hdi','end-proposta-hdi','end-numero',
+   'end-numero-item','end-cpf','end-cliente','end-obs',
+   'end-area-antes','end-area-depois',
+   'end-lmi-basica-antes','end-lmi-basica-depois',
+   'end-lmi-replantio-antes','end-lmi-replantio-depois',
+   'end-premio-basica-antes','end-premio-basica-depois',
+   'end-premio-replantio-antes','end-premio-replantio-depois',
+   'end-premio-produtor-antes','end-premio-produtor-depois',
+   'end-subvencao-antes','end-subvencao-depois',
+   'end-valor-pago-antes'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['end-data-emissao','end-vig-ini','end-vig-fim'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = new Date().toISOString().split('T')[0];
+  });
+  ['end-restit-basica','end-restit-replantio','end-restit-total'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = 'R$ 0,00';
+  });
+  const btn = document.getElementById('btn-confirmar-endosso');
+  if (btn) { btn.disabled = false; btn.textContent = '📐 Gerar Endosso'; }
+  openModal('modal-endosso-reducao');
+}
+
+async function confirmarEndossoReducao() {
+  const apoliceProagro    = document.getElementById('end-apolice-proagro').value.trim();
+  const endossoNum        = document.getElementById('end-numero').value.trim();
+  const dataEmissao       = document.getElementById('end-data-emissao').value;
+  const cpf               = document.getElementById('end-cpf').value.trim();
+  const cliente           = document.getElementById('end-cliente').value.trim();
+  const areaAntes         = parseBR(document.getElementById('end-area-antes').value);
+  const areaDepois        = parseBR(document.getElementById('end-area-depois').value);
+  const premioBasicaAntes = parseBR(document.getElementById('end-premio-basica-antes').value);
+  if (!apoliceProagro || !endossoNum || !dataEmissao || !cpf || !cliente) {
+    showToast('Preencha os campos obrigatórios (marcados com *).', 'error'); return;
+  }
+  if (!areaAntes || !areaDepois) {
+    showToast('Informe as áreas antes e depois.', 'error'); return;
+  }
+  if (!premioBasicaAntes) {
+    showToast('Informe o Prêmio Básica antes.', 'error'); return;
+  }
+  const ratio = areaDepois / areaAntes;
+  const premioReplantioAntes = parseBR(document.getElementById('end-premio-replantio-antes').value);
+  const body = {
+    tipo: 'reducao_area',
+    apolice_proagro:         apoliceProagro,
+    apolice_hdi:             document.getElementById('end-apolice-hdi').value.trim(),
+    proposta_hdi:            document.getElementById('end-proposta-hdi').value.trim(),
+    endosso_numero:          endossoNum,
+    data_emissao:            dataEmissao,
+    vigencia_ini:            document.getElementById('end-vig-ini').value,
+    vigencia_fim:            document.getElementById('end-vig-fim').value,
+    cpf_cnpj:                cpf,
+    nome_cliente:            cliente,
+    numero_item:             document.getElementById('end-numero-item').value.trim(),
+    area_antes:              areaAntes,
+    area_depois:             areaDepois,
+    lmi_basica_antes:        parseBR(document.getElementById('end-lmi-basica-antes').value),
+    lmi_basica_depois:       parseBR(document.getElementById('end-lmi-basica-antes').value) * ratio,
+    lmi_replantio_antes:     parseBR(document.getElementById('end-lmi-replantio-antes').value),
+    lmi_replantio_depois:    parseBR(document.getElementById('end-lmi-replantio-antes').value) * ratio,
+    premio_basica_antes:     premioBasicaAntes,
+    premio_basica_depois:    premioBasicaAntes * ratio,
+    premio_replantio_antes:  premioReplantioAntes,
+    premio_replantio_depois: premioReplantioAntes * ratio,
+    premio_produtor_antes:   parseBR(document.getElementById('end-premio-produtor-antes').value),
+    premio_produtor_depois:  parseBR(document.getElementById('end-premio-produtor-antes').value) * ratio,
+    subvencao_antes:         parseBR(document.getElementById('end-subvencao-antes').value),
+    subvencao_depois:        parseBR(document.getElementById('end-subvencao-antes').value) * ratio,
+    valor_pago_produtor:     parseBR(document.getElementById('end-valor-pago-antes').value),
+    observacoes:             document.getElementById('end-obs').value.trim(),
+    restit_basica:           premioBasicaAntes    * (1 - ratio),
+    restit_replantio:        premioReplantioAntes * (1 - ratio),
+    restit_total:            (premioBasicaAntes + premioReplantioAntes) * (1 - ratio)
+  };
+  const btn = document.getElementById('btn-confirmar-endosso');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="border-top-color:#fff;width:14px;height:14px"></div> Gerando…';
+  try {
+    await api('POST', '/endossos', body);
+    closeModal('modal-endosso-reducao');
+    showToast('✅ Endosso gerado e enviado por email!', 'success');
+    carregarEndossos();
+  } catch(e) {
+    showToast('Erro ao gerar endosso: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📐 Gerar Endosso';
+  }
+}
+
+async function carregarEndossos() {
+  const tbody = document.getElementById('endosso-tbody');
+  if (!tbody) return;
+  try {
+    const lista = await api('GET', '/endossos');
+    if (!lista || lista.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Nenhum endosso registrado ainda.</td></tr>';
+      return;
+    }
+    const tipoLabel = { reducao_area: 'Ajuste de Área', mudanca_variedade: 'Mudança de Variedade',
+                        mudanca_datas: 'Mudança de Datas', alteracao_beneficiario: 'Alt. Beneficiário',
+                        cancelamento: 'Cancelamento' };
+    tbody.innerHTML = lista.map(e => {
+      const dt = e.data_emissao ? new Date(e.data_emissao).toLocaleDateString('pt-BR') : '—';
+      return `<tr>
+        <td>${dt}</td>
+        <td><span style="background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:12px;font-size:12px">${tipoLabel[e.tipo] || e.tipo}</span></td>
+        <td>${e.apolice_proagro || '—'}</td>
+        <td>${e.nome_cliente || '—'}</td>
+        <td>${e.endosso_numero || '—'}</td>
+        <td><span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:12px;font-size:12px">Gerado</span></td>
+        <td><button class="btn-sm btn-outline" onclick="baixarEndosso('${e.id}')">⬇ Excel</button></td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Erro ao carregar endossos.</td></tr>';
+  }
+}
+
+async function baixarEndosso(id) {
+  try {
+    const data = await api('GET', '/endossos/' + id + '/download');
+    if (data.url) window.open(data.url, '_blank');
+  } catch(e) {
+    showToast('Erro ao baixar: ' + e.message, 'error');
+  }
+}
+
 // ── Upload avulso de planilha (via modal Dados CE) ──
 async function uploadPlanilhaAvulsa(input) {
   const file = input.files[0];
@@ -2786,6 +2991,99 @@ async function verRelatorio(jobId) {
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
         <button class="btn btn-outline" onclick="closeModal('modal-aprovacao-ce')">Cancelar</button>
         <button class="btn btn-primary" id="btn-confirmar-aprovacao-ce" onclick="confirmarAprovacaoCE()">✅ Confirmar Aprovação</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Endosso Redução de Área -->
+<div class="modal-overlay" id="modal-endosso-reducao" style="align-items:flex-start;padding:20px;overflow-y:auto;background:rgba(255,255,255,0.97)">
+  <div class="modal-card" style="max-width:600px;width:100%;margin:auto">
+    <div class="modal-header" style="background:#1a3a2a;border-radius:10px 10px 0 0">
+      <div class="modal-title" style="color:#fff">📐 Endosso — Ajuste de Área</div>
+      <button class="modal-close" style="color:#fff;opacity:.8" onclick="closeModal('modal-endosso-reducao')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <div style="background:#f0faf4;border:1px solid #a8e0c0;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#1a3a2a">
+        <strong>Ajuste de Área:</strong> preencha as informações da apólice e os valores antes/depois. O sistema calcula automaticamente os valores a restituir.
+      </div>
+      <div style="font-size:11px;font-weight:700;color:#1a3a2a;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #1a3a2a;padding-bottom:4px;margin-bottom:14px">Identificação</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+        <div><label class="ce-label">Apólice ProAgro <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-apolice-proagro" placeholder="ex: 10-SP-1-01216"></div>
+        <div><label class="ce-label">Apólice HDI <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-apolice-hdi" placeholder="ex: 01025129000289000000"></div>
+        <div><label class="ce-label">Proposta HDI</label><input class="ce-input" id="end-proposta-hdi" placeholder="ex: 94258"></div>
+        <div><label class="ce-label">Endosso nº <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-numero" placeholder="ex: 000001"></div>
+        <div><label class="ce-label">Data de Emissão <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-data-emissao" type="date"></div>
+        <div><label class="ce-label">Nº do Item</label><input class="ce-input" id="end-numero-item" placeholder="ex: 2"></div>
+        <div><label class="ce-label">CPF / CNPJ <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-cpf" placeholder="ex: 11282681915"></div>
+        <div><label class="ce-label">Nome do Cliente <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-cliente" placeholder="Nome completo"></div>
+        <div><label class="ce-label">Vigência Início</label><input class="ce-input" id="end-vig-ini" type="date"></div>
+        <div><label class="ce-label">Vigência Fim</label><input class="ce-input" id="end-vig-fim" type="date"></div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:#1a3a2a;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #1a3a2a;padding-bottom:4px;margin-bottom:14px">Valores — Antes / Depois</div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:6px">
+        <div></div>
+        <div style="font-size:11px;color:var(--gray400);font-weight:600;text-transform:uppercase;text-align:center">Antes</div>
+        <div style="font-size:11px;color:var(--gray400);font-weight:600;text-transform:uppercase;text-align:center">Depois</div>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
+        <label class="ce-label" style="margin:0">Área Total (ha) <span style="color:#c0392b">*</span></label>
+        <input class="ce-input" id="end-area-antes" placeholder="0,00" oninput="calcularEndossoReducao()" style="text-align:right">
+        <input class="ce-input" id="end-area-depois" placeholder="0,00" oninput="calcularEndossoReducao()" style="text-align:right">
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
+        <label class="ce-label" style="margin:0">LMI Básica (R$)</label>
+        <input class="ce-input" id="end-lmi-basica-antes" placeholder="0,00" oninput="calcularEndossoReducao()" style="text-align:right">
+        <input class="ce-input" id="end-lmi-basica-depois" placeholder="0,00" style="text-align:right;background:#f0faf4" readonly>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
+        <label class="ce-label" style="margin:0">LMI Replantio (R$)</label>
+        <input class="ce-input" id="end-lmi-replantio-antes" placeholder="0,00" oninput="calcularEndossoReducao()" style="text-align:right">
+        <input class="ce-input" id="end-lmi-replantio-depois" placeholder="0,00" style="text-align:right;background:#f0faf4" readonly>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
+        <label class="ce-label" style="margin:0">Prêmio Básica (R$) <span style="color:#c0392b">*</span></label>
+        <input class="ce-input" id="end-premio-basica-antes" placeholder="0,00" oninput="calcularEndossoReducao()" style="text-align:right">
+        <input class="ce-input" id="end-premio-basica-depois" placeholder="0,00" style="text-align:right;background:#f0faf4" readonly>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
+        <label class="ce-label" style="margin:0">Prêmio Replantio (R$)</label>
+        <input class="ce-input" id="end-premio-replantio-antes" placeholder="0,00" oninput="calcularEndossoReducao()" style="text-align:right">
+        <input class="ce-input" id="end-premio-replantio-depois" placeholder="0,00" style="text-align:right;background:#f0faf4" readonly>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
+        <label class="ce-label" style="margin:0">Prêmio Produtor (R$)</label>
+        <input class="ce-input" id="end-premio-produtor-antes" placeholder="0,00" oninput="calcularEndossoReducao()" style="text-align:right">
+        <input class="ce-input" id="end-premio-produtor-depois" placeholder="0,00" style="text-align:right;background:#f0faf4" readonly>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
+        <label class="ce-label" style="margin:0">Subvenção Federal (R$)</label>
+        <input class="ce-input" id="end-subvencao-antes" placeholder="0,00" oninput="calcularEndossoReducao()" style="text-align:right">
+        <input class="ce-input" id="end-subvencao-depois" placeholder="0,00" style="text-align:right;background:#f0faf4" readonly>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:16px">
+        <label class="ce-label" style="margin:0">Valor Pago pelo Produtor (R$)</label>
+        <input class="ce-input" id="end-valor-pago-antes" placeholder="0,00" style="text-align:right" oninput="calcularEndossoReducao()">
+        <div style="font-size:13px;color:var(--gray400);text-align:center">—</div>
+      </div>
+      <div style="background:#fff8e1;border:1px solid #fbbf24;border-radius:8px;padding:14px 16px;margin-top:4px">
+        <div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Devolução calculada automaticamente</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div><div style="font-size:11px;color:#92400e;margin-bottom:4px">Prêmio Básica a Restituir</div><div style="font-size:15px;font-weight:600;color:#1a3a2a" id="end-restit-basica">R$ 0,00</div></div>
+          <div><div style="font-size:11px;color:#92400e;margin-bottom:4px">Prêmio Replantio a Restituir</div><div style="font-size:15px;font-weight:600;color:#1a3a2a" id="end-restit-replantio">R$ 0,00</div></div>
+          <div><div style="font-size:11px;color:#92400e;margin-bottom:4px">Total a Restituir</div><div style="font-size:17px;font-weight:700;color:#c0392b" id="end-restit-total">R$ 0,00</div></div>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <label class="ce-label">Observações</label>
+        <textarea class="ce-input" id="end-obs" rows="2" placeholder="Motivo do ajuste de área (opcional)" style="resize:vertical"></textarea>
+      </div>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-top:14px;font-size:12px;color:#1d4ed8">
+        📊 Ao confirmar, será gerado o Excel de endosso no modelo padrão e enviado por email.
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+        <button class="btn btn-outline" onclick="closeModal('modal-endosso-reducao')">Cancelar</button>
+        <button class="btn btn-primary" id="btn-confirmar-endosso" onclick="confirmarEndossoReducao()">📐 Gerar Endosso</button>
       </div>
     </div>
   </div>
