@@ -1946,6 +1946,11 @@ async function abrirDadosCE(jobId) {
       const btnPlanilha = document.getElementById('dce-btn-planilha');
       if (btnPlanilha) btnPlanilha.style.display = 'none';
     }
+    // Reseta estado do upload ao abrir o modal
+    const statusEl = document.getElementById('dce-upload-status');
+    if (statusEl) statusEl.style.display = 'none';
+    const labelEl = document.getElementById('dce-upload-label-text');
+    if (labelEl) labelEl.textContent = 'Enviar Planilha';
     openModal('modal-dados-ce');
   } catch(e) {
     showToast('Erro ao carregar dados CE: ' + e.message, 'error');
@@ -2054,6 +2059,66 @@ function removerPlanilhaCE() {
   document.getElementById('aprov-upload-label').textContent = 'Clique para selecionar o Excel preenchido';
   document.getElementById('aprov-upload-zone').style.borderColor = '#a8e0c0';
   document.getElementById('aprov-upload-zone').style.background = '#f0faf4';
+}
+
+// ── Upload avulso de planilha (via modal Dados CE) ──
+async function uploadPlanilhaAvulsa(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const jobId = _dadosCeData?.job?.id;
+  if (!jobId) { showToast('Job não identificado.', 'error'); return; }
+
+  const statusEl  = document.getElementById('dce-upload-status');
+  const labelEl   = document.getElementById('dce-upload-label-text');
+  const btnEl     = document.getElementById('dce-btn-planilha');
+
+  // Feedback visual: carregando
+  labelEl.textContent = 'Enviando…';
+  statusEl.style.display = 'none';
+
+  try {
+    const form = new FormData();
+    form.append('arquivo', file);
+    const res = await fetch(BACKEND_URL + '/jobs/' + jobId + '/dados-ce/upload-planilha', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+      body: form
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Erro desconhecido' }));
+      throw new Error(err.detail || 'Falha no upload');
+    }
+    const data = await res.json();
+
+    // Sucesso
+    statusEl.textContent = '✅ Planilha "' + file.name + '" enviada com sucesso!';
+    statusEl.style.background = '#f0fdf4';
+    statusEl.style.borderColor = '#86efac';
+    statusEl.style.color = '#166534';
+    statusEl.style.display = '';
+
+    // Mostra botão "Ver Planilha AR"
+    if (btnEl) {
+      btnEl.style.display = '';
+      btnEl.title = 'Enviada agora: ' + file.name;
+      btnEl.onclick = () => window.open(data.url, '_blank');
+    }
+
+    labelEl.textContent = '✔ Substituir Planilha';
+    showToast('✅ Planilha enviada!', 'success');
+  } catch(e) {
+    statusEl.textContent = '❌ Erro: ' + e.message;
+    statusEl.style.background = '#fff5f5';
+    statusEl.style.borderColor = '#fecaca';
+    statusEl.style.color = '#c0392b';
+    statusEl.style.display = '';
+    labelEl.textContent = 'Tentar novamente';
+    showToast('Erro ao enviar planilha: ' + e.message, 'error');
+  } finally {
+    // Reseta o input para permitir re-upload do mesmo arquivo
+    input.value = '';
+  }
 }
 
 async function uploadPlanilhaCE(jobId) {
@@ -2857,11 +2922,18 @@ async function verRelatorio(jobId) {
         <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Observação do Subscritor</div>
         <div style="font-size:13px;color:#374151;line-height:1.7" id="dce-obs-texto">—</div>
       </div>
+      <div id="dce-upload-status" style="display:none;padding:8px 12px;border-radius:6px;font-size:12px;margin-bottom:8px;background:#f0fdf4;border:1px solid #86efac;color:#166534"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--gray100);padding-top:16px;flex-wrap:wrap">
         <button class="btn-sm btn-outline" onclick="closeModal('modal-dados-ce')">Fechar</button>
         <button class="btn-sm btn-outline" id="dce-btn-planilha" style="display:none;border-color:#7c3aed;color:#7c3aed" onclick="verPlanilhaCE()">📎 Ver Planilha AR</button>
         <button class="btn-sm btn-outline" style="border-color:#16a34a;color:#16a34a" onclick="downloadDadosCE('excel')">⬇ Baixar Excel (.xlsx)</button>
         <button class="btn-sm btn-green" onclick="downloadDadosCE('pdf')">🖨 Imprimir / PDF</button>
+        <label id="dce-btn-upload-planilha" style="cursor:pointer">
+          <span class="btn-sm" style="background:#f5f3ff;border:1px solid #c4b5fd;color:#6d28d9;display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer">
+            📤 <span id="dce-upload-label-text">Enviar Planilha</span>
+          </span>
+          <input type="file" id="dce-planilha-avulsa" style="display:none" accept=".xlsx,.xls,.csv" onchange="uploadPlanilhaAvulsa(this)">
+        </label>
       </div>
     </div>
   </div>
