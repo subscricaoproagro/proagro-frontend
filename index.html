@@ -2089,7 +2089,8 @@ function fmtBR(n) {
 function calcularEndossoReducao() {
   const areaAntes  = parseBR(document.getElementById('end-area-antes').value);
   const areaDepois = parseBR(document.getElementById('end-area-depois').value);
-  if (!areaAntes || !areaDepois || areaDepois >= areaAntes) {
+
+  if (!areaAntes || !areaDepois || areaDepois === areaAntes) {
     ['end-lmi-basica-depois','end-lmi-replantio-depois','end-premio-basica-depois',
      'end-premio-replantio-depois','end-premio-produtor-depois','end-subvencao-depois'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
@@ -2097,9 +2098,14 @@ function calcularEndossoReducao() {
     ['end-restit-basica','end-restit-replantio','end-restit-total'].forEach(id => {
       const el = document.getElementById(id); if (el) el.textContent = 'R$ 0,00';
     });
+    atualizarBlocoEndosso('neutro');
     return;
   }
+
   const ratio = areaDepois / areaAntes;
+  const isAumento = areaDepois > areaAntes;
+
+  // Calcula campos "depois" proporcionalmente
   const campos = [
     ['end-lmi-basica-antes','end-lmi-basica-depois'],
     ['end-lmi-replantio-antes','end-lmi-replantio-depois'],
@@ -2115,19 +2121,64 @@ function calcularEndossoReducao() {
     const antes = parseBR(antesEl.value);
     depoisEl.value = antes ? fmtBR(antes * ratio) : '';
   });
-  // Fórmula exata da planilha modelo:
-  // base = ValorPagoProd - PremioBasicaDepois
-  // Calcula PremioBasicaDepois direto do valor antes * ratio (evita parsing do campo readonly)
+
   const valorPagoProd      = parseBR(document.getElementById('end-valor-pago-antes').value);
-  const premioBasicaAntes  = parseBR(document.getElementById('end-premio-basica-antes').value);
-  const premioBasicaDepois = premioBasicaAntes * ratio;  // mesmo valor que está no campo readonly
-  const base            = valorPagoProd - premioBasicaDepois;
-  const restitBasica    = base * 0.8;
-  const restitReplantio = base * 0.2;
-  const restitTotal     = restitBasica + restitReplantio;
-  document.getElementById('end-restit-basica').textContent    = 'R$ ' + fmtBR(restitBasica);
-  document.getElementById('end-restit-replantio').textContent = 'R$ ' + fmtBR(restitReplantio);
-  document.getElementById('end-restit-total').textContent     = 'R$ ' + fmtBR(restitTotal);
+  const premioProdutorAntes = parseBR(document.getElementById('end-premio-produtor-antes').value);
+  const premioProdutorDepois = premioProdutorAntes * ratio;
+
+  // Redução: base = ValorPago - PremioProdutorDepois → devolve
+  // Aumento: base = PremioProdutorDepois - ValorPago → cobra
+  const base = isAumento
+    ? premioProdutorDepois - valorPagoProd
+    : valorPagoProd - premioProdutorDepois;
+
+  const valor1 = base * 0.8;
+  const valor2 = base * 0.2;
+  const total  = base;
+
+  document.getElementById('end-restit-basica').textContent    = 'R$ ' + fmtBR(valor1);
+  document.getElementById('end-restit-replantio').textContent = 'R$ ' + fmtBR(valor2);
+  document.getElementById('end-restit-total').textContent     = 'R$ ' + fmtBR(total);
+
+  atualizarBlocoEndosso(isAumento ? 'cobrar' : 'restituir');
+}
+
+function atualizarBlocoEndosso(modo) {
+  const bloco = document.getElementById('end-bloco-resultado');
+  const secTitle = document.getElementById('end-sec-devolucao');
+  const lbl1 = document.getElementById('end-lbl-restit-basica');
+  const lbl2 = document.getElementById('end-lbl-restit-replantio');
+  const lbl3 = document.getElementById('end-lbl-restit-total');
+  const val3 = document.getElementById('end-restit-total');
+
+  if (modo === 'cobrar') {
+    bloco.style.background    = '#fff5f5';
+    bloco.style.borderColor   = '#fca5a5';
+    secTitle.style.color      = '#991b1b';
+    secTitle.textContent      = 'Cobrança adicional calculada automaticamente';
+    lbl1.textContent = 'Prêmio Básica a Cobrar';
+    lbl2.textContent = 'Prêmio Replantio a Cobrar';
+    lbl3.textContent = 'Total a Cobrar';
+    val3.style.color = '#991b1b';
+  } else if (modo === 'restituir') {
+    bloco.style.background    = '#fff8e1';
+    bloco.style.borderColor   = '#fbbf24';
+    secTitle.style.color      = '#92400e';
+    secTitle.textContent      = 'Devolução calculada automaticamente';
+    lbl1.textContent = 'Prêmio Básica a Restituir';
+    lbl2.textContent = 'Prêmio Replantio a Restituir';
+    lbl3.textContent = 'Total a Restituir';
+    val3.style.color = '#c0392b';
+  } else {
+    bloco.style.background    = '#fff8e1';
+    bloco.style.borderColor   = '#fbbf24';
+    secTitle.style.color      = '#92400e';
+    secTitle.textContent      = 'Devolução calculada automaticamente';
+    lbl1.textContent = 'Prêmio Básica a Restituir';
+    lbl2.textContent = 'Prêmio Replantio a Restituir';
+    lbl3.textContent = 'Total a Restituir';
+    val3.style.color = '#c0392b';
+  }
 }
 
 function abrirNovoEndosso() {
@@ -2206,10 +2257,11 @@ async function confirmarEndossoReducao() {
     subvencao_depois:        parseBR(document.getElementById('end-subvencao-antes').value) * ratio,
     valor_pago_produtor:     parseBR(document.getElementById('end-valor-pago-antes').value),
     observacoes:             document.getElementById('end-obs').value.trim(),
-    // Fórmula planilha: base = ValorPago - PremioBasicaDepois; Básica=base*0.8; Replantio=base*0.2
-    restit_basica:    (parseBR(document.getElementById('end-valor-pago-antes').value) - premioBasicaAntes * ratio) * 0.8,
-    restit_replantio: (parseBR(document.getElementById('end-valor-pago-antes').value) - premioBasicaAntes * ratio) * 0.2,
-    restit_total:     (parseBR(document.getElementById('end-valor-pago-antes').value) - premioBasicaAntes * ratio)
+    // base: reducao=ValorPago-PremioProdDepois; aumento=PremioProdDepois-ValorPago
+    operacao:         areaDepois > areaAntes ? 'cobrar' : 'restituir',
+    restit_basica:    Math.abs(parseBR(document.getElementById('end-valor-pago-antes').value) - premioBasicaAntes * ratio) * 0.8,
+    restit_replantio: Math.abs(parseBR(document.getElementById('end-valor-pago-antes').value) - premioBasicaAntes * ratio) * 0.2,
+    restit_total:     Math.abs(parseBR(document.getElementById('end-valor-pago-antes').value) - premioBasicaAntes * ratio)
   };
   const btn = document.getElementById('btn-confirmar-endosso');
   btn.disabled = true;
@@ -3197,7 +3249,7 @@ async function verRelatorio(jobId) {
         <input class="ce-input" id="end-valor-pago-antes" placeholder="0,00" style="text-align:right" oninput="calcularEndossoReducao()">
         <div style="font-size:13px;color:var(--gray400);text-align:center">—</div>
       </div>
-      <div style="background:#fff8e1;border:1px solid #fbbf24;border-radius:8px;padding:14px 16px;margin-top:4px">
+      <div id="end-bloco-resultado" style="background:#fff8e1;border:1px solid #fbbf24;border-radius:8px;padding:14px 16px;margin-top:4px;transition:background .3s,border-color .3s">
         <div id="end-sec-devolucao" style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Devolução calculada automaticamente</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
           <div><div id="end-lbl-restit-basica" style="font-size:11px;color:#92400e;margin-bottom:4px">Prêmio Básica a Restituir</div><div style="font-size:15px;font-weight:600;color:#1a3a2a" id="end-restit-basica">R$ 0,00</div></div>
