@@ -2125,12 +2125,15 @@ function calcularEndossoReducao() {
     const antes = parseBR(antesEl.value);
     depoisEl.value = antes ? fmtBR(antes * ratio) : '';
   });
-  const premioBasicaAntes    = parseBR(document.getElementById('end-premio-basica-antes').value);
-  const premioReplantioAntes = parseBR(document.getElementById('end-premio-replantio-antes').value);
-  const premioBasicaDepois    = premioBasicaAntes    * ratio;
-  const premioReplantioDepois = premioReplantioAntes * ratio;
-  const restitBasica    = premioBasicaAntes    - premioBasicaDepois;
-  const restitReplantio = premioReplantioAntes - premioReplantioDepois;
+  const valorPagoProd     = parseBR(document.getElementById('end-valor-pago-antes').value);
+  const premioBasicaDepois = parseBR(document.getElementById('end-premio-basica-depois').value);
+  // Fórmula da planilha modelo:
+  // base = ValorPagoProd - PremioBasicaDepois
+  // Básica a Restituir    = base * 0.8  (=(D13-C16)-(20%*(D13-C16)))
+  // Replantio a Restituir = base * 0.2  (=(D13-C16)*0.2)
+  const base            = valorPagoProd - premioBasicaDepois;
+  const restitBasica    = base * 0.8;
+  const restitReplantio = base * 0.2;
   const restitTotal     = restitBasica + restitReplantio;
   document.getElementById('end-restit-basica').textContent    = 'R$ ' + fmtBR(restitBasica);
   document.getElementById('end-restit-replantio').textContent = 'R$ ' + fmtBR(restitReplantio);
@@ -2213,9 +2216,10 @@ async function confirmarEndossoReducao() {
     subvencao_depois:        parseBR(document.getElementById('end-subvencao-antes').value) * ratio,
     valor_pago_produtor:     parseBR(document.getElementById('end-valor-pago-antes').value),
     observacoes:             document.getElementById('end-obs').value.trim(),
-    restit_basica:           premioBasicaAntes    - premioBasicaAntes    * ratio,
-    restit_replantio:        premioReplantioAntes - premioReplantioAntes * ratio,
-    restit_total:            (premioBasicaAntes + premioReplantioAntes) - (premioBasicaAntes + premioReplantioAntes) * ratio
+    // Fórmula planilha: base = ValorPago - PremioBasicaDepois; Básica=base*0.8; Replantio=base*0.2
+    restit_basica:    (parseBR(document.getElementById('end-valor-pago-antes').value) - premioBasicaAntes * ratio) * 0.8,
+    restit_replantio: (parseBR(document.getElementById('end-valor-pago-antes').value) - premioBasicaAntes * ratio) * 0.2,
+    restit_total:     (parseBR(document.getElementById('end-valor-pago-antes').value) - premioBasicaAntes * ratio)
   };
   const btn = document.getElementById('btn-confirmar-endosso');
   btn.disabled = true;
