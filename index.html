@@ -2127,8 +2127,10 @@ function calcularEndossoReducao() {
   });
   const premioBasicaAntes    = parseBR(document.getElementById('end-premio-basica-antes').value);
   const premioReplantioAntes = parseBR(document.getElementById('end-premio-replantio-antes').value);
-  const restitBasica    = premioBasicaAntes    * (1 - ratio);
-  const restitReplantio = premioReplantioAntes * (1 - ratio);
+  const premioBasicaDepois    = premioBasicaAntes    * ratio;
+  const premioReplantioDepois = premioReplantioAntes * ratio;
+  const restitBasica    = premioBasicaAntes    - premioBasicaDepois;
+  const restitReplantio = premioReplantioAntes - premioReplantioDepois;
   const restitTotal     = restitBasica + restitReplantio;
   document.getElementById('end-restit-basica').textContent    = 'R$ ' + fmtBR(restitBasica);
   document.getElementById('end-restit-replantio').textContent = 'R$ ' + fmtBR(restitReplantio);
@@ -2157,6 +2159,9 @@ function abrirNovoEndosso() {
   });
   const btn = document.getElementById('btn-confirmar-endosso');
   if (btn) { btn.disabled = false; btn.textContent = '📐 Gerar Endosso'; }
+  // Reseta idioma para português ao abrir
+  if (_endossoIdioma === 'es') { _endossoIdioma = 'pt'; traduzirEndosso(); _endossoIdioma = 'pt'; }
+  document.getElementById('btn-traduzir-label').textContent = 'Traducir';
   openModal('modal-endosso-reducao');
 }
 
@@ -2208,9 +2213,9 @@ async function confirmarEndossoReducao() {
     subvencao_depois:        parseBR(document.getElementById('end-subvencao-antes').value) * ratio,
     valor_pago_produtor:     parseBR(document.getElementById('end-valor-pago-antes').value),
     observacoes:             document.getElementById('end-obs').value.trim(),
-    restit_basica:           premioBasicaAntes    * (1 - ratio),
-    restit_replantio:        premioReplantioAntes * (1 - ratio),
-    restit_total:            (premioBasicaAntes + premioReplantioAntes) * (1 - ratio)
+    restit_basica:           premioBasicaAntes    - premioBasicaAntes    * ratio,
+    restit_replantio:        premioReplantioAntes - premioReplantioAntes * ratio,
+    restit_total:            (premioBasicaAntes + premioReplantioAntes) - (premioBasicaAntes + premioReplantioAntes) * ratio
   };
   const btn = document.getElementById('btn-confirmar-endosso');
   btn.disabled = true;
@@ -2226,6 +2231,133 @@ async function confirmarEndossoReducao() {
     btn.disabled = false;
     btn.textContent = '📐 Gerar Endosso';
   }
+}
+
+let _endossoIdioma = 'pt'; // 'pt' ou 'es'
+
+const _endossoTextosPT = {
+  titulo:          '📐 Endosso — Ajuste de Área',
+  infoBox:         '<strong>Ajuste de Área:</strong> preencha as informações da apólice e os valores antes/depois. O sistema calcula automaticamente os valores a restituir.',
+  secIdentif:      'Identificação',
+  secValores:      'Valores — Antes / Depois',
+  colAntes:        'Antes',
+  colDepois:       'Depois',
+  lblApolicePA:    'Apólice ProAgro',
+  lblApoliceHDI:   'Apólice HDI',
+  lblProposta:     'Proposta HDI',
+  lblEndossoNum:   'Endosso nº',
+  lblDataEmissao:  'Data de Emissão',
+  lblNumItem:      'Nº do Item',
+  lblCpf:          'CPF / CNPJ',
+  lblCliente:      'Nome do Cliente',
+  lblVigIni:       'Vigência Início',
+  lblVigFim:       'Vigência Fim',
+  lblArea:         'Área Total (ha)',
+  lblLmiBasica:    'LMI Básica (R$)',
+  lblLmiReplantio: 'LMI Replantio (R$)',
+  lblPremioBasica: 'Prêmio Básica (R$)',
+  lblPremioRep:    'Prêmio Replantio (R$)',
+  lblPremioProd:   'Prêmio Produtor (R$)',
+  lblSubvencao:    'Subvenção Federal (R$)',
+  lblValorPago:    'Valor Pago pelo Produtor (R$)',
+  secDevolucao:    'Devolução calculada automaticamente',
+  lblRestitBasica:    'Prêmio Básica a Restituir',
+  lblRestitReplantio: 'Prêmio Replantio a Restituir',
+  lblRestitTotal:     'Total a Restituir',
+  lblObs:          'Observações',
+  phObs:           'Motivo do ajuste de área (opcional)',
+  infoEmail:       '📊 Ao confirmar, será gerado o Excel de endosso no modelo padrão e enviado por email.',
+  btnCancelar:     'Cancelar',
+  btnGerar:        '📐 Gerar Endosso',
+  btnTraduzir:     'Traducir',
+};
+
+const _endossoTextosES = {
+  titulo:          '📐 Endoso — Ajuste de Superficie',
+  infoBox:         '<strong>Ajuste de Superficie:</strong> complete la información de la póliza y los valores antes/después. El sistema calcula automáticamente los valores a restituir.',
+  secIdentif:      'Identificación',
+  secValores:      'Valores — Antes / Después',
+  colAntes:        'Antes',
+  colDepois:       'Después',
+  lblApolicePA:    'Póliza ProAgro',
+  lblApoliceHDI:   'Póliza HDI',
+  lblProposta:     'Propuesta HDI',
+  lblEndossoNum:   'Endoso nº',
+  lblDataEmissao:  'Fecha de Emisión',
+  lblNumItem:      'Nº de Ítem',
+  lblCpf:          'RFC / CURP',
+  lblCliente:      'Nombre del Cliente',
+  lblVigIni:       'Vigencia Inicio',
+  lblVigFim:       'Vigencia Fin',
+  lblArea:         'Superficie Total (ha)',
+  lblLmiBasica:    'LMI Básica (MXN)',
+  lblLmiReplantio: 'LMI Replantío (MXN)',
+  lblPremioBasica: 'Prima Básica (MXN)',
+  lblPremioRep:    'Prima Replantío (MXN)',
+  lblPremioProd:   'Prima Productor (MXN)',
+  lblSubvencao:    'Subsidio Federal (MXN)',
+  lblValorPago:    'Valor Pagado por el Productor (MXN)',
+  secDevolucao:    'Devolución calculada automáticamente',
+  lblRestitBasica:    'Prima Básica a Restituir',
+  lblRestitReplantio: 'Prima Replantío a Restituir',
+  lblRestitTotal:     'Total a Restituir',
+  lblObs:          'Observaciones',
+  phObs:           'Motivo del ajuste de superficie (opcional)',
+  infoEmail:       '📊 Al confirmar, se generará el Excel de endoso en el modelo estándar y se enviará por correo.',
+  btnCancelar:     'Cancelar',
+  btnGerar:        '📐 Generar Endoso',
+  btnTraduzir:     'Traduzir',
+};
+
+function traduzirEndosso() {
+  _endossoIdioma = _endossoIdioma === 'pt' ? 'es' : 'pt';
+  const t = _endossoIdioma === 'es' ? _endossoTextosES : _endossoTextosPT;
+  const $ = id => document.getElementById(id);
+
+  // Título
+  document.querySelector('#modal-endosso-reducao .modal-title').textContent = t.titulo;
+  // Info box
+  document.getElementById('end-info-box').innerHTML = t.infoBox;
+  // Seções
+  document.getElementById('end-sec-identif').textContent = t.secIdentif;
+  document.getElementById('end-sec-valores').textContent = t.secValores;
+  // Colunas Antes/Depois
+  document.getElementById('end-col-antes').textContent  = t.colAntes;
+  document.getElementById('end-col-depois').textContent = t.colDepois;
+  // Labels identificação
+  document.getElementById('end-lbl-apolice-pa').childNodes[0].textContent  = t.lblApolicePA + ' ';
+  document.getElementById('end-lbl-apolice-hdi').childNodes[0].textContent = t.lblApoliceHDI + ' ';
+  document.getElementById('end-lbl-proposta').textContent    = t.lblProposta;
+  document.getElementById('end-lbl-endosso-num').childNodes[0].textContent = t.lblEndossoNum + ' ';
+  document.getElementById('end-lbl-data-emissao').childNodes[0].textContent = t.lblDataEmissao + ' ';
+  document.getElementById('end-lbl-num-item').textContent    = t.lblNumItem;
+  document.getElementById('end-lbl-cpf').childNodes[0].textContent         = t.lblCpf + ' ';
+  document.getElementById('end-lbl-cliente').childNodes[0].textContent     = t.lblCliente + ' ';
+  document.getElementById('end-lbl-vig-ini').textContent     = t.lblVigIni;
+  document.getElementById('end-lbl-vig-fim').textContent     = t.lblVigFim;
+  // Labels valores
+  document.getElementById('end-lbl-area').childNodes[0].textContent        = t.lblArea + ' ';
+  document.getElementById('end-lbl-lmi-basica').textContent    = t.lblLmiBasica;
+  document.getElementById('end-lbl-lmi-replantio').textContent = t.lblLmiReplantio;
+  document.getElementById('end-lbl-premio-basica').childNodes[0].textContent = t.lblPremioBasica + ' ';
+  document.getElementById('end-lbl-premio-rep').textContent    = t.lblPremioRep;
+  document.getElementById('end-lbl-premio-prod').textContent   = t.lblPremioProd;
+  document.getElementById('end-lbl-subvencao').textContent     = t.lblSubvencao;
+  document.getElementById('end-lbl-valor-pago').textContent    = t.lblValorPago;
+  // Devolução
+  document.getElementById('end-sec-devolucao').textContent       = t.secDevolucao;
+  document.getElementById('end-lbl-restit-basica').textContent    = t.lblRestitBasica;
+  document.getElementById('end-lbl-restit-replantio').textContent = t.lblRestitReplantio;
+  document.getElementById('end-lbl-restit-total').textContent     = t.lblRestitTotal;
+  // Obs
+  document.getElementById('end-lbl-obs').textContent = t.lblObs;
+  document.getElementById('end-obs').placeholder     = t.phObs;
+  // Info email
+  document.getElementById('end-info-email').textContent = t.infoEmail;
+  // Botões
+  document.getElementById('end-btn-cancelar').textContent = t.btnCancelar;
+  document.getElementById('btn-confirmar-endosso').textContent = t.btnGerar;
+  document.getElementById('btn-traduzir-label').textContent = t.btnTraduzir;
 }
 
 async function carregarEndossos() {
@@ -2923,7 +3055,7 @@ async function verRelatorio(jobId) {
     </div>
     <div class="modal-body" style="padding:24px">
 
-      <div style="background:#f0faf4;border:1px solid #a8e0c0;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#1a3a2a">
+      <div id="end-info-box" style="background:#f0faf4;border:1px solid #a8e0c0;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#1a3a2a">
         <strong>Atenção:</strong> Preencha as condições aprovadas para esta proposta.
         Um email será enviado automaticamente para <strong>subscricao@proagroseguros.com</strong> ao confirmar.
       </div>
@@ -2961,7 +3093,7 @@ async function verRelatorio(jobId) {
         </div>
 
         <div style="grid-column:1/-1">
-          <label class="ce-label">Observações</label>
+          <label id="end-lbl-obs" class="ce-label">Observações</label>
           <textarea class="ce-input" id="aprov-obs" rows="3" placeholder="Observações adicionais sobre a aprovação (opcional)"
             style="resize:vertical"></textarea>
         </div>
@@ -2999,90 +3131,95 @@ async function verRelatorio(jobId) {
 <!-- Modal: Endosso Redução de Área -->
 <div class="modal-overlay" id="modal-endosso-reducao" style="align-items:flex-start;padding:20px;overflow-y:auto;background:rgba(255,255,255,0.97)">
   <div class="modal-card" style="max-width:600px;width:100%;margin:auto">
-    <div class="modal-header" style="background:#1a3a2a;border-radius:10px 10px 0 0">
-      <div class="modal-title" style="color:#fff">📐 Endosso — Ajuste de Área</div>
-      <button class="modal-close" style="color:#fff;opacity:.8" onclick="closeModal('modal-endosso-reducao')">✕</button>
+    <div class="modal-header" style="background:#1a3a2a;border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:space-between;padding:14px 20px">
+      <div class="modal-title" style="color:#fff;margin:0">📐 Endosso — Ajuste de Área</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button id="btn-traduzir-endosso" onclick="traduzirEndosso()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px">
+          🇲🇽 <span id="btn-traduzir-label">Traducir</span>
+        </button>
+        <button class="modal-close" style="color:#fff;opacity:.8;background:none;border:none;font-size:18px;cursor:pointer" onclick="closeModal('modal-endosso-reducao')">✕</button>
+      </div>
     </div>
     <div class="modal-body" style="padding:24px">
       <div style="background:#f0faf4;border:1px solid #a8e0c0;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#1a3a2a">
         <strong>Ajuste de Área:</strong> preencha as informações da apólice e os valores antes/depois. O sistema calcula automaticamente os valores a restituir.
       </div>
-      <div style="font-size:11px;font-weight:700;color:#1a3a2a;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #1a3a2a;padding-bottom:4px;margin-bottom:14px">Identificação</div>
+      <div id="end-sec-identif" style="font-size:11px;font-weight:700;color:#1a3a2a;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #1a3a2a;padding-bottom:4px;margin-bottom:14px">Identificação</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
-        <div><label class="ce-label">Apólice ProAgro <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-apolice-proagro" placeholder="ex: 10-SP-1-01216"></div>
-        <div><label class="ce-label">Apólice HDI <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-apolice-hdi" placeholder="ex: 01025129000289000000"></div>
-        <div><label class="ce-label">Proposta HDI</label><input class="ce-input" id="end-proposta-hdi" placeholder="ex: 94258"></div>
-        <div><label class="ce-label">Endosso nº <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-numero" placeholder="ex: 000001"></div>
-        <div><label class="ce-label">Data de Emissão <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-data-emissao" type="date"></div>
-        <div><label class="ce-label">Nº do Item</label><input class="ce-input" id="end-numero-item" placeholder="ex: 2"></div>
-        <div><label class="ce-label">CPF / CNPJ <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-cpf" placeholder="ex: 11282681915"></div>
-        <div><label class="ce-label">Nome do Cliente <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-cliente" placeholder="Nome completo"></div>
-        <div><label class="ce-label">Vigência Início</label><input class="ce-input" id="end-vig-ini" type="date"></div>
-        <div><label class="ce-label">Vigência Fim</label><input class="ce-input" id="end-vig-fim" type="date"></div>
+        <div><label id="end-lbl-apolice-pa" class="ce-label">Apólice ProAgro <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-apolice-proagro" placeholder="ex: 10-SP-1-01216"></div>
+        <div><label id="end-lbl-apolice-hdi" class="ce-label">Apólice HDI <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-apolice-hdi" placeholder="ex: 01025129000289000000"></div>
+        <div><label id="end-lbl-proposta" class="ce-label">Proposta HDI</label><input class="ce-input" id="end-proposta-hdi" placeholder="ex: 94258"></div>
+        <div><label id="end-lbl-endosso-num" class="ce-label">Endosso nº <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-numero" placeholder="ex: 000001"></div>
+        <div><label id="end-lbl-data-emissao" class="ce-label">Data de Emissão <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-data-emissao" type="date"></div>
+        <div><label id="end-lbl-num-item" class="ce-label">Nº do Item</label><input class="ce-input" id="end-numero-item" placeholder="ex: 2"></div>
+        <div><label id="end-lbl-cpf" class="ce-label">CPF / CNPJ <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-cpf" placeholder="ex: 11282681915"></div>
+        <div><label id="end-lbl-cliente" class="ce-label">Nome do Cliente <span style="color:#c0392b">*</span></label><input class="ce-input" id="end-cliente" placeholder="Nome completo"></div>
+        <div><label id="end-lbl-vig-ini" class="ce-label">Vigência Início</label><input class="ce-input" id="end-vig-ini" type="date"></div>
+        <div><label id="end-lbl-vig-fim" class="ce-label">Vigência Fim</label><input class="ce-input" id="end-vig-fim" type="date"></div>
       </div>
-      <div style="font-size:11px;font-weight:700;color:#1a3a2a;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #1a3a2a;padding-bottom:4px;margin-bottom:14px">Valores — Antes / Depois</div>
+      <div id="end-sec-valores" style="font-size:11px;font-weight:700;color:#1a3a2a;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #1a3a2a;padding-bottom:4px;margin-bottom:14px">Valores — Antes / Depois</div>
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:6px">
         <div></div>
-        <div style="font-size:11px;color:var(--gray400);font-weight:600;text-transform:uppercase;text-align:center">Antes</div>
-        <div style="font-size:11px;color:var(--gray400);font-weight:600;text-transform:uppercase;text-align:center">Depois</div>
+        <div id="end-col-antes" style="font-size:11px;color:var(--gray400);font-weight:600;text-transform:uppercase;text-align:center">Antes</div>
+        <div id="end-col-depois" style="font-size:11px;color:var(--gray400);font-weight:600;text-transform:uppercase;text-align:center">Depois</div>
       </div>
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
-        <label class="ce-label" style="margin:0">Área Total (ha) <span style="color:#c0392b">*</span></label>
+        <label id="end-lbl-area" class="ce-label" style="margin:0">Área Total (ha) <span style="color:#c0392b">*</span></label>
         <input class="ce-input" id="end-area-antes" placeholder="0,00" oninput="calcularEndossoReducao()" style="text-align:right">
         <input class="ce-input" id="end-area-depois" placeholder="0,00" oninput="calcularEndossoReducao()" style="text-align:right">
       </div>
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
-        <label class="ce-label" style="margin:0">LMI Básica (R$)</label>
+        <label id="end-lbl-lmi-basica" class="ce-label" style="margin:0">LMI Básica (R$)</label>
         <input class="ce-input" id="end-lmi-basica-antes" placeholder="0,00" oninput="calcularEndossoReducao()" style="text-align:right">
         <input class="ce-input" id="end-lmi-basica-depois" placeholder="0,00" style="text-align:right;background:#f0faf4" readonly>
       </div>
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
-        <label class="ce-label" style="margin:0">LMI Replantio (R$)</label>
+        <label id="end-lbl-lmi-replantio" class="ce-label" style="margin:0">LMI Replantio (R$)</label>
         <input class="ce-input" id="end-lmi-replantio-antes" placeholder="0,00" oninput="calcularEndossoReducao()" style="text-align:right">
         <input class="ce-input" id="end-lmi-replantio-depois" placeholder="0,00" style="text-align:right;background:#f0faf4" readonly>
       </div>
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
-        <label class="ce-label" style="margin:0">Prêmio Básica (R$) <span style="color:#c0392b">*</span></label>
+        <label id="end-lbl-premio-basica" class="ce-label" style="margin:0">Prêmio Básica (R$) <span style="color:#c0392b">*</span></label>
         <input class="ce-input" id="end-premio-basica-antes" placeholder="0,00" oninput="calcularEndossoReducao()" style="text-align:right">
         <input class="ce-input" id="end-premio-basica-depois" placeholder="0,00" style="text-align:right;background:#f0faf4" readonly>
       </div>
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
-        <label class="ce-label" style="margin:0">Prêmio Replantio (R$)</label>
+        <label id="end-lbl-premio-rep" class="ce-label" style="margin:0">Prêmio Replantio (R$)</label>
         <input class="ce-input" id="end-premio-replantio-antes" placeholder="0,00" oninput="calcularEndossoReducao()" style="text-align:right">
         <input class="ce-input" id="end-premio-replantio-depois" placeholder="0,00" style="text-align:right;background:#f0faf4" readonly>
       </div>
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
-        <label class="ce-label" style="margin:0">Prêmio Produtor (R$)</label>
+        <label id="end-lbl-premio-prod" class="ce-label" style="margin:0">Prêmio Produtor (R$)</label>
         <input class="ce-input" id="end-premio-produtor-antes" placeholder="0,00" oninput="calcularEndossoReducao()" style="text-align:right">
         <input class="ce-input" id="end-premio-produtor-depois" placeholder="0,00" style="text-align:right;background:#f0faf4" readonly>
       </div>
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px">
-        <label class="ce-label" style="margin:0">Subvenção Federal (R$)</label>
+        <label id="end-lbl-subvencao" class="ce-label" style="margin:0">Subvenção Federal (R$)</label>
         <input class="ce-input" id="end-subvencao-antes" placeholder="0,00" oninput="calcularEndossoReducao()" style="text-align:right">
         <input class="ce-input" id="end-subvencao-depois" placeholder="0,00" style="text-align:right;background:#f0faf4" readonly>
       </div>
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:16px">
-        <label class="ce-label" style="margin:0">Valor Pago pelo Produtor (R$)</label>
+        <label id="end-lbl-valor-pago" class="ce-label" style="margin:0">Valor Pago pelo Produtor (R$)</label>
         <input class="ce-input" id="end-valor-pago-antes" placeholder="0,00" style="text-align:right" oninput="calcularEndossoReducao()">
         <div style="font-size:13px;color:var(--gray400);text-align:center">—</div>
       </div>
       <div style="background:#fff8e1;border:1px solid #fbbf24;border-radius:8px;padding:14px 16px;margin-top:4px">
-        <div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Devolução calculada automaticamente</div>
+        <div id="end-sec-devolucao" style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Devolução calculada automaticamente</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-          <div><div style="font-size:11px;color:#92400e;margin-bottom:4px">Prêmio Básica a Restituir</div><div style="font-size:15px;font-weight:600;color:#1a3a2a" id="end-restit-basica">R$ 0,00</div></div>
-          <div><div style="font-size:11px;color:#92400e;margin-bottom:4px">Prêmio Replantio a Restituir</div><div style="font-size:15px;font-weight:600;color:#1a3a2a" id="end-restit-replantio">R$ 0,00</div></div>
-          <div><div style="font-size:11px;color:#92400e;margin-bottom:4px">Total a Restituir</div><div style="font-size:17px;font-weight:700;color:#c0392b" id="end-restit-total">R$ 0,00</div></div>
+          <div><div id="end-lbl-restit-basica" style="font-size:11px;color:#92400e;margin-bottom:4px">Prêmio Básica a Restituir</div><div style="font-size:15px;font-weight:600;color:#1a3a2a" id="end-restit-basica">R$ 0,00</div></div>
+          <div><div id="end-lbl-restit-replantio" style="font-size:11px;color:#92400e;margin-bottom:4px">Prêmio Replantio a Restituir</div><div style="font-size:15px;font-weight:600;color:#1a3a2a" id="end-restit-replantio">R$ 0,00</div></div>
+          <div><div id="end-lbl-restit-total" style="font-size:11px;color:#92400e;margin-bottom:4px">Total a Restituir</div><div style="font-size:17px;font-weight:700;color:#c0392b" id="end-restit-total">R$ 0,00</div></div>
         </div>
       </div>
       <div style="margin-top:16px">
         <label class="ce-label">Observações</label>
         <textarea class="ce-input" id="end-obs" rows="2" placeholder="Motivo do ajuste de área (opcional)" style="resize:vertical"></textarea>
       </div>
-      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-top:14px;font-size:12px;color:#1d4ed8">
+      <div id="end-info-email" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-top:14px;font-size:12px;color:#1d4ed8">
         📊 Ao confirmar, será gerado o Excel de endosso no modelo padrão e enviado por email.
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
-        <button class="btn btn-outline" onclick="closeModal('modal-endosso-reducao')">Cancelar</button>
+        <button id="end-btn-cancelar" class="btn btn-outline" onclick="closeModal('modal-endosso-reducao')">Cancelar</button>
         <button class="btn btn-primary" id="btn-confirmar-endosso" onclick="confirmarEndossoReducao()">📐 Gerar Endosso</button>
       </div>
     </div>
