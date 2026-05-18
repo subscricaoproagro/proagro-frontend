@@ -2231,6 +2231,7 @@ async function confirmarEndossoReducao() {
   const premioReplantioAntes = parseBR(document.getElementById('end-premio-replantio-antes').value);
   const body = {
     tipo: 'reducao_area',
+    idioma: _endossoIdioma,
     apolice_proagro:         apoliceProagro,
     apolice_hdi:             document.getElementById('end-apolice-hdi').value.trim(),
     proposta_hdi:            document.getElementById('end-proposta-hdi').value.trim(),
@@ -2511,11 +2512,11 @@ function traduzirCancelamento() {
   document.getElementById('btn-confirmar-cancelamento').textContent = t.btnGerar;
   document.getElementById('btn-traduzir-canc-label').textContent = t.btnTraduzir;
 
-  // Traduz as opções do select de motivo
+  // Traduz SOMENTE o texto exibido — o value (PT) não muda nunca
   const sel = document.getElementById('canc-motivo');
   if (sel) {
     const opts = sel.querySelectorAll('option');
-    opts[0].textContent = t.secMotivo + '...';
+    opts[0].textContent = _cancIdioma === 'es' ? 'Seleccione...' : 'Selecione...';
     t.motivoOpts.forEach((txt, i) => { if (opts[i+1]) opts[i+1].textContent = txt; });
   }
 }
@@ -2577,6 +2578,7 @@ async function confirmarEndossoCancelamento() {
 
   const body = {
     tipo:              'cancelamento',
+    idioma:            _cancIdioma,
     apolice_proagro:   apolice,
     apolice_hdi:       document.getElementById('canc-apolice-hdi').value.trim(),
     proposta_hdi:      document.getElementById('canc-proposta-hdi').value.trim(),
@@ -3582,7 +3584,7 @@ async function verRelatorio(jobId) {
           <option value="Cancelamento solicitado pelo produtor">Cancelamento solicitado pelo produtor</option>
           <option value="Cancelamento por inadimplência">Cancelamento por inadimplência</option>
           <option value="Cancelamento por sinistro">Cancelamento por sinistro</option>
-          <option value="outro">Outro (especificar)</option>
+          <option value="Outro">Outro (especificar)</option>
         </select>
         <textarea class="ce-input" id="canc-motivo-custom" rows="2" placeholder="Descreva o motivo..." style="display:none;margin-top:8px;resize:vertical"></textarea>
       </div>
