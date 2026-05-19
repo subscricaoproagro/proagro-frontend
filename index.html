@@ -290,8 +290,9 @@
           <div class="card-header"><div class="card-title">Status do sistema</div></div>
           <div class="card-body" id="system-status">
             <div style="display:flex;flex-direction:column;gap:14px">
-              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;color:var(--gray600)">🔌 Backend (servidor local)</span><span id="status-backend" class="badge badge-neutral">Verificando…</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;color:var(--gray600)">🔌 Backend (Railway)</span><span id="status-backend" class="badge badge-neutral">Verificando…</span></div>
               <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;color:var(--gray600)">🗄️ Supabase</span><span id="status-supa" class="badge badge-neutral">Verificando…</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;color:var(--gray600)">⚙️ Worker local</span><span id="status-worker" class="badge badge-neutral">Verificando…</span></div>
               <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;color:var(--gray600)">🛰️ Google Earth Engine</span><span class="badge badge-success"><span class="badge-dot"></span>Online</span></div>
               <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;color:var(--gray600)">🌦️ Servidor SFTP</span><span class="badge badge-success"><span class="badge-dot"></span>Online</span></div>
             </div>
@@ -589,6 +590,11 @@
 const ALLOWED_DOMAINS = ['proagroseguros.com', 'proagroinsur.tech'];
 let BACKEND_URL = (() => {
   const saved = localStorage.getItem('pa_backend_url') || '';
+  // Se a URL salva for do ngrok, ignora e força busca do Supabase
+  if (saved.includes('ngrok') || saved.includes('saskatchewan') || saved.includes('superjet')) {
+    localStorage.removeItem('pa_backend_url');
+    return '';
+  }
   return saved;
 })();
 let TOKEN = sessionStorage.getItem('pa_token') || '';
@@ -778,6 +784,23 @@ async function verificarBackend() {
     el.className = 'badge badge-error';
   }
   document.getElementById('status-supa').innerHTML = '<span class="badge-dot"></span>Online';
+  // Verifica se worker está ativo (job processado nos últimos 2 minutos)
+  try {
+    const workerEl = document.getElementById('status-worker');
+    if (workerEl) {
+      const jobs = await api('GET', '/jobs');
+      const agora = Date.now();
+      const workerAtivo = jobs && jobs.some(j => {
+        if (!j.updated_at && !j.concluido_at) return false;
+        const ts = new Date(j.concluido_at || j.updated_at).getTime();
+        return (agora - ts) < 2 * 60 * 1000; // 2 minutos
+      });
+      workerEl.innerHTML = workerAtivo
+        ? '<span class="badge-dot"></span>Online'
+        : 'Aguardando job';
+      workerEl.className = workerAtivo ? 'badge badge-success' : 'badge badge-neutral';
+    }
+  } catch {}
   document.getElementById('status-supa').className = 'badge badge-success';
 }
 
