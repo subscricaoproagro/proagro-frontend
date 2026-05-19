@@ -589,11 +589,6 @@
 const ALLOWED_DOMAINS = ['proagroseguros.com', 'proagroinsur.tech'];
 let BACKEND_URL = (() => {
   const saved = localStorage.getItem('pa_backend_url') || '';
-  // Se a URL salva for do ngrok, ignora e força busca do Supabase
-  if (saved.includes('ngrok') || saved.includes('saskatchewan') || saved.includes('superjet')) {
-    localStorage.removeItem('pa_backend_url');
-    return '';
-  }
   return saved;
 })();
 let TOKEN = sessionStorage.getItem('pa_token') || '';
