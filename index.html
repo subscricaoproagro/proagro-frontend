@@ -2548,6 +2548,58 @@ function selecionarTipoEndosso(tipo) {
   // Futuros tipos: mudanca_variedade, mudanca_datas, alteracao_beneficiario
 }
 
+let _cancLinhaIdx = 0;
+
+function _motivoOptions() {
+  return `<option value="">Selecione...</option>
+    <option value="Cancelamento solicitado pelo corretor">Cancelamento solicitado pelo corretor</option>
+    <option value="Cancelamento solicitado pelo produtor">Cancelamento solicitado pelo produtor</option>
+    <option value="Cancelamento por inadimplência">Cancelamento por inadimplência</option>
+    <option value="Cancelamento por sinistro">Cancelamento por sinistro</option>
+    <option value="Outro">Outro (especificar)</option>`;
+}
+
+function adicionarLinhaCancelamento() {
+  const idx = ++_cancLinhaIdx;
+  const hoje = new Date().toISOString().split('T')[0];
+  const tbody = document.getElementById('canc-linhas');
+  const tr = document.createElement('tr');
+  tr.id = 'canc-linha-' + idx;
+  tr.style.borderBottom = '1px solid #f0e8ff';
+  tr.innerHTML = `
+    <td style="padding:4px 6px;color:#7c3aed;font-weight:700;font-size:12px">${idx}</td>
+    <td style="padding:4px 4px"><input class="ce-input" style="min-width:110px;font-size:11px;padding:4px 6px" placeholder="10-SP-1-01292" data-canc="apolice_proagro"></td>
+    <td style="padding:4px 4px"><input class="ce-input" style="min-width:130px;font-size:11px;padding:4px 6px" placeholder="01025129..." data-canc="apolice_hdi"></td>
+    <td style="padding:4px 4px"><input class="ce-input" style="min-width:80px;font-size:11px;padding:4px 6px" placeholder="94258" data-canc="proposta_hdi"></td>
+    <td style="padding:4px 4px"><input class="ce-input" style="min-width:80px;font-size:11px;padding:4px 6px" placeholder="000001" data-canc="endosso_numero"></td>
+    <td style="padding:4px 4px"><input class="ce-input" style="min-width:110px;font-size:11px;padding:4px 6px" placeholder="Endosso cancel.:000000" data-canc="endosso_cancelamento"></td>
+    <td style="padding:4px 4px"><input class="ce-input" type="date" value="${hoje}" style="min-width:120px;font-size:11px;padding:4px 6px" data-canc="data_emissao"></td>
+    <td style="padding:4px 4px"><input class="ce-input" type="date" value="${hoje}" style="min-width:120px;font-size:11px;padding:4px 6px" data-canc="vigencia_ini"></td>
+    <td style="padding:4px 4px"><input class="ce-input" type="date" style="min-width:120px;font-size:11px;padding:4px 6px" data-canc="vigencia_fim"></td>
+    <td style="padding:4px 4px"><input class="ce-input" style="min-width:100px;font-size:11px;padding:4px 6px" placeholder="79598587134" data-canc="cpf_cnpj"></td>
+    <td style="padding:4px 4px"><input class="ce-input" style="min-width:140px;font-size:11px;padding:4px 6px" placeholder="Nome completo" data-canc="nome_cliente"></td>
+    <td style="padding:4px 4px">
+      <select class="ce-input" style="min-width:160px;font-size:11px;padding:4px 6px" data-canc="motivo" onchange="toggleMotivoLinhaCustom(this, ${idx})">
+        ${_motivoOptions()}
+      </select>
+      <textarea class="ce-input" id="canc-custom-${idx}" rows="1" placeholder="Descreva..." style="display:none;min-width:160px;font-size:11px;padding:4px 6px;margin-top:3px;resize:vertical" data-canc="motivo_custom"></textarea>
+    </td>
+    <td style="padding:4px 6px">
+      <button onclick="removerLinhaCancelamento(${idx})" style="background:none;border:1px solid #fca5a5;color:#c0392b;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:13px">🗑</button>
+    </td>`;
+  tbody.appendChild(tr);
+}
+
+function toggleMotivoLinhaCustom(sel, idx) {
+  const txt = document.getElementById('canc-custom-' + idx);
+  if (txt) txt.style.display = sel.value === 'Outro' ? '' : 'none';
+}
+
+function removerLinhaCancelamento(idx) {
+  const tr = document.getElementById('canc-linha-' + idx);
+  if (tr) tr.remove();
+}
+
 function toggleMotivoCancelCustom() {
   const sel = document.getElementById('canc-motivo');
   const txt = document.getElementById('canc-motivo-custom');
@@ -2556,73 +2608,62 @@ function toggleMotivoCancelCustom() {
 }
 
 function abrirEndossoCancelamento() {
-  ['canc-apolice-proagro','canc-apolice-hdi','canc-proposta-hdi','canc-endosso-num',
-   'canc-endosso-cancel','canc-cpf','canc-cliente','canc-motivo-custom'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = '';
-  });
-  const sel = document.getElementById('canc-motivo');
-  if (sel) sel.value = '';
-  const txt = document.getElementById('canc-motivo-custom');
-  if (txt) txt.style.display = 'none';
+  // Limpa tabela e reseta contador
+  _cancLinhaIdx = 0;
+  document.getElementById('canc-linhas').innerHTML = '';
   // Reseta idioma para PT ao abrir
   if (_cancIdioma === 'es') { _cancIdioma = 'pt'; traduzirCancelamento(); }
   document.getElementById('btn-traduzir-canc-label').textContent = 'Traducir';
-  ['canc-data-emissao','canc-vig-ini','canc-vig-fim'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = new Date().toISOString().split('T')[0];
-  });
   const btn = document.getElementById('btn-confirmar-cancelamento');
-  if (btn) { btn.disabled = false; btn.textContent = '🚫 Gerar Endosso de Cancelamento'; }
+  if (btn) { btn.disabled = false; btn.textContent = '❌ Gerar Endosso de Cancelamento'; }
+  // Adiciona a primeira linha automaticamente
+  adicionarLinhaCancelamento();
   openModal('modal-endosso-cancelamento');
 }
 
 async function confirmarEndossoCancelamento() {
-  const apolice     = document.getElementById('canc-apolice-proagro').value.trim();
-  const endossoNum  = document.getElementById('canc-endosso-num').value.trim();
-  const dataEmissao = document.getElementById('canc-data-emissao').value;
-  const cpf         = document.getElementById('canc-cpf').value.trim();
-  const cliente     = document.getElementById('canc-cliente').value.trim();
-  const motivoSel   = document.getElementById('canc-motivo').value;
-  const motivoCustom = document.getElementById('canc-motivo-custom').value.trim();
-  const motivo      = motivoSel === 'outro' ? motivoCustom : motivoSel;
-
-  if (!apolice || !endossoNum || !dataEmissao || !cpf || !cliente) {
-    showToast('Preencha os campos obrigatórios (marcados com *).', 'error'); return;
+  const linhas = [];
+  const rows = document.querySelectorAll('#canc-linhas tr');
+  if (rows.length === 0) {
+    showToast('Adicione pelo menos uma solicitação.', 'error'); return;
   }
-  if (!motivo) {
-    showToast('Informe o motivo do cancelamento.', 'error'); return;
+  for (const row of rows) {
+    const get = campo => { const el = row.querySelector(`[data-canc="${campo}"]`); return el ? el.value.trim() : ''; };
+    const motivoSel = get('motivo');
+    const motivo = motivoSel === 'Outro' ? get('motivo_custom') : motivoSel;
+    if (!get('apolice_proagro') || !get('endosso_numero') || !get('data_emissao') || !get('cpf_cnpj') || !get('nome_cliente')) {
+      showToast('Preencha os campos obrigatórios (*) em todas as linhas.', 'error'); return;
+    }
+    if (!motivo) { showToast('Selecione o motivo em todas as linhas.', 'error'); return; }
+    linhas.push({
+      apolice_proagro: get('apolice_proagro'), apolice_hdi: get('apolice_hdi'),
+      proposta_hdi: get('proposta_hdi'), endosso_numero: get('endosso_numero'),
+      endosso_cancelamento: get('endosso_cancelamento'), data_emissao: get('data_emissao'),
+      vigencia_ini: get('vigencia_ini'), vigencia_fim: get('vigencia_fim'),
+      cpf_cnpj: get('cpf_cnpj'), nome_cliente: get('nome_cliente'), motivo
+    });
   }
-
   const body = {
-    tipo:              'cancelamento',
-    idioma:            _cancIdioma,
-    apolice_proagro:   apolice,
-    apolice_hdi:       document.getElementById('canc-apolice-hdi').value.trim(),
-    proposta_hdi:      document.getElementById('canc-proposta-hdi').value.trim(),
-    endosso_numero:    endossoNum,
-    endosso_cancelamento: document.getElementById('canc-endosso-cancel').value.trim(),
-    data_emissao:      dataEmissao,
-    vigencia_ini:      document.getElementById('canc-vig-ini').value,
-    vigencia_fim:      document.getElementById('canc-vig-fim').value,
-    cpf_cnpj:          cpf,
-    nome_cliente:      cliente,
-    motivo:            motivo
+    tipo: 'cancelamento', idioma: _cancIdioma, linhas,
+    apolice_proagro: linhas[0].apolice_proagro, apolice_hdi: linhas[0].apolice_hdi,
+    proposta_hdi: linhas[0].proposta_hdi, endosso_numero: linhas[0].endosso_numero,
+    endosso_cancelamento: linhas[0].endosso_cancelamento, data_emissao: linhas[0].data_emissao,
+    vigencia_ini: linhas[0].vigencia_ini, vigencia_fim: linhas[0].vigencia_fim,
+    cpf_cnpj: linhas[0].cpf_cnpj, nome_cliente: linhas[0].nome_cliente, motivo: linhas[0].motivo
   };
-
   const btn = document.getElementById('btn-confirmar-cancelamento');
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner" style="border-top-color:#fff;width:14px;height:14px"></div> Gerando…';
-
   try {
     await api('POST', '/endossos', body);
     closeModal('modal-endosso-cancelamento');
-    showToast('✅ Endosso de Cancelamento gerado e enviado por email!', 'success');
+    showToast(`✅ Endosso gerado com ${linhas.length} solicitação(ões) e enviado por email!`, 'success');
     carregarEndossos();
   } catch(e) {
     showToast('Erro: ' + e.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = '🚫 Gerar Endosso de Cancelamento';
+    btn.textContent = '❌ Gerar Endosso de Cancelamento';
   }
 }
 
@@ -3562,7 +3603,7 @@ async function verRelatorio(jobId) {
 
 <!-- Modal: Endosso Cancelamento -->
 <div class="modal-overlay" id="modal-endosso-cancelamento" style="align-items:flex-start;padding:20px;overflow-y:auto;background:rgba(255,255,255,0.97)">
-  <div class="modal-card" style="max-width:560px;width:100%;margin:auto">
+  <div class="modal-card" style="max-width:1100px;width:100%;margin:auto">
     <div class="modal-header" style="background:#7c3aed;border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:space-between;padding:14px 20px">
       <div class="modal-title" style="color:#fff;margin:0">❌ Endosso de Cancelamento</div>
       <div style="display:flex;align-items:center;gap:10px">
@@ -3575,44 +3616,44 @@ async function verRelatorio(jobId) {
     <div class="modal-body" style="padding:24px">
 
       <div id="canc-info-box" style="background:#faf5ff;border:1px solid #d8b4fe;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#6d28d9">
-        <strong id="canc-info-title">Cancelamento de Endosso:</strong> <span id="canc-info-desc">preencha os dados da apólice e o motivo do cancelamento.</span>
+        <strong id="canc-info-title">Cancelamento de Endosso:</strong> <span id="canc-info-desc">adicione uma ou mais solicitações. Cada linha é um pedido de cancelamento.</span>
       </div>
 
-      <div id="canc-sec-identif" style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #7c3aed;padding-bottom:4px;margin-bottom:14px">Identificação</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
-        <div><label id="canc-lbl-apolice-pa" class="ce-label">Apólice ProAgro <span style="color:#c0392b">*</span></label><input class="ce-input" id="canc-apolice-proagro" placeholder="ex: 10-SP-1-01292"></div>
-        <div><label id="canc-lbl-apolice-hdi" class="ce-label">Apólice HDI</label><input class="ce-input" id="canc-apolice-hdi" placeholder="ex: 01025129000289000000"></div>
-        <div><label id="canc-lbl-proposta" class="ce-label">Proposta HDI</label><input class="ce-input" id="canc-proposta-hdi" placeholder="ex: 94258"></div>
-        <div><label id="canc-lbl-endosso-num" class="ce-label">Endosso nº <span style="color:#c0392b">*</span></label><input class="ce-input" id="canc-endosso-num" placeholder="ex: 000001"></div>
-        <div><label id="canc-lbl-endosso-cancel" class="ce-label">Endosso de Cancelamento</label><input class="ce-input" id="canc-endosso-cancel" placeholder="ex: Endosso de cancelamento:000000"></div>
-        <div><label id="canc-lbl-data-emissao" class="ce-label">Data de Emissão <span style="color:#c0392b">*</span></label><input class="ce-input" id="canc-data-emissao" type="date"></div>
-        <div><label id="canc-lbl-vig-ini" class="ce-label">Vigência Início</label><input class="ce-input" id="canc-vig-ini" type="date"></div>
-        <div><label id="canc-lbl-vig-fim" class="ce-label">Vigência Fim</label><input class="ce-input" id="canc-vig-fim" type="date"></div>
-        <div><label id="canc-lbl-cpf" class="ce-label">CPF / CNPJ <span style="color:#c0392b">*</span></label><input class="ce-input" id="canc-cpf" placeholder="ex: 79598587134"></div>
-        <div><label id="canc-lbl-cliente" class="ce-label">Nome do Cliente <span style="color:#c0392b">*</span></label><input class="ce-input" id="canc-cliente" placeholder="Nome completo"></div>
+      <!-- Cabeçalho da tabela -->
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px" id="canc-tabela">
+          <thead>
+            <tr style="background:#f3f0ff">
+              <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">#</th>
+              <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">Apólice ProAgro *</th>
+              <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">Apólice HDI</th>
+              <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">Proposta HDI</th>
+              <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">Endosso nº *</th>
+              <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">Endosso Cancel.</th>
+              <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">Data Emissão *</th>
+              <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">Vig. Início</th>
+              <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">Vig. Fim</th>
+              <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">CPF/CNPJ *</th>
+              <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">Cliente *</th>
+              <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">Motivo *</th>
+              <th style="padding:8px 6px;border-bottom:2px solid #7c3aed"></th>
+            </tr>
+          </thead>
+          <tbody id="canc-linhas"></tbody>
+        </table>
       </div>
 
-      <div id="canc-sec-motivo" style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #7c3aed;padding-bottom:4px;margin-bottom:14px">Motivo</div>
-      <div style="margin-bottom:16px">
-        <label id="canc-lbl-motivo" class="ce-label">Motivo do Cancelamento <span style="color:#c0392b">*</span></label>
-        <select class="ce-input" id="canc-motivo" onchange="toggleMotivoCancelCustom()">
-          <option value="">Selecione...</option>
-          <option value="Cancelamento solicitado pelo corretor">Cancelamento solicitado pelo corretor</option>
-          <option value="Cancelamento solicitado pelo produtor">Cancelamento solicitado pelo produtor</option>
-          <option value="Cancelamento por inadimplência">Cancelamento por inadimplência</option>
-          <option value="Cancelamento por sinistro">Cancelamento por sinistro</option>
-          <option value="Outro">Outro (especificar)</option>
-        </select>
-        <textarea class="ce-input" id="canc-motivo-custom" rows="2" placeholder="Descreva o motivo..." style="display:none;margin-top:8px;resize:vertical"></textarea>
-      </div>
+      <button onclick="adicionarLinhaCancelamento()" style="margin-top:12px;background:#f3f0ff;border:1px dashed #7c3aed;color:#7c3aed;border-radius:6px;padding:7px 16px;font-size:13px;cursor:pointer;font-weight:600">
+        + Adicionar Solicitação
+      </button>
 
-      <div id="canc-info-aviso" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-top:4px;font-size:12px;color:#991b1b">
+      <div id="canc-info-aviso" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-top:16px;font-size:12px;color:#991b1b">
         ⚠️ O cancelamento será registrado e o Excel gerado será enviado por email.
       </div>
 
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
         <button id="canc-btn-cancelar" class="btn btn-outline" onclick="closeModal('modal-endosso-cancelamento')">Cancelar</button>
-        <button class="btn btn-primary" id="btn-confirmar-cancelamento" style="background:#7c3aed" onclick="confirmarEndossoCancelamento()">🚫 Gerar Endosso de Cancelamento</button>
+        <button class="btn btn-primary" id="btn-confirmar-cancelamento" style="background:#7c3aed" onclick="confirmarEndossoCancelamento()">❌ Gerar Endosso de Cancelamento</button>
       </div>
     </div>
   </div>
