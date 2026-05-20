@@ -429,9 +429,27 @@
 
     <!-- CONDIÇÃO ESPECIAL -->
     <div id="page-condicao-especial" class="page-section">
-      <div class="section-header">
-        <div class="section-title">Condição Especial</div>
-        <div class="section-sub">Análises marcadas como condição especial</div>
+      <div class="section-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <div class="section-title">Condição Especial</div>
+          <div class="section-sub">Análises marcadas como condição especial</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select class="form-input" id="ce-filter" style="width:auto;padding:8px 12px;font-size:13px" onchange="carregarCondicoesEspeciais()">
+            <option value="">Todas</option>
+            <option value="pendente">⏳ Pendentes de análise</option>
+            <option value="aprovado">✅ CE Aprovadas</option>
+            <option value="balcao">🏦 Balcão</option>
+            <option value="recusado">❌ Recusadas</option>
+          </select>
+          <button class="btn-sm btn-outline" onclick="carregarCondicoesEspeciais()">↻ Atualizar</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <div id="ce-count-pendente" onclick="document.getElementById('ce-filter').value='pendente';carregarCondicoesEspeciais()" style="cursor:pointer;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#92400e">⏳ Pendentes: <span id="ce-n-pendente">—</span></div>
+        <div id="ce-count-aprovado" onclick="document.getElementById('ce-filter').value='aprovado';carregarCondicoesEspeciais()" style="cursor:pointer;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#166534">✅ Aprovadas: <span id="ce-n-aprovado">—</span></div>
+        <div id="ce-count-balcao" onclick="document.getElementById('ce-filter').value='balcao';carregarCondicoesEspeciais()" style="cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#1d4ed8">🏦 Balcão: <span id="ce-n-balcao">—</span></div>
+        <div id="ce-count-recusado" onclick="document.getElementById('ce-filter').value='recusado';carregarCondicoesEspeciais()" style="cursor:pointer;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#c0392b">❌ Recusadas: <span id="ce-n-recusado">—</span></div>
       </div>
       <div class="card">
         <div class="overflow-x">
@@ -1569,9 +1587,28 @@ async function carregarCondicoesEspeciais() {
   try {
     const lista = await api('GET', '/condicoes-especiais');
     // Filtra propostas do tipo 'sistema' — ficam só no Histórico
-    const listaFiltrada = lista.filter(ce => !ce.job || ce.job.tipo_analise !== 'sistema');
+    const listaSemSistema = lista.filter(ce => !ce.job || ce.job.tipo_analise !== 'sistema');
+
+    // Atualiza contadores
+    const nPendente = listaSemSistema.filter(ce => ce.job && !ce.job.decisao_risco).length;
+    const nAprovado = listaSemSistema.filter(ce => ce.job && ce.job.decisao_risco === 'aprovado').length;
+    const nBalcao   = listaSemSistema.filter(ce => ce.job && ce.job.decisao_risco === 'balcao').length;
+    const nRecusado = listaSemSistema.filter(ce => ce.job && ce.job.decisao_risco === 'recusado').length;
+    const elP = document.getElementById('ce-n-pendente'); if(elP) elP.textContent = nPendente;
+    const elA = document.getElementById('ce-n-aprovado'); if(elA) elA.textContent = nAprovado;
+    const elB = document.getElementById('ce-n-balcao');   if(elB) elB.textContent = nBalcao;
+    const elR = document.getElementById('ce-n-recusado'); if(elR) elR.textContent = nRecusado;
+
+    // Aplica filtro selecionado
+    const filtro = document.getElementById('ce-filter')?.value || '';
+    const listaFiltrada = listaSemSistema.filter(ce => {
+      if (!filtro) return true;
+      if (filtro === 'pendente') return ce.job && !ce.job.decisao_risco;
+      return ce.job && ce.job.decisao_risco === filtro;
+    });
+
     if (!listaFiltrada.length) {
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial registrada.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada para este filtro.</td></tr>';
       return;
     }
     tbody.innerHTML = listaFiltrada.map(ce => {
