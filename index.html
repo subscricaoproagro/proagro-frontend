@@ -1589,6 +1589,16 @@ async function verCondicaoEspecial(jobId) {
   } catch(e) { showToast('Erro ao carregar condição especial: ' + e.message, 'error'); }
 }
 
+async function reenviarEmailCE(jobId) {
+  if (!confirm('Reenviar o email de devolutiva para esta condição especial?')) return;
+  try {
+    await api('POST', '/jobs/' + jobId + '/reenviar-email-ce');
+    showToast('✅ Email reenviado com sucesso!', 'success');
+  } catch(e) {
+    showToast('Erro ao reenviar email: ' + e.message, 'error');
+  }
+}
+
 async function excluirCE(jobId) {
   if (!confirm('Excluir esta condição especial? O job permanecerá no Histórico.')) return;
   try {
@@ -1843,20 +1853,21 @@ async function confirmarBalcao() {
 
 function renderBtnsCE(ce) {
   var jobId = ce.job_id;
-  console.log('CE:', jobId, 'job:', ce.job, 'decisao_risco:', ce.job && ce.job.decisao_risco);
   var dr = (ce.job && ce.job.decisao_risco) ? ce.job.decisao_risco : null;
-  var btnDados = '<button class="btn-sm" style="background:#f0f9ff;border:1px solid #bae6fd;color:#0369a1" onclick="abrirDadosCE(\'' + jobId + '\')">📋 Dados CE</button>';
+  var btnDados = '<button class="btn-sm" style="background:#f0f9ff;border:1px solid #bae6fd;color:#0369a1" onclick="abrirDadosCE(\'' + jobId + '\')">\u{1F4CB} Dados CE</button>';
+  var btnEmail = '<button class="btn-sm" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c" onclick="reenviarEmailCE(\'' + jobId + '\')">\u{1F4E7} Reenviar Email</button>';
   if (!dr) {
     return btnDados +
-           ' <button class="btn-sm btn-primary" onclick="abrirAprovacaoCE(\'' + jobId + '\')">✅ Aprovar CE</button>' +
-           ' <button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="abrirBalcao(\'' + jobId + '\')">🏦 Balcão</button>' +
-           ' <button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="abrirRecusaCE(\'' + jobId + '\')">❌ Recusar</button>';
+           ' <button class="btn-sm btn-primary" onclick="abrirAprovacaoCE(\'' + jobId + '\')">\u2705 Aprovar CE</button>' +
+           ' <button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="abrirBalcao(\'' + jobId + '\')">\u{1F3E6} Balc\u00e3o</button>' +
+           ' <button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="abrirRecusaCE(\'' + jobId + '\')">\u274C Recusar</button>';
   }
   var cor = dr==='aprovado' ? '#166534' : dr==='balcao' ? '#1d4ed8' : '#c0392b';
-  var label = dr==='aprovado' ? '✅ CE Aprovada' : dr==='balcao' ? '🏦 Balcão' : '❌ Recusada';
+  var label = dr==='aprovado' ? '\u2705 CE Aprovada' : dr==='balcao' ? '\u{1F3E6} Balc\u00e3o' : '\u274C Recusada';
   return btnDados +
-         ' <button class="btn-sm btn-outline" onclick="verCondicaoEspecial(\'' + jobId + '\')">👁 Ver</button> ' +
-         '<span style="font-size:12px;font-weight:600;color:' + cor + '">' + label + '</span>';
+         ' <button class="btn-sm btn-outline" onclick="verCondicaoEspecial(\'' + jobId + '\')">\u{1F441} Ver</button> ' +
+         ' ' + btnEmail +
+         ' <span style="font-size:12px;font-weight:600;color:' + cor + '">' + label + '</span>';
 }
 
 async function verDecisaoAR(jobId) {
