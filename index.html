@@ -705,6 +705,9 @@ function enterApp() {
     document.getElementById('dashboard-btn').style.display = 'none';
     document.getElementById('nova-analise-btn').style.display = 'none';
     document.getElementById('historico-btn').style.display = 'none';
+    document.getElementById('assistente-btn').style.display = 'none';
+    document.getElementById('endosso-btn').style.display = 'none';
+    document.getElementById('admin-btn').style.display = 'none';
   }
 
   carregarStats();
@@ -961,6 +964,7 @@ function renderJobsTable(jobs) {
           ${concluido ? `<button class="btn-sm btn-green" onclick="baixarJob('${j.id}')">⬇ Baixar</button>` : ''}
 
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="verCondicaoEspecial('${j.id}')">⭐ Cond. Especial</button>` : ''}
+          ${concluido && j.tipo_analise==='sistema' ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="window.open('https://brasil.proagroinsur.tech','_blank')">🖥️ Acessar Sistema</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="verDecisaoAR('${j.id}')">👁 Ver Decisão AR</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="reavaliarCE('${j.id}')">🔄 Reavaliar</button>` : ''}
           ${j.status==='processando' ? `<button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="cancelarJob('${j.id}')" title="Interromper análise">⏹ Parar</button>` : ''}
@@ -991,6 +995,12 @@ function renderStatusBadge(j) {
     if (j.decisao === 'recusado') {
       const motivo = j.justificativa ? `<div style="font-size:11px;color:#c0392b;margin-top:4px;max-width:220px;line-height:1.4">${j.justificativa}</div>` : '';
       return `<div><span class="badge" style="background:#fef2f2;color:#c0392b;border:1px solid #fca5a5"><span class="badge-dot" style="background:#c0392b"></span>Recusada</span>${motivo}</div>`;
+    }
+    if (j.tipo_analise === 'sistema') {
+      return `<span class="badge" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe"><span class="badge-dot" style="background:#1d4ed8"></span>Aprovado (Sistema)</span>`;
+    }
+    if (j.tipo_analise === 'condicao_especial' && j.decisao_risco === 'aprovado') {
+      return `<span class="badge" style="background:#f0fdf4;color:#166534;border:1px solid #86efac"><span class="badge-dot" style="background:#166534"></span>CE Aprovada</span>`;
     }
     return `<span class="badge badge-success"><span class="badge-dot"></span>Concluído</span>`;
   }
@@ -1541,16 +1551,30 @@ async function verCondicaoEspecial(jobId) {
   } catch(e) { showToast('Erro ao carregar condição especial: ' + e.message, 'error'); }
 }
 
+async function excluirCE(jobId) {
+  if (!confirm('Excluir esta condição especial? O job permanecerá no Histórico.')) return;
+  try {
+    await api('DELETE', '/jobs/' + jobId + '/condicao-especial');
+    showToast('Condição especial excluída.', 'success');
+    carregarCondicoesEspeciais();
+  } catch(e) {
+    // Se a rota não existir no backend, remove só do frontend por ora
+    showToast('Erro ao excluir: ' + e.message, 'error');
+  }
+}
+
 async function carregarCondicoesEspeciais() {
   const tbody = document.getElementById('ce-tbody');
   if (!tbody) return;
   try {
     const lista = await api('GET', '/condicoes-especiais');
-    if (!lista.length) {
+    // Filtra propostas do tipo 'sistema' — ficam só no Histórico
+    const listaFiltrada = lista.filter(ce => !ce.job || ce.job.tipo_analise !== 'sistema');
+    if (!listaFiltrada.length) {
       tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial registrada.</td></tr>';
       return;
     }
-    tbody.innerHTML = lista.map(ce => {
+    tbody.innerHTML = listaFiltrada.map(ce => {
       const job = ce.job || {};
       return `<tr>
         <td><strong>${job.id_proposta || '—'}</strong></td>
@@ -1565,6 +1589,7 @@ async function carregarCondicoesEspeciais() {
           <div style="display:flex;gap:5px;flex-wrap:wrap">
             <button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${ce.job_id}')">📄 Relatório</button>
             ${renderBtnsCE(ce)}
+            <button class="btn-sm btn-danger" onclick="excluirCE('${ce.job_id}')" title="Excluir">🗑</button>
           </div>
         </td>
       </tr>`;
