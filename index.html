@@ -609,15 +609,8 @@
 // CONFIGURAÇÃO
 // ══════════════════════════════════════════
 const ALLOWED_DOMAINS = ['proagroseguros.com', 'proagroinsur.tech'];
-let BACKEND_URL = (() => {
-  const saved = localStorage.getItem('pa_backend_url') || '';
-  // Se a URL salva for do ngrok, ignora e força busca do Supabase
-  if (saved.includes('ngrok') || saved.includes('saskatchewan') || saved.includes('superjet')) {
-    localStorage.removeItem('pa_backend_url');
-    return '';
-  }
-  return saved;
-})();
+// URL sempre buscada do Supabase — nunca usa localStorage
+let BACKEND_URL = '';
 let TOKEN = sessionStorage.getItem('pa_token') || '';
 let currentUser = JSON.parse(sessionStorage.getItem('pa_user') || 'null');
 let uploadedFiles = [];
@@ -764,28 +757,31 @@ function handleLogout() {
   document.getElementById('auth-password').value = '';
 }
 
-// Auto-restore
-window.addEventListener('load', async () => {
-  // Busca URL do Supabase automaticamente
-  if (!BACKEND_URL) {
+// Auto-restore — sempre busca URL atualizada do Supabase
+async function buscarUrlSupabase() {
+  const SUPA_URL = 'https://nczwrgzsvxdrkmdnzqld.supabase.co/rest/v1/config?chave=eq.backend_url&select=valor';
+  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jendyZ3pzdnhkcmttZG56cWxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDI2OTgsImV4cCI6MjA5MzUxODY5OH0.2W9tvtflmpaShQmhhCyy4QC_GOxaaOdcNY04Wp4l9oA';
+  for (let i = 0; i < 3; i++) {
     try {
-      const r = await fetch(
-        'https://nczwrgzsvxdrkmdnzqld.supabase.co/rest/v1/config?chave=eq.backend_url&select=valor',
-        { headers: {
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jendyZ3pzdnhkcmttZG56cWxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDI2OTgsImV4cCI6MjA5MzUxODY5OH0.2W9tvtflmpaShQmhhCyy4QC_GOxaaOdcNY04Wp4l9oA',
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jendyZ3pzdnhkcmttZG56cWxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDI2OTgsImV4cCI6MjA5MzUxODY5OH0.2W9tvtflmpaShQmhhCyy4QC_GOxaaOdcNY04Wp4l9oA'
-          }, signal: AbortSignal.timeout(5000) }
-      );
+      const r = await fetch(SUPA_URL, { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY } });
       if (r.ok) {
         const data = await r.json();
         if (data && data[0] && data[0].valor) {
           BACKEND_URL = data[0].valor.trim();
-          localStorage.setItem('pa_backend_url', BACKEND_URL);
           console.log('[ProAgro] URL carregada do Supabase:', BACKEND_URL);
+          return true;
         }
       }
-    } catch(e) { console.warn('[ProAgro] Erro ao buscar URL:', e.message); }
+    } catch(e) {
+      console.warn('[ProAgro] Tentativa ' + (i+1) + ' falhou:', e.message);
+      if (i < 2) await new Promise(res => setTimeout(res, 1500));
+    }
   }
+  return false;
+}
+
+window.addEventListener('load', async () => {
+  await buscarUrlSupabase();
   if (BACKEND_URL) document.getElementById('backend-url-modal').value = BACKEND_URL;
   if (!BACKEND_URL) document.getElementById('config-warning').style.display = 'flex';
   if (TOKEN && currentUser) enterApp();
