@@ -1535,13 +1535,134 @@ async function confirmarTipoAnalise(tipo) {
     const camposLimpar = ['ce-broker','ce-municipio','ce-codigo-ibge','ce-uf','ce-cliente',
       'ce-area-solicitada','ce-cultivo','ce-ajuste','ce-ciclo','ce-modalidade',
       'ce-nivel-cobertura','ce-prod-estimada','ce-prod-ibge','ce-diferenca',
-      'ce-preco-saca','ce-cuota','ce-premio'];
+      'ce-preco-saca','ce-cuota','ce-premio','ce-cpf-busca'];
+    const elWrap = document.getElementById('ce-municipio-select-wrap');
+    if (elWrap) elWrap.style.display = 'none';
+    const elStatus = document.getElementById('ce-busca-status');
+    if (elStatus) elStatus.textContent = '';
     camposLimpar.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
     const rep = document.getElementById('ce-replantio'); if(rep) rep.value = '';
     const fs = document.getElementById('ce-fecha-siembra'); if(fs) fs.value = '';
     const fc = document.getElementById('ce-fecha-cosecha'); if(fc) fc.value = '';
     openModal('modal-form-ce');
   }
+}
+
+// Cache de solicitações encontradas por CPF
+let _solCEEncontradas = [];
+
+async function buscarSolicitacaoCE() {
+  const cpf = document.getElementById('ce-cpf-busca')?.value?.replace(/\s/g,'').trim();
+  const elStatus = document.getElementById('ce-busca-status');
+  const elWrap = document.getElementById('ce-municipio-select-wrap');
+  const elSelect = document.getElementById('ce-municipio-select');
+
+  if (!cpf || cpf.length < 11) {
+    if (elStatus) elStatus.textContent = '';
+    if (elWrap) elWrap.style.display = 'none';
+    return;
+  }
+
+  try {
+    const lista = await api('GET', '/solicitacoes-ce');
+    // Filtra pelo CPF/CNPJ — normaliza removendo pontos, traços, barras
+    const norm = v => String(v || '').replace(/[\.\-\/]/g,'').trim();
+    const cpfNorm = norm(cpf);
+    _solCEEncontradas = lista.filter(s => norm(s.cpf_cnpj) === cpfNorm);
+
+    if (!_solCEEncontradas.length) {
+      if (elStatus) elStatus.textContent = '⚠️ Nenhuma solicitação encontrada para este CPF/CNPJ.';
+      if (elWrap) elWrap.style.display = 'none';
+      return;
+    }
+
+    if (_solCEEncontradas.length === 1) {
+      // Apenas um resultado — preenche direto
+      if (elStatus) elStatus.textContent = `✅ Solicitação encontrada: ${_solCEEncontradas[0].produtor}`;
+      if (elWrap) elWrap.style.display = 'none';
+      preencherCamposCE(_solCEEncontradas[0]);
+    } else {
+      // Múltiplos municípios — mostra dropdown
+      if (elStatus) elStatus.textContent = `✅ ${_solCEEncontradas.length} solicitações encontradas. Selecione o município:`;
+      elSelect.innerHTML = '<option value="">Selecione o município</option>' +
+        _solCEEncontradas.map((s, i) => `<option value="${i}">${s.municipio_uf || s.municipio || 'Município não informado'}</option>`).join('');
+      if (elWrap) elWrap.style.display = '';
+    }
+  } catch(e) {
+    if (elStatus) elStatus.textContent = 'Erro ao buscar: ' + e.message;
+  }
+}
+
+function preencherCEpelaMunicipio() {
+  const idx = document.getElementById('ce-municipio-select')?.value;
+  if (idx === '' || idx === null || idx === undefined) return;
+  const sol = _solCEEncontradas[parseInt(idx)];
+  if (sol) preencherCamposCE(sol);
+}
+
+function preencherCamposCE(sol) {
+  // Extrai município e UF de "MUNICIPIO/UF" ou "MUNICIPIO/uf"
+  let municipio = '', uf = '';
+  if (sol.municipio_uf) {
+    const parts = sol.municipio_uf.split('/');
+    municipio = parts[0]?.trim() || '';
+    uf = parts[1]?.trim().toUpperCase() || '';
+  }
+
+  // Converte produtividade de sacas para kg/ha se necessário
+  const parseProd = v => {
+    if (!v) return '';
+    const n = parseFloat(String(v).replace(',','.'));
+    if (isNaN(n)) return '';
+    // Se for menor que 200, provavelmente está em sacas — converte para kg
+    return n < 200 ? String((n * 60).toFixed(0)) : String(v);
+  };
+
+  const setVal = (id, val) => {
+    const el = document.getElementById(id);
+    if (el && val !== undefined && val !== null && val !== '') {
+      el.value = val;
+    }
+  };
+
+  setVal('ce-broker',         sol.corretora || sol.responsavel);
+  setVal('ce-municipio',      municipio);
+  setVal('ce-uf',             uf);
+  setVal('ce-cliente',        sol.produtor);
+  setVal('ce-area-solicitada', sol.superficie);
+  setVal('ce-cultivo',        sol.cultura);
+  setVal('ce-nivel-cobertura', sol.nivel_cobertura2 || sol.nivel_cobertura1);
+  setVal('ce-prod-estimada',  parseProd(sol.prod_estimada_bruta || sol.prod_garantida));
+  setVal('ce-preco-saca',     sol.preco_saca);
+  setVal('ce-cuota',          sol.taxa);
+  setVal('ce-replantio',      sol.replantio);
+
+  // Data de plantio
+  if (sol.data_plantio) {
+    const elPlantio = document.getElementById('ce-fecha-siembra');
+    if (elPlantio) {
+      try {
+        const d = new Date((parseFloat(sol.data_plantio) - 25569) * 86400000);
+        if (!isNaN(d)) elPlantio.value = d.toISOString().split('T')[0];
+      } catch(e) {}
+    }
+  }
+
+  // Data de colheita
+  if (sol.previsao_colheita) {
+    const elColheita = document.getElementById('ce-fecha-cosecha');
+    if (elColheita) {
+      try {
+        const d = new Date((parseFloat(sol.previsao_colheita) - 25569) * 86400000);
+        if (!isNaN(d)) elColheita.value = d.toISOString().split('T')[0];
+      } catch(e) {}
+    }
+  }
+
+  calcularCE();
+
+  const elStatus = document.getElementById('ce-busca-status');
+  if (elStatus) elStatus.textContent = `✅ Campos preenchidos com dados de ${sol.produtor}. Você pode editar antes de salvar.`;
 }
 
 async function salvarFormCE() {
@@ -3611,6 +3732,20 @@ async function verRelatorio(jobId) {
       <button class="modal-close" onclick="closeModal('modal-form-ce')">✕</button>
     </div>
     <div class="modal-body" style="padding:24px">
+      <!-- Busca por CPF/CNPJ -->
+      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;margin-bottom:16px">
+        <label class="ce-label" style="color:#166534;font-weight:700">🔍 Buscar solicitação pelo CPF/CNPJ do produtor</label>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <input class="ce-input" id="ce-cpf-busca" placeholder="000.000.000-00 ou 00.000.000/0001-00" style="margin:0;flex:1" oninput="buscarSolicitacaoCE()">
+          <div id="ce-municipio-select-wrap" style="display:none;flex:1">
+            <select class="ce-input" id="ce-municipio-select" style="margin:0" onchange="preencherCEpelaMunicipio()">
+              <option value="">Selecione o município</option>
+            </select>
+          </div>
+        </div>
+        <div id="ce-busca-status" style="font-size:12px;color:#6b7280;margin-top:6px"></div>
+      </div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <div><label class="ce-label">Broker</label><input class="ce-input" id="ce-broker" placeholder="Nome do broker"></div>
         <div><label class="ce-label">Município</label><input class="ce-input" id="ce-municipio" placeholder="Município"></div>
