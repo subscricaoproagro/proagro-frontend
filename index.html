@@ -476,8 +476,8 @@
       <div class="card">
         <div class="overflow-x">
           <table class="jobs-table">
-            <thead><tr><th>Data</th><th>Tipo</th><th>Apólice ProAgro</th><th>Proposta</th><th>Cliente</th><th>Endosso nº</th><th>Status</th><th>Ações</th></tr></thead>
-            <tbody id="endosso-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+            <thead><tr><th>Data</th><th>Tipo</th><th>Apólice ProAgro</th><th>Cliente</th><th>Endosso nº</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody id="endosso-tbody"><tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -621,6 +621,10 @@ let pollingInterval = null;
 // API HELPER
 // ══════════════════════════════════════════
 async function api(method, path, body = null, isForm = false) {
+  // Se a URL for do Railway (desativado), força buscar do Supabase
+  if (!BACKEND_URL || BACKEND_URL.includes('railway.app')) {
+    await buscarUrlSupabase();
+  }
   if (!BACKEND_URL) throw new Error('Backend não configurado. Configure a URL do servidor.');
   const opts = {
     method,
@@ -2692,7 +2696,6 @@ function adicionarLinhaCancelamento() {
     <td style="padding:4px 4px"><input class="ce-input" style="min-width:110px;font-size:11px;padding:4px 6px" placeholder="10-SP-1-01292" data-canc="apolice_proagro"></td>
     <td style="padding:4px 4px"><input class="ce-input" style="min-width:130px;font-size:11px;padding:4px 6px" placeholder="01025129..." data-canc="apolice_hdi"></td>
     <td style="padding:4px 4px"><input class="ce-input" style="min-width:80px;font-size:11px;padding:4px 6px" placeholder="94258" data-canc="proposta_hdi"></td>
-    <td style="padding:4px 4px"><input class="ce-input" style="min-width:80px;font-size:11px;padding:4px 6px" placeholder="PA-000001" data-canc="proposta_proagro"></td>
     <td style="padding:4px 4px"><input class="ce-input" style="min-width:80px;font-size:11px;padding:4px 6px" placeholder="000001" data-canc="endosso_numero"></td>
     <td style="padding:4px 4px"><input class="ce-input" style="min-width:110px;font-size:11px;padding:4px 6px" placeholder="Endosso cancel.:000000" data-canc="endosso_cancelamento"></td>
     <td style="padding:4px 4px"><input class="ce-input" type="date" value="${hoje}" style="min-width:120px;font-size:11px;padding:4px 6px" data-canc="data_emissao"></td>
@@ -2759,8 +2762,7 @@ async function confirmarEndossoCancelamento() {
     if (!motivo) { showToast('Selecione o motivo em todas as linhas.', 'error'); return; }
     linhas.push({
       apolice_proagro: get('apolice_proagro'), apolice_hdi: get('apolice_hdi'),
-      proposta_hdi: get('proposta_hdi'), proposta_proagro: get('proposta_proagro'),
-      endosso_numero: get('endosso_numero'),
+      proposta_hdi: get('proposta_hdi'), endosso_numero: get('endosso_numero'),
       endosso_cancelamento: get('endosso_cancelamento'), data_emissao: get('data_emissao'),
       vigencia_ini: get('vigencia_ini'), vigencia_fim: get('vigencia_fim'),
       cpf_cnpj: get('cpf_cnpj'), nome_cliente: get('nome_cliente'), motivo
@@ -2769,8 +2771,7 @@ async function confirmarEndossoCancelamento() {
   const body = {
     tipo: 'cancelamento', idioma: _cancIdioma, linhas,
     apolice_proagro: linhas[0].apolice_proagro, apolice_hdi: linhas[0].apolice_hdi,
-    proposta_hdi: linhas[0].proposta_hdi, proposta_proagro: linhas[0].proposta_proagro,
-    endosso_numero: linhas[0].endosso_numero,
+    proposta_hdi: linhas[0].proposta_hdi, endosso_numero: linhas[0].endosso_numero,
     endosso_cancelamento: linhas[0].endosso_cancelamento, data_emissao: linhas[0].data_emissao,
     vigencia_ini: linhas[0].vigencia_ini, vigencia_fim: linhas[0].vigencia_fim,
     cpf_cnpj: linhas[0].cpf_cnpj, nome_cliente: linhas[0].nome_cliente, motivo: linhas[0].motivo
@@ -2797,30 +2798,57 @@ async function carregarEndossos() {
   try {
     const lista = await api('GET', '/endossos');
     if (!lista || lista.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Nenhum endosso registrado ainda.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Nenhum endosso registrado ainda.</td></tr>';
       return;
     }
     const tipoLabel = { reducao_area: 'Ajuste de Área', mudanca_variedade: 'Mudança de Variedade',
                         mudanca_datas: 'Mudança de Datas', alteracao_beneficiario: 'Alt. Beneficiário',
                         cancelamento: 'Cancelamento' };
-    tbody.innerHTML = lista.map(e => {
+    const rows = [];
+    lista.forEach(e => {
       const dt = e.data_emissao ? new Date(e.data_emissao).toLocaleDateString('pt-BR') : '—';
-      return `<tr>
+      const tipoBadge = `<span style="background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:12px;font-size:12px">${tipoLabel[e.tipo] || e.tipo}</span>`;
+      const acoes = `<td style="display:flex;gap:6px">
+          <button class="btn-sm btn-outline" onclick="baixarEndosso('${e.id}')">⬇ Excel</button>
+          <button class="btn-sm" style="border:1px solid #fca5a5;color:#c0392b;background:#fff" onclick="excluirEndosso('${e.id}', this)">🗑</button>
+        </td>`;
+
+      // Cancelamento com múltiplas linhas — expande uma linha por solicitação
+      if (e.tipo === 'cancelamento' && e.linhas) {
+        try {
+          const linhas = typeof e.linhas === 'string' ? JSON.parse(e.linhas) : e.linhas;
+          if (linhas && linhas.length > 0) {
+            linhas.forEach((l, i) => {
+              const dtL = l.data_emissao ? new Date(l.data_emissao).toLocaleDateString('pt-BR') : dt;
+              rows.push(`<tr>
+                <td>${dtL}</td>
+                <td>${tipoBadge}</td>
+                <td>${l.apolice_proagro || e.apolice_proagro || '—'}</td>
+                <td>${l.nome_cliente || e.nome_cliente || '—'}</td>
+                <td>${l.endosso_numero || e.endosso_numero || '—'}</td>
+                <td><span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:12px;font-size:12px">Gerado</span></td>
+                ${i === 0 ? acoes : '<td></td>'}
+              </tr>`);
+            });
+            return;
+          }
+        } catch(err) {}
+      }
+
+      // Ajuste de área ou cancelamento sem linhas — uma linha normal
+      rows.push(`<tr>
         <td>${dt}</td>
-        <td><span style="background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:12px;font-size:12px">${tipoLabel[e.tipo] || e.tipo}</span></td>
+        <td>${tipoBadge}</td>
         <td>${e.apolice_proagro || '—'}</td>
-        <td>${e.proposta_hdi || '—'}</td>
         <td>${e.nome_cliente || '—'}</td>
         <td>${e.endosso_numero || '—'}</td>
         <td><span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:12px;font-size:12px">Gerado</span></td>
-        <td style="display:flex;gap:6px">
-          <button class="btn-sm btn-outline" onclick="baixarEndosso('${e.id}')">⬇ Excel</button>
-          <button class="btn-sm" style="border:1px solid #fca5a5;color:#c0392b;background:#fff" onclick="excluirEndosso('${e.id}', this)">🗑</button>
-        </td>
-      </tr>`;
-    }).join('');
+        ${acoes}
+      </tr>`);
+    });
+    tbody.innerHTML = rows.join('');
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Erro ao carregar endossos.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Erro ao carregar endossos.</td></tr>';
   }
 }
 
@@ -3753,7 +3781,6 @@ async function verRelatorio(jobId) {
               <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">Apólice ProAgro *</th>
               <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">Apólice HDI</th>
               <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">Proposta HDI</th>
-              <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">Proposta ProAgro</th>
               <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">Endosso nº *</th>
               <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">Endosso Cancel.</th>
               <th style="padding:8px 6px;text-align:left;color:#7c3aed;font-weight:700;white-space:nowrap;border-bottom:2px solid #7c3aed">Data Emissão *</th>
