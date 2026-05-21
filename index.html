@@ -1666,7 +1666,17 @@ function preencherCamposCE(sol) {
   setVal('ce-nivel-cobertura', sol.nivel_cobertura2 || sol.nivel_cobertura1, true);
   setVal('ce-prod-estimada',   parseProd(sol.prod_estimada_bruta || sol.prod_garantida), true);
   setVal('ce-preco-saca',      sol.preco_saca,  true);
-  setVal('ce-cuota',           sol.taxa,        true);
+  // Normaliza taxa: 6.5% ou 6,5% → 0,065 | 0.065 → 0,065
+  const normalizarTaxa = v => {
+    if (!v) return '';
+    const s = String(v).trim();
+    const temPct = s.includes('%');
+    const n = parseFloat(s.replace('%','').replace(',','.'));
+    if (isNaN(n)) return s;
+    const decimal = temPct || n >= 1 ? n / 100 : n;
+    return parseFloat(decimal.toFixed(6)).toString().replace('.', ',');
+  };
+  setVal('ce-cuota', normalizarTaxa(sol.taxa));
   setVal('ce-replantio',       sol.replantio);
 
   // Converte data do Excel (serial ou string) para formato YYYY-MM-DD
