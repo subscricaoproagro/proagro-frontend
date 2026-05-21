@@ -1618,24 +1618,35 @@ function preencherCamposCE(sol) {
     return n < 200 ? String((n * 60).toFixed(0)) : String(v);
   };
 
-  const setVal = (id, val) => {
+  // Converte ponto decimal para vírgula em valores numéricos
+  const fmtNum = v => {
+    if (!v) return '';
+    const s = String(v).trim();
+    // Se já tem vírgula, mantém; se tem ponto decimal, troca por vírgula
+    if (s.includes(',')) return s;
+    const n = parseFloat(s);
+    if (isNaN(n)) return s;
+    return s.replace('.', ',');
+  };
+
+  const setVal = (id, val, numerico = false) => {
     const el = document.getElementById(id);
     if (el && val !== undefined && val !== null && val !== '') {
-      el.value = val;
+      el.value = numerico ? fmtNum(val) : val;
     }
   };
 
-  setVal('ce-broker',         sol.corretora || sol.responsavel);
-  setVal('ce-municipio',      municipio);
-  setVal('ce-uf',             uf);
-  setVal('ce-cliente',        sol.produtor);
-  setVal('ce-area-solicitada', sol.superficie);
-  setVal('ce-cultivo',        sol.cultura);
-  setVal('ce-nivel-cobertura', sol.nivel_cobertura2 || sol.nivel_cobertura1);
-  setVal('ce-prod-estimada',  parseProd(sol.prod_estimada_bruta || sol.prod_garantida));
-  setVal('ce-preco-saca',     sol.preco_saca);
-  setVal('ce-cuota',          sol.taxa);
-  setVal('ce-replantio',      sol.replantio);
+  setVal('ce-broker',          sol.corretora || sol.responsavel);
+  setVal('ce-municipio',       municipio);
+  setVal('ce-uf',              uf);
+  setVal('ce-cliente',         sol.produtor);
+  setVal('ce-area-solicitada', sol.superficie,  true);
+  setVal('ce-cultivo',         sol.cultura);
+  setVal('ce-nivel-cobertura', sol.nivel_cobertura2 || sol.nivel_cobertura1, true);
+  setVal('ce-prod-estimada',   parseProd(sol.prod_estimada_bruta || sol.prod_garantida), true);
+  setVal('ce-preco-saca',      sol.preco_saca,  true);
+  setVal('ce-cuota',           sol.taxa,        true);
+  setVal('ce-replantio',       sol.replantio);
 
   // Data de plantio
   if (sol.data_plantio) {
