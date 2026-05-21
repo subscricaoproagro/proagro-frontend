@@ -1545,6 +1545,30 @@ async function confirmarTipoAnalise(tipo) {
     const fs = document.getElementById('ce-fecha-siembra'); if(fs) fs.value = '';
     const fc = document.getElementById('ce-fecha-cosecha'); if(fc) fc.value = '';
     openModal('modal-form-ce');
+
+    // Preenche automaticamente município, UF, área e código IBGE do relatório
+    try {
+      const jobData = await api('GET', `/jobs/${_ceJobId}`);
+      if (jobData.municipio_dominante) {
+        const elMun = document.getElementById('ce-municipio');
+        if (elMun && !elMun.value) elMun.value = jobData.municipio_dominante;
+      }
+      if (jobData.uf_dominante) {
+        const elUf = document.getElementById('ce-uf');
+        if (elUf && !elUf.value) elUf.value = jobData.uf_dominante;
+      }
+      if (jobData.codigo_ibge) {
+        const elIbge = document.getElementById('ce-codigo-ibge');
+        if (elIbge && !elIbge.value) elIbge.value = jobData.codigo_ibge;
+      }
+      if (jobData.area_total_ha) {
+        const elArea = document.getElementById('ce-area-solicitada');
+        if (elArea && !elArea.value) {
+          elArea.value = String(jobData.area_total_ha).replace('.', ',');
+          calcularCE();
+        }
+      }
+    } catch(e) { console.warn('Erro ao buscar dados geo do job:', e.message); }
   }
 }
 
