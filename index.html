@@ -1645,26 +1645,35 @@ function preencherCamposCE(sol) {
   setVal('ce-cuota',           sol.taxa,        true);
   setVal('ce-replantio',       sol.replantio);
 
-  // Data de plantio
-  if (sol.data_plantio) {
-    const elPlantio = document.getElementById('ce-fecha-siembra');
-    if (elPlantio) {
-      try {
-        const d = new Date((parseFloat(sol.data_plantio) - 25569) * 86400000);
-        if (!isNaN(d)) elPlantio.value = d.toISOString().split('T')[0];
-      } catch(e) {}
+  // Converte data do Excel (serial ou string) para formato YYYY-MM-DD
+  const converterData = (v) => {
+    if (!v) return '';
+    const s = String(v).trim();
+    // Se já está em formato de data legível (dd/mm/yyyy ou yyyy-mm-dd)
+    if (s.includes('/')) {
+      const parts = s.split('/');
+      if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
     }
+    if (s.includes('-') && s.length === 10) return s;
+    // Serial do Excel — ajuste correto
+    const n = parseFloat(s);
+    if (!isNaN(n) && n > 1000) {
+      const d = new Date(Date.UTC(1899, 11, 30) + n * 86400000);
+      if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+    }
+    return '';
+  };
+
+  const plantio = converterData(sol.data_plantio);
+  if (plantio) {
+    const el = document.getElementById('ce-fecha-siembra');
+    if (el) el.value = plantio;
   }
 
-  // Data de colheita
-  if (sol.previsao_colheita) {
-    const elColheita = document.getElementById('ce-fecha-cosecha');
-    if (elColheita) {
-      try {
-        const d = new Date((parseFloat(sol.previsao_colheita) - 25569) * 86400000);
-        if (!isNaN(d)) elColheita.value = d.toISOString().split('T')[0];
-      } catch(e) {}
-    }
+  const colheita = converterData(sol.previsao_colheita);
+  if (colheita) {
+    const el = document.getElementById('ce-fecha-cosecha');
+    if (el) el.value = colheita;
   }
 
   calcularCE();
