@@ -1609,24 +1609,21 @@ function preencherCamposCE(sol) {
     uf = parts[1]?.trim().toUpperCase() || '';
   }
 
-  // Converte produtividade de sacas para kg/ha se necessário
+  // Produtividade — usa o valor direto sem conversão
   const parseProd = v => {
     if (!v) return '';
-    const n = parseFloat(String(v).replace(',','.'));
-    if (isNaN(n)) return '';
-    // Se for menor que 200, provavelmente está em sacas — converte para kg
-    return n < 200 ? String((n * 60).toFixed(0)) : String(v);
+    return String(v).trim();
   };
 
-  // Converte ponto decimal para vírgula em valores numéricos
+  // Converte ponto decimal para vírgula, arredondando casas desnecessárias
   const fmtNum = v => {
     if (!v) return '';
     const s = String(v).trim();
-    // Se já tem vírgula, mantém; se tem ponto decimal, troca por vírgula
     if (s.includes(',')) return s;
     const n = parseFloat(s);
     if (isNaN(n)) return s;
-    return s.replace('.', ',');
+    // Arredonda para no máximo 2 casas decimais e troca ponto por vírgula
+    return parseFloat(n.toFixed(2)).toString().replace('.', ',');
   };
 
   const setVal = (id, val, numerico = false) => {
