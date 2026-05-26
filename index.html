@@ -387,6 +387,21 @@
               <div style="display:flex;gap:6px"><span class="badge badge-warning">Dados.xlsx</span><span class="badge badge-info">KMLs</span></div>
             </div>
             <div class="card-body">
+                  <!-- Seletor de tipo de análise -->
+              <div style="display:flex;gap:8px;margin-bottom:14px">
+                <button id="btn-tipo-sistema" onclick="selecionarTipoUpload('sistema')"
+                  style="flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #1a3a2a;background:#1a3a2a;color:#fff;transition:all .2s">
+                  🖥️ Proposta Sistema
+                </button>
+                <button id="btn-tipo-ce" onclick="selecionarTipoUpload('condicao_especial')"
+                  style="flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #d97706;background:#fff;color:#d97706;transition:all .2s">
+                  ⭐ Proposta CE
+                </button>
+              </div>
+              <div id="tipo-upload-badge" style="text-align:center;font-size:12px;color:#166534;font-weight:600;margin-bottom:10px">
+                Tipo selecionado: <span id="tipo-upload-label">🖥️ Sistema</span>
+              </div>
+
               <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event)">
                 <div class="upload-icon">📂</div>
                 <div class="upload-title">Arraste os arquivos aqui</div>
@@ -411,15 +426,33 @@
 
     <!-- HISTÓRICO -->
     <div id="page-historico" class="page-section">
-      <div class="section-header" style="display:flex;align-items:flex-start;justify-content:space-between">
-        <div><div class="section-title">Histórico de Análises</div><div class="section-sub">Todos os jobs executados</div></div>
-        <div style="display:flex;gap:8px">
+      <div class="section-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div>
+          <div class="section-title">Histórico de Análises</div>
+          <div class="section-sub">Todos os jobs executados</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <select class="form-input" id="hist-filter" style="width:auto;padding:8px 12px" onchange="carregarJobs()">
-            <option value="">Todos</option><option value="concluido">Concluídos</option>
-            <option value="processando">Em processamento</option><option value="erro">Erros</option>
+            <option value="">Todos</option>
+            <option value="concluido">Concluídos</option>
+            <option value="aguardando">Aguardando Análise</option>
+            <option value="processando">Em processamento</option>
+            <option value="erro">Erros</option>
           </select>
           <button class="btn-sm btn-outline" onclick="carregarJobs()">↻ Atualizar</button>
+          <button class="btn-sm" style="background:#fff5f5;border:1px solid #fca5a5;color:#c0392b" onclick="excluirJobsPorStatus()">🗑 Excluir filtrados</button>
         </div>
+      </div>
+      <!-- Abas Sistema / CE — visíveis só para analista -->
+      <div id="hist-abas" style="display:none;gap:4px;margin-bottom:16px">
+        <button id="hist-aba-sistema" onclick="setHistAba('sistema')"
+          style="padding:8px 20px;border-radius:8px 8px 0 0;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #1a3a2a;background:#1a3a2a;color:#fff">
+          🖥️ Sistema
+        </button>
+        <button id="hist-aba-ce" onclick="setHistAba('ce')"
+          style="padding:8px 20px;border-radius:8px 8px 0 0;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #d97706;background:#fff;color:#d97706">
+          ⭐ Condição Especial
+        </button>
       </div>
       <div class="card">
         <div class="overflow-x">
@@ -774,6 +807,9 @@ function enterApp() {
     document.getElementById('card-stat-pendentes').style.display = '';
     document.getElementById('card-stat-aprovadas-sub').style.display = '';
     document.getElementById('card-stat-recusadas-sub').style.display = '';
+    // Mostra abas Sistema/CE no histórico
+    const elAbas = document.getElementById('hist-abas');
+    if (elAbas) elAbas.style.display = 'flex';
   }
   if (currentUser.role === 'supervisor') {
     document.getElementById('ce-btn').style.display = '';
@@ -945,6 +981,42 @@ function renderFileList() {
 // ══════════════════════════════════════════
 // JOBS
 // ══════════════════════════════════════════
+// ── Tipo de upload ──────────────────────────────
+let _tipoUpload = 'sistema'; // 'sistema' ou 'condicao_especial'
+
+function selecionarTipoUpload(tipo) {
+  _tipoUpload = tipo;
+  const btnSis = document.getElementById('btn-tipo-sistema');
+  const btnCE  = document.getElementById('btn-tipo-ce');
+  const label  = document.getElementById('tipo-upload-label');
+  if (tipo === 'sistema') {
+    btnSis.style.background = '#1a3a2a'; btnSis.style.color = '#fff'; btnSis.style.border = '2px solid #1a3a2a';
+    btnCE.style.background  = '#fff';    btnCE.style.color  = '#d97706'; btnCE.style.border = '2px solid #d97706';
+    if (label) label.textContent = '🖥️ Sistema';
+  } else {
+    btnCE.style.background  = '#d97706'; btnCE.style.color = '#fff'; btnCE.style.border = '2px solid #d97706';
+    btnSis.style.background = '#fff';    btnSis.style.color = '#1a3a2a'; btnSis.style.border = '2px solid #1a3a2a';
+    if (label) label.textContent = '⭐ Condição Especial';
+  }
+}
+
+// ── Abas do Histórico ────────────────────────────
+let _histAba = 'sistema'; // 'sistema' ou 'ce'
+
+function setHistAba(aba) {
+  _histAba = aba;
+  const btnSis = document.getElementById('hist-aba-sistema');
+  const btnCE  = document.getElementById('hist-aba-ce');
+  if (aba === 'sistema') {
+    btnSis.style.background = '#1a3a2a'; btnSis.style.color = '#fff';
+    btnCE.style.background  = '#fff';    btnCE.style.color  = '#d97706';
+  } else {
+    btnCE.style.background  = '#d97706'; btnCE.style.color = '#fff';
+    btnSis.style.background = '#fff';    btnSis.style.color = '#1a3a2a';
+  }
+  carregarJobs();
+}
+
 async function iniciarAnalise() {
   const temExcel = uploadedFiles.find(f => f.name.toLowerCase().match(/\.(xlsx|xls)$/));
   const temKml = uploadedFiles.find(f => f.name.toLowerCase().endsWith('.kml'));
@@ -991,11 +1063,16 @@ async function _enviarJobsEfetivo(forcar=false) {
   try {
     const form = new FormData();
     uploadedFiles.forEach(f => form.append('arquivos', f));
+    form.append('tipo_upload', _tipoUpload); // 'sistema' ou 'condicao_especial'
     const url = '/jobs/criar' + (forcar ? '?forcar=true' : '');
     const data = await api('POST', url, form, true);
     const total = data.total || 0;
     showToast(`${total} análise(s) iniciada(s)! Acompanhe no Histórico.`, 'success');
     uploadedFiles = []; renderFileList();
+    // Vai para a aba correta no histórico
+    if (currentUser?.role === 'analista') {
+      setHistAba(_tipoUpload === 'condicao_especial' ? 'ce' : 'sistema');
+    }
     showPage('historico');
   } catch(e) {
     showToast('Erro: ' + e.message, 'error');
@@ -1006,12 +1083,64 @@ async function _enviarJobsEfetivo(forcar=false) {
 }
 
 let _jobsCache = [];
+async function excluirJobsPorStatus() {
+  const filtro = document.getElementById('hist-filter')?.value || '';
+  const labelFiltro = filtro === 'aguardando' ? 'Aguardando Análise'
+    : filtro === 'concluido' ? 'Concluídos'
+    : filtro === 'processando' ? 'Em processamento'
+    : filtro === 'erro' ? 'Erros'
+    : 'Todos';
+
+  if (!filtro) {
+    showToast('Selecione um filtro antes de excluir em massa.', 'error');
+    return;
+  }
+
+  // Busca jobs do filtro atual
+  const todos = await api('GET', '/jobs');
+  const filtrados = todos.filter(j => {
+    if (filtro === 'aguardando') return j.status === 'concluido' && !j.decisao;
+    return j.status === filtro;
+  });
+
+  if (!filtrados.length) {
+    showToast('Nenhum job encontrado para excluir.', 'error');
+    return;
+  }
+
+  if (!confirm(`Excluir ${filtrados.length} job(s) com status "${labelFiltro}"? Esta ação não pode ser desfeita.`)) return;
+
+  let ok = 0, erros = 0;
+  for (const j of filtrados) {
+    try {
+      await api('DELETE', '/jobs/' + j.id);
+      ok++;
+    } catch(e) { erros++; }
+  }
+
+  showToast(`✅ ${ok} job(s) excluído(s)${erros ? ` | ${erros} erro(s)` : ''}.`, 'success');
+  await carregarJobs();
+}
+
 async function carregarJobs() {
   try {
     const jobs = await api('GET', '/jobs');
     _jobsCache = jobs;
     const filter = document.getElementById('hist-filter')?.value || '';
-    const filtered = filter ? jobs.filter(j=>j.status===filter) : jobs;
+
+    // Filtra por aba (Sistema / CE) para analista
+    let filtered = jobs;
+    if (currentUser?.role === 'analista' && document.getElementById('hist-abas')?.style.display !== 'none') {
+      if (_histAba === 'sistema') {
+        filtered = jobs.filter(j => !j.tipo_analise || j.tipo_analise === 'sistema');
+      } else {
+        filtered = jobs.filter(j => j.tipo_analise === 'condicao_especial');
+      }
+    }
+
+    // Aplica filtro de status
+    if (filter === 'aguardando') filtered = filtered.filter(j => j.status === 'concluido' && !j.decisao);
+    else if (filter) filtered = filtered.filter(j => j.status === filter);
     renderJobsTable(filtered);
     renderRecentJobs(jobs.slice(0,4));
   } catch(e) {
