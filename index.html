@@ -1949,6 +1949,15 @@ async function abrirPreencherCE(jobId) {
     if (jobData.uf_dominante)        { const el = document.getElementById('ce-uf');        if(el && !el.value) el.value = jobData.uf_dominante; }
     if (jobData.codigo_ibge)         { const el = document.getElementById('ce-codigo-ibge'); if(el && !el.value) el.value = jobData.codigo_ibge; }
     if (jobData.area_total_ha)       { const el = document.getElementById('ce-area-solicitada'); if(el && !el.value) { el.value = String(jobData.area_total_ha).replace('.',','); calcularCE(); } }
+
+    // Preenche CPF e busca dados da solicitação automaticamente
+    if (jobData.cpf) {
+      const elCpf = document.getElementById('ce-cpf-busca');
+      if (elCpf) {
+        elCpf.value = jobData.cpf;
+        await buscarSolicitacaoCE();
+      }
+    }
   } catch(e) { console.warn('Erro ao buscar dados geo:', e.message); }
 }
 
