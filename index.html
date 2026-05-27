@@ -387,19 +387,14 @@
               <div style="display:flex;gap:6px"><span class="badge badge-warning">Dados.xlsx</span><span class="badge badge-info">KMLs</span></div>
             </div>
             <div class="card-body">
-                  <!-- Seletor de tipo de análise -->
-              <div style="display:flex;gap:8px;margin-bottom:14px">
-                <button id="btn-tipo-sistema" onclick="selecionarTipoUpload('sistema')"
-                  style="flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #1a3a2a;background:#1a3a2a;color:#fff;transition:all .2s">
-                  🖥️ Proposta Sistema
-                </button>
-                <button id="btn-tipo-ce" onclick="selecionarTipoUpload('condicao_especial')"
-                  style="flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #d97706;background:#fff;color:#d97706;transition:all .2s">
-                  ⭐ Proposta CE
-                </button>
-              </div>
-              <div id="tipo-upload-badge" style="text-align:center;font-size:12px;color:#166534;font-weight:600;margin-bottom:10px">
-                Tipo selecionado: <span id="tipo-upload-label">🖥️ Sistema</span>
+                  <!-- Contador automático por tipo -->
+              <div id="upload-tipo-info" style="display:none;gap:10px;margin-bottom:14px">
+                <div style="flex:1;padding:10px;border-radius:8px;background:#f0fdf4;border:1px solid #86efac;text-align:center;font-size:12px;font-weight:600;color:#166534">
+                  🖥️ Sistema: <span id="upload-count-sistema">0</span>
+                </div>
+                <div style="flex:1;padding:10px;border-radius:8px;background:#fffbeb;border:1px solid #fde68a;text-align:center;font-size:12px;font-weight:600;color:#92400e">
+                  ⭐ CE: <span id="upload-count-ce">0</span>
+                </div>
               </div>
 
               <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event)">
@@ -434,10 +429,10 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <select class="form-input" id="hist-filter" style="width:auto;padding:8px 12px" onchange="carregarJobs()">
             <option value="">Todos</option>
-            <option value="concluido">Concluídos</option>
-            <option value="aguardando">Aguardando Análise</option>
-            <option value="processando">Em processamento</option>
-            <option value="erro">Erros</option>
+            <option value="aguardando">⏳ Aguardando processamento</option>
+            <option value="processando">🔄 Em execução</option>
+            <option value="concluido">✅ Concluídos</option>
+            <option value="erro">⚠️ Erro</option>
           </select>
           <button class="btn-sm btn-outline" onclick="carregarJobs()">↻ Atualizar</button>
           <button class="btn-sm" style="background:#fff5f5;border:1px solid #fca5a5;color:#c0392b" onclick="excluirJobsPorStatus()">🗑 Excluir filtrados</button>
@@ -971,6 +966,7 @@ function showPage(page) {
 function handleFiles(files) {
   Array.from(files).forEach(f => { if(!uploadedFiles.find(u=>u.name===f.name)) uploadedFiles.push(f); });
   renderFileList();
+  detectarTiposUpload(uploadedFiles);
 }
 function handleDrop(e) { e.preventDefault(); document.getElementById('upload-zone').classList.remove('drag-over'); handleFiles(e.dataTransfer.files); }
 function renderFileList() {
@@ -1069,7 +1065,7 @@ async function _enviarJobsEfetivo(forcar=false) {
   try {
     const form = new FormData();
     uploadedFiles.forEach(f => form.append('arquivos', f));
-    form.append('tipo_upload', _tipoUpload); // 'sistema' ou 'condicao_especial'
+    // tipo_analise é detectado automaticamente pelo backend via id_proposta
     const url = '/jobs/criar' + (forcar ? '?forcar=true' : '');
     const data = await api('POST', url, form, true);
     const total = data.total || 0;
@@ -1091,10 +1087,10 @@ async function _enviarJobsEfetivo(forcar=false) {
 let _jobsCache = [];
 async function excluirJobsPorStatus() {
   const filtro = document.getElementById('hist-filter')?.value || '';
-  const labelFiltro = filtro === 'aguardando' ? 'Aguardando Análise'
+  const labelFiltro = filtro === 'aguardando' ? 'Aguardando processamento'
+    : filtro === 'processando' ? 'Em execução'
     : filtro === 'concluido' ? 'Concluídos'
-    : filtro === 'processando' ? 'Em processamento'
-    : filtro === 'erro' ? 'Erros'
+    : filtro === 'erro' ? 'Erro'
     : 'Todos';
 
   if (!filtro) {
@@ -1105,7 +1101,10 @@ async function excluirJobsPorStatus() {
   // Busca jobs do filtro atual
   const todos = await api('GET', '/jobs');
   const filtrados = todos.filter(j => {
-    if (filtro === 'aguardando') return j.status === 'concluido' && !j.decisao;
+    if (filtro === 'aguardando')  return j.status === 'aguardando';
+    if (filtro === 'processando') return j.status === 'processando';
+    if (filtro === 'concluido')   return j.status === 'concluido';
+    if (filtro === 'erro')        return j.status === 'erro' || j.status === 'cancelado';
     return j.status === filtro;
   });
 
@@ -1147,9 +1146,14 @@ async function carregarJobs() {
       }
     }
 
-    // Aplica filtro de status
-    if (filter === 'aguardando') filtered = filtered.filter(j => j.status === 'concluido' && !j.decisao);
-    else if (filter) filtered = filtered.filter(j => j.status === filter);
+    // Aplica filtro por status
+    if (filter) filtered = filtered.filter(j => {
+      if (filter === 'aguardando')   return j.status === 'aguardando';
+      if (filter === 'processando')  return j.status === 'processando';
+      if (filter === 'concluido')    return j.status === 'concluido';
+      if (filter === 'erro')         return j.status === 'erro' || j.status === 'cancelado';
+      return j.status === filter;
+    });
     renderJobsTable(filtered);
     renderRecentJobs(jobs.slice(0,4));
   } catch(e) {
