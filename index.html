@@ -2669,7 +2669,7 @@ async function downloadDadosCE(formato) {
       <div class="section">Parâmetros da Cultura</div>
       <div class="grid">
         <div class="field"><div class="label">Cultivo</div><div class="value">${ce.cultivo || '—'}</div></div>
-        <div class="field"><div class="label">Modalidade</div><div class="value">${ce.modalidade || '—'}</div></div>
+
         <div class="field"><div class="label">Ciclo</div><div class="value">${ce.ciclo || '—'}</div></div>
         <div class="field"><div class="label">Ajuste</div><div class="value">${ce.ajuste || '—'}</div></div>
         <div class="field"><div class="label">Nível de Cobertura</div><div class="value">${ce.nivel_cobertura || '—'}</div></div>
@@ -4127,7 +4127,7 @@ async function verRelatorio(jobId) {
         <div><label class="ce-label">Cultivo</label><input class="ce-input" id="ce-cultivo" placeholder="Cultivo"></div>
         <div><label class="ce-label">Ajuste</label><input class="ce-input" id="ce-ajuste" placeholder="Ajuste"></div>
         <div><label class="ce-label">Ciclo</label><input class="ce-input" id="ce-ciclo" placeholder="Ciclo"></div>
-        <div><label class="ce-label">Modalidade</label><input class="ce-input" id="ce-modalidade" placeholder="Modalidade"></div>
+
         <div><label class="ce-label">Nível de Cobertura (ex: 0,70)</label><input class="ce-input" id="ce-nivel-cobertura" placeholder="0,70" oninput="calcularCE()"></div>
         <div><label class="ce-label">Produtividade Estimada Bruta (kg/ha)</label><input class="ce-input" id="ce-prod-estimada" placeholder="kg/ha" oninput="calcularCE()"></div>
         <div><label class="ce-label">Produtividade IBGE (kg/ha)</label><input class="ce-input" id="ce-prod-ibge" placeholder="kg/ha" oninput="calcularCE()"></div>
@@ -4178,7 +4178,7 @@ async function verRelatorio(jobId) {
         <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Cultivo</div><div class="ce-val" id="vce-cultivo">—</div></div>
         <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Ajuste</div><div class="ce-val" id="vce-ajuste">—</div></div>
         <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Ciclo</div><div class="ce-val" id="vce-ciclo">—</div></div>
-        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Modalidade</div><div class="ce-val" id="vce-modalidade">—</div></div>
+  
         <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Nível de Cobertura</div><div class="ce-val" id="vce-nivel-cobertura">—</div></div>
         <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Produtividade Estimada Bruta</div><div class="ce-val" id="vce-prod-estimada">—</div></div>
         <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Produtividade IBGE</div><div class="ce-val" id="vce-prod-ibge">—</div></div>
