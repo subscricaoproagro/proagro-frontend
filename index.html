@@ -1822,21 +1822,47 @@ function preencherCamposCE(sol) {
 
   const setVal = (id, val, numerico = false) => {
     const el = document.getElementById(id);
-    if (el && val !== undefined && val !== null && val !== '') {
+    if (el && val !== undefined && val !== null && String(val).trim() !== '') {
       el.value = numerico ? fmtNum(val) : val;
     }
   };
 
+  // Limpa traço extra do município (ex: "Terra Roxa -" → "Terra Roxa")
+  const municipioLimpo = municipio.replace(/\s*[-–]\s*$/, '').trim();
+
+  // Nível de cobertura — prefere valor decimal (0.7) sobre inteiro (70)
+  const nc = (() => {
+    const v1 = String(sol.nivel_cobertura1 || '').trim();
+    const v2 = String(sol.nivel_cobertura2 || '').trim();
+    const n1 = parseFloat(v1.replace(',','.'));
+    const n2 = parseFloat(v2.replace(',','.'));
+    // Prefere o que for <= 1 (decimal)
+    if (!isNaN(n2) && n2 <= 1) return v2;
+    if (!isNaN(n1) && n1 <= 1) return v1;
+    // Ambos maiores que 1 — divide por 100
+    if (!isNaN(n2)) return fmtNum(n2 / 100);
+    if (!isNaN(n1)) return fmtNum(n1 / 100);
+    return v2 || v1;
+  })();
+
+  // Produtividade — arredonda para 2 casas
+  const prodBruta = (() => {
+    const v = sol.prod_estimada_bruta || sol.prod_garantida || '';
+    const n = parseFloat(String(v).replace(',','.'));
+    return isNaN(n) ? '' : parseFloat(n.toFixed(2)).toString();
+  })();
+
   setVal('ce-broker',          sol.corretora || sol.responsavel);
-  setVal('ce-municipio',       municipio);
+  setVal('ce-municipio',       municipioLimpo);
   setVal('ce-uf',              uf);
   setVal('ce-cliente',         sol.produtor);
   setVal('ce-area-solicitada', sol.superficie,  true);
   setVal('ce-cultivo',         sol.cultura);
-  setVal('ce-nivel-cobertura', sol.nivel_cobertura2 || sol.nivel_cobertura1, true);
-  setVal('ce-prod-estimada',   parseProd(sol.prod_estimada_bruta || sol.prod_garantida), true);
+  setVal('ce-nivel-cobertura', nc);
+  setVal('ce-prod-estimada',   prodBruta, true);
   setVal('ce-preco-saca',      sol.preco_saca,  true);
-  // Normaliza taxa: 6.5% ou 6,5% → 0,065 | 0.065 → 0,065
+
+  // Normaliza taxa: 6.9 → 0,069 | 6,9% → 0,069 | 0.069 → 0,069
   const normalizarTaxa = v => {
     if (!v) return '';
     const s = String(v).trim();
@@ -1847,24 +1873,37 @@ function preencherCamposCE(sol) {
     return parseFloat(decimal.toFixed(6)).toString().replace('.', ',');
   };
   setVal('ce-cuota', normalizarTaxa(sol.taxa));
-  setVal('ce-replantio',       sol.replantio);
+  setVal('ce-replantio', sol.replantio);
 
   // Converte data do Excel (serial ou string) para formato YYYY-MM-DD
   const converterData = (v) => {
     if (!v) return '';
     const s = String(v).trim();
-    // Se já está em formato de data legível (dd/mm/yyyy ou yyyy-mm-dd)
-    if (s.includes('/')) {
-      const parts = s.split('/');
-      if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+
+    // Já está em yyyy-mm-dd (com ou sem horário)
+    if (s.length >= 10 && s.substring(4,5) === '-' && s.substring(7,8) === '-') {
+      return s.substring(0, 10);
     }
-    if (s.includes('-') && s.length === 10) return s;
-    // Serial do Excel — ajuste correto
+
+    // dd/mm/yyyy
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
+      const [d, m, y] = s.split('/');
+      return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+    }
+
+    // mm/dd/yyyy (formato americano)
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
+      const [m, d, y] = s.split('/');
+      return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+    }
+
+    // Serial numérico do Excel (ex: 46300)
     const n = parseFloat(s);
-    if (!isNaN(n) && n > 1000) {
+    if (!isNaN(n) && n > 40000) { // > 40000 = após 2009, evita anos antigos
       const d = new Date(Date.UTC(1899, 11, 30) + n * 86400000);
       if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
     }
+
     return '';
   };
 
