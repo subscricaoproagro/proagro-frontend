@@ -1470,27 +1470,36 @@ async function carregarStats() {
         const inicioSemana = new Date(agora);
         inicioSemana.setDate(agora.getDate() - agora.getDay());
         inicioSemana.setHours(0,0,0,0);
-        const naSemana = j => new Date(j.updated_at || j.created_at) >= inicioSemana;
+        const naSemana = j => new Date(j.created_at) >= inicioSemana;
 
-        const isSistema = j => j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '';
-        const isCE      = j => !isSistema(j);
+        // Sistema = tem id_proposta != 0 OU tipo_analise = 'sistema' OU foi recusado sem CE
+        const isSistema = j => {
+          const idp = String(j.id_proposta || '0').trim();
+          if (idp !== '0' && idp !== '' && idp !== 'None') return true;
+          if (j.tipo_analise === 'sistema') return true;
+          // recusado sem condicao_especial = sistema
+          if (j.decisao === 'recusado' && j.tipo_analise !== 'condicao_especial') return true;
+          return false;
+        };
+        const isCE = j => j.tipo_analise === 'condicao_especial' || 
+                          (String(j.id_proposta || '0').trim() === '0' && j.decisao !== 'recusado' && j.tipo_analise !== 'sistema');
 
         const concluidos = jobs.filter(j => j.status === 'concluido');
 
         // Totais
-        const pendSistema = concluidos.filter(j => isSistema(j) && !j.decisao).length;
-        const pendCE      = concluidos.filter(j => isCE(j) && j.decisao === 'aprovado' && !_ceJobIds.has(j.id)).length;
+        const pendSistema  = concluidos.filter(j => isSistema(j) && !j.decisao).length;
+        const pendCE       = concluidos.filter(j => isCE(j) && j.decisao === 'aprovado' && !_ceJobIds.has(j.id)).length;
         const aprovSistema = concluidos.filter(j => isSistema(j) && j.decisao === 'aprovado').length;
-        const aprovCE     = ces.filter(ce => ce.job && ce.job.decisao_risco === 'aprovado').length;
-        const balcao      = ces.filter(ce => ce.job && ce.job.decisao_risco === 'balcao').length;
-        const recusSistema = concluidos.filter(j => isSistema(j) && j.decisao === 'recusado').length;
-        const recusCE     = ces.filter(ce => ce.job && ce.job.decisao_risco === 'recusado').length;
+        const aprovCE      = ces.filter(ce => ce.job && ce.job.decisao_risco === 'aprovado').length;
+        const balcao       = ces.filter(ce => ce.job && ce.job.decisao_risco === 'balcao').length;
+        const recusSistema = concluidos.filter(j => j.decisao === 'recusado' && j.tipo_analise !== 'condicao_especial').length;
+        const recusCE      = ces.filter(ce => ce.job && ce.job.decisao_risco === 'recusado').length;
 
         // Semana
         const semAprovSistema = concluidos.filter(j => isSistema(j) && j.decisao === 'aprovado' && naSemana(j)).length;
         const semAprovCE      = ces.filter(ce => ce.job && ce.job.decisao_risco === 'aprovado' && naSemana(ce.job)).length;
         const semBalcao       = ces.filter(ce => ce.job && ce.job.decisao_risco === 'balcao' && naSemana(ce.job)).length;
-        const semRecusSistema = concluidos.filter(j => isSistema(j) && j.decisao === 'recusado' && naSemana(j)).length;
+        const semRecusSistema = concluidos.filter(j => j.decisao === 'recusado' && j.tipo_analise !== 'condicao_especial' && naSemana(j)).length;
         const semRecusCE      = ces.filter(ce => ce.job && ce.job.decisao_risco === 'recusado' && naSemana(ce.job)).length;
 
         const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
