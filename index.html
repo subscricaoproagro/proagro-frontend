@@ -302,7 +302,7 @@
           <div class="stat-card" style="cursor:pointer;border-left:4px solid #f59e0b" onclick="document.getElementById('hist-filter').value='aguardando_analise';showPage('historico')">
             <div class="stat-label">⏳ Aguardando Análise</div>
             <div class="stat-value" id="dash-pendentes-sistema" style="color:#f59e0b">—</div>
-            <div class="stat-delta">Sistema sem decisão</div>
+            <div class="stat-delta">jobs sem decisão (total)</div>
           </div>
           <div class="stat-card" style="cursor:pointer;border-left:4px solid #f59e0b" onclick="document.getElementById('hist-filter').value='aguardando_analise';showPage('historico')">
             <div class="stat-label">⏳ Aguardando Envio CE</div>
@@ -1487,7 +1487,7 @@ async function carregarStats() {
         const concluidos = jobs.filter(j => j.status === 'concluido');
 
         // Totais
-        const pendSistema  = concluidos.filter(j => isSistema(j) && !j.decisao).length;
+        const pendSistema  = concluidos.filter(j => !j.decisao && !j.decisao_risco).length; // todos sem decisão
         const pendCE       = concluidos.filter(j => isCE(j) && j.decisao === 'aprovado' && !_ceJobIds.has(j.id)).length;
         const aprovSistema = concluidos.filter(j => isSistema(j) && j.decisao === 'aprovado').length;
         const aprovCE      = ces.filter(ce => ce.job && ce.job.decisao_risco === 'aprovado').length;
