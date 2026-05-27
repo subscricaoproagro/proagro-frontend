@@ -795,6 +795,12 @@ function enterApp() {
     document.getElementById('nova-analise-btn').style.display = '';
     document.getElementById('historico-btn').style.display = '';
     document.getElementById('solicitacoes-btn').style.display = '';
+    // Admin vê abas Sistema/CE e cards de stats igual ao analista
+    const elAbas = document.getElementById('hist-abas');
+    if (elAbas) elAbas.style.display = 'flex';
+    const elP = document.getElementById('card-stat-pendentes'); if(elP) elP.style.display = '';
+    const elA = document.getElementById('card-stat-aprovadas-sub'); if(elA) elA.style.display = '';
+    const elR = document.getElementById('card-stat-recusadas-sub'); if(elR) elR.style.display = '';
   }
   if (currentUser.role === 'analista') {
     document.getElementById('nova-analise-btn').style.display = '';
@@ -1128,13 +1134,16 @@ async function carregarJobs() {
     _jobsCache = jobs;
     const filter = document.getElementById('hist-filter')?.value || '';
 
-    // Filtra por aba (Sistema / CE) para analista
+    // Filtra por aba (Sistema / CE) para analista e admin
     let filtered = jobs;
-    if (currentUser?.role === 'analista' && document.getElementById('hist-abas')?.style.display !== 'none') {
+    const mostrarAbas = document.getElementById('hist-abas')?.style.display !== 'none';
+    if (mostrarAbas) {
       if (_histAba === 'sistema') {
-        filtered = jobs.filter(j => !j.tipo_analise || j.tipo_analise === 'sistema');
+        // Sistema: propostas com número != 0
+        filtered = jobs.filter(j => j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '');
       } else {
-        filtered = jobs.filter(j => j.tipo_analise === 'condicao_especial');
+        // CE: propostas com número == 0 ou vazio
+        filtered = jobs.filter(j => !j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '');
       }
     }
 
