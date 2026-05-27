@@ -2949,7 +2949,27 @@ function removerPlanilhaCE() {
 
 function parseBR(v) {
   if (!v) return 0;
-  return parseFloat(String(v).replace(/\./g,'').replace(',','.')) || 0;
+  let s = String(v).trim().replace(/\s/g, '');
+  // Detecta formato: se tem vírgula E ponto, vírgula é decimal BR (ex: 1.234,56)
+  // Se só tem ponto sem vírgula, pode ser decimal EN (ex: 35.99) ou milhar EN (ex: 1.234)
+  if (s.includes(',') && s.includes('.')) {
+    // Formato BR: 1.234,56 → remove pontos, troca vírgula por ponto
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else if (s.includes(',')) {
+    // Só vírgula: decimal BR → troca por ponto
+    s = s.replace(',', '.');
+  } else if (s.includes('.')) {
+    // Só ponto: verifica se é decimal ou milhar
+    const parts = s.split('.');
+    if (parts[parts.length - 1].length <= 2) {
+      // Último grupo tem 1-2 dígitos → é decimal (ex: 35.99, 177.93)
+      // mantém como está
+    } else {
+      // Último grupo tem 3 dígitos → é separador de milhar (ex: 1.234)
+      s = s.replace(/\./g, '');
+    }
+  }
+  return parseFloat(s) || 0;
 }
 function fmtBR(n) {
   return n.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -4132,10 +4152,11 @@ async function decisaoRelatorio(tipo) {
     _ceJobId = jobId;
 
     if (idProposta === '0' || idProposta === '') {
-      // É CE — salva decisão e abre modal de preenchimento CE
+      // É CE — salva decisão e orienta usuário a clicar em Preencher Dados CE
       await api('POST', '/jobs/' + jobId + '/decisao', { decisao: 'aprovado', justificativa: '' });
-      showToast('Proposta aprovada! Preencha os dados de CE.', 'success');
-      openModal('modal-form-ce');
+      await carregarJobs();
+      await carregarCondicoesEspeciais();
+      showToast('Marcado como Condição Especial. Clique em "Preencher Dados CE" para continuar.', 'success');
     } else {
       // É Sistema — salva como Aprovado (Sistema)
       await api('POST', '/jobs/' + jobId + '/marcar-sistema');
