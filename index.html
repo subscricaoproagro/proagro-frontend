@@ -1121,7 +1121,11 @@ async function excluirJobsPorStatus() {
     if (filtro === 'aguardando')     return j.status === 'aguardando';
     if (filtro === 'processando')    return j.status === 'processando';
     if (filtro === 'aguardando_analise') return j.status === 'concluido' && !j.decisao && !j.decisao_risco;
-    if (filtro === 'concluido_simples') return j.status === 'concluido' && (j.decisao === 'aprovado' || _ceJobIds.has(j.id)) && !j.decisao_risco;
+    if (filtro === 'concluido_simples') {
+      const isSistema = j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '';
+      if (isSistema) return j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco;
+      return j.status === 'concluido' && _ceJobIds.has(j.id) && !j.decisao_risco;
+    }
     if (filtro === 'ce_aprovada')    return j.status === 'concluido' && j.decisao_risco === 'aprovado';
     if (filtro === 'recusada')       return j.status === 'concluido' && j.decisao === 'recusado';
     if (filtro === 'erro')           return j.status === 'erro' || j.status === 'cancelado';
@@ -1189,7 +1193,11 @@ async function carregarJobs() {
       if (filter === 'aguardando')     return j.status === 'aguardando';
       if (filter === 'processando')    return j.status === 'processando';
       if (filter === 'aguardando_analise') return j.status === 'concluido' && !j.decisao && !j.decisao_risco;
-      if (filter === 'concluido_simples') return j.status === 'concluido' && (j.decisao === 'aprovado' || _ceJobIds.has(j.id)) && !j.decisao_risco;
+      if (filter === 'concluido_simples') {
+        const isSistema = j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '';
+        if (isSistema) return j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco;
+        return j.status === 'concluido' && _ceJobIds.has(j.id) && !j.decisao_risco;
+      }
       if (filter === 'ce_aprovada')    return j.status === 'concluido' && j.decisao_risco === 'aprovado';
       if (filter === 'recusada')       return j.status === 'concluido' && j.decisao === 'recusado';
       if (filter === 'erro')           return j.status === 'erro' || j.status === 'cancelado';
