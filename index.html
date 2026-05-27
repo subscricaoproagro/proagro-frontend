@@ -1214,7 +1214,7 @@ function renderJobsTable(jobs) {
           ${concluido ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${j.id}')" title="Visualizar relatório completo">📄 Ver</button>` : ''}
           ${concluido ? `<button class="btn-sm btn-green" onclick="baixarJob('${j.id}')">⬇ Baixar</button>` : ''}
 
-          ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="verCondicaoEspecial('${j.id}')">📋 Preencher Dados CE</button>` : ''}
+          ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirPreencherCE('${j.id}')">📋 Preencher Dados CE</button>` : ''}
           ${concluido && j.tipo_analise==='sistema' ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="window.open('https://brasil.proagroinsur.tech','_blank')">🖥️ Acessar Sistema</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="verDecisaoAR('${j.id}')">👁 Ver Decisão AR</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="reavaliarCE('${j.id}')">🔄 Reavaliar</button>` : ''}
@@ -1924,6 +1924,32 @@ async function salvarFormCE() {
     await carregarJobs();
     await carregarCondicoesEspeciais();
   } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function abrirPreencherCE(jobId) {
+  _ceJobId = jobId;
+  // Limpa formulário
+  const camposLimpar = ['ce-broker','ce-municipio','ce-codigo-ibge','ce-uf','ce-cliente',
+    'ce-area-solicitada','ce-cultivo','ce-ajuste','ce-ciclo','ce-modalidade',
+    'ce-nivel-cobertura','ce-prod-estimada','ce-prod-ibge','ce-diferenca',
+    'ce-preco-saca','ce-cuota','ce-premio','ce-cpf-busca'];
+  camposLimpar.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  const elWrap = document.getElementById('ce-municipio-select-wrap');
+  if (elWrap) elWrap.style.display = 'none';
+  const elStatus = document.getElementById('ce-busca-status');
+  if (elStatus) elStatus.textContent = '';
+  const rep = document.getElementById('ce-replantio'); if(rep) rep.value = '';
+  const fs = document.getElementById('ce-fecha-siembra'); if(fs) fs.value = '';
+  const fc = document.getElementById('ce-fecha-cosecha'); if(fc) fc.value = '';
+  openModal('modal-form-ce');
+  // Preenche automaticamente dados do job
+  try {
+    const jobData = await api('GET', `/jobs/${_ceJobId}`);
+    if (jobData.municipio_dominante) { const el = document.getElementById('ce-municipio'); if(el && !el.value) el.value = jobData.municipio_dominante; }
+    if (jobData.uf_dominante)        { const el = document.getElementById('ce-uf');        if(el && !el.value) el.value = jobData.uf_dominante; }
+    if (jobData.codigo_ibge)         { const el = document.getElementById('ce-codigo-ibge'); if(el && !el.value) el.value = jobData.codigo_ibge; }
+    if (jobData.area_total_ha)       { const el = document.getElementById('ce-area-solicitada'); if(el && !el.value) { el.value = String(jobData.area_total_ha).replace('.',','); calcularCE(); } }
+  } catch(e) { console.warn('Erro ao buscar dados geo:', e.message); }
 }
 
 async function verCondicaoEspecial(jobId) {
