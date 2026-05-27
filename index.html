@@ -1929,48 +1929,13 @@ async function confirmarTipoAnalise(tipo) {
       openModal('modal-aviso-sistema');
     } catch(e) { showToast('Erro: ' + e.message, 'error'); }
   } else {
-    // Condição especial → aprova o job e abre formulário CE para preenchimento
+    // Condição especial → apenas aprova o job e orienta o usuário a preencher os dados
     try {
       await api('POST', '/jobs/' + _ceJobId + '/decisao', { decisao: 'aprovado', justificativa: '' });
-    } catch(e) {}
-    // Limpa formulário antes de abrir
-    const camposLimpar = ['ce-broker','ce-municipio','ce-codigo-ibge','ce-uf','ce-cliente',
-      'ce-area-solicitada','ce-cultivo','ce-ajuste','ce-ciclo','ce-modalidade',
-      'ce-nivel-cobertura','ce-prod-estimada','ce-prod-ibge','ce-diferenca',
-      'ce-preco-saca','ce-cuota','ce-premio','ce-cpf-busca'];
-    const elWrap = document.getElementById('ce-municipio-select-wrap');
-    if (elWrap) elWrap.style.display = 'none';
-    const elStatus = document.getElementById('ce-busca-status');
-    if (elStatus) elStatus.textContent = '';
-    camposLimpar.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
-    const rep = document.getElementById('ce-replantio'); if(rep) rep.value = '';
-    const fs = document.getElementById('ce-fecha-siembra'); if(fs) fs.value = '';
-    const fc = document.getElementById('ce-fecha-cosecha'); if(fc) fc.value = '';
-    openModal('modal-form-ce');
-
-    // Preenche automaticamente município, UF, área e código IBGE do relatório
-    try {
-      const jobData = await api('GET', `/jobs/${_ceJobId}`);
-      if (jobData.municipio_dominante) {
-        const elMun = document.getElementById('ce-municipio');
-        if (elMun && !elMun.value) elMun.value = jobData.municipio_dominante;
-      }
-      if (jobData.uf_dominante) {
-        const elUf = document.getElementById('ce-uf');
-        if (elUf && !elUf.value) elUf.value = jobData.uf_dominante;
-      }
-      if (jobData.codigo_ibge) {
-        const elIbge = document.getElementById('ce-codigo-ibge');
-        if (elIbge && !elIbge.value) elIbge.value = jobData.codigo_ibge;
-      }
-      if (jobData.area_total_ha) {
-        const elArea = document.getElementById('ce-area-solicitada');
-        if (elArea && !elArea.value) {
-          elArea.value = String(jobData.area_total_ha).replace('.', ',');
-          calcularCE();
-        }
-      }
-    } catch(e) { console.warn('Erro ao buscar dados geo do job:', e.message); }
+      await carregarJobs();
+      await carregarCondicoesEspeciais();
+      showToast('Marcado como Condição Especial. Clique em "Preencher Dados CE" para continuar.', 'success');
+    } catch(e) { showToast('Erro: ' + e.message, 'error'); }
   }
 }
 
