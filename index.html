@@ -795,7 +795,7 @@ let pollingInterval = null;
 // ══════════════════════════════════════════
 // API HELPER
 // ══════════════════════════════════════════
-async function api(method, path, body = null, isForm = false) {
+async function api(method, path, body = null, isForm = false, _tentativa = 1) {
   // Se a URL for do Railway (desativado), força buscar do Supabase
   if (!BACKEND_URL || BACKEND_URL.includes('railway.app')) {
     await buscarUrlSupabase();
@@ -814,13 +814,33 @@ async function api(method, path, body = null, isForm = false) {
   } else if (body && isForm) {
     opts.body = body;
   }
-  const res = await fetch(`${BACKEND_URL}${path}`, opts);
-  if (res.status === 401) { handleLogout(); throw new Error('Sessão expirada.'); }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Erro desconhecido.');
+
+  // Timeout de 15s + retry automático (até 2 tentativas)
+  const TIMEOUT_MS = 15000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  opts.signal = controller.signal;
+
+  try {
+    const res = await fetch(`${BACKEND_URL}${path}`, opts);
+    clearTimeout(timer);
+    if (res.status === 401) { handleLogout(); throw new Error('Sessão expirada.'); }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Erro desconhecido.');
+    }
+    return res.json();
+  } catch(e) {
+    clearTimeout(timer);
+    // Retry automático em caso de timeout ou erro de rede (não em erros de autenticação)
+    if (_tentativa < 2 && (e.name === 'AbortError' || e.message === 'Failed to fetch' || e.name === 'TypeError')) {
+      console.warn(`[API] Tentativa ${_tentativa} falhou (${e.message}), retentando em 2s...`);
+      await new Promise(r => setTimeout(r, 2000));
+      return api(method, path, body, isForm, _tentativa + 1);
+    }
+    if (e.name === 'AbortError') throw new Error('Servidor demorou para responder. Tente novamente.');
+    throw e;
   }
-  return res.json();
 }
 
 // ══════════════════════════════════════════
@@ -934,6 +954,10 @@ function enterApp() {
   pollingInterval = setInterval(() => {
     carregarJobs();
     carregarStats();
+    // Atualiza solicitações CE automaticamente se estiver na página
+    const paginaAtiva = document.querySelector('.page-section.active');
+    if (paginaAtiva && paginaAtiva.id === 'page-solicitacoes') carregarSolicitacoes();
+    if (paginaAtiva && paginaAtiva.id === 'page-condicao-especial') carregarCondicoesEspeciais();
   }, 10000);
 }
 
