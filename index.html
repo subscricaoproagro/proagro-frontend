@@ -881,6 +881,7 @@ function enterApp() {
   }
   if (currentUser.role === 'analista') {
     document.getElementById('dashboard-btn').style.display = 'none';
+    const pgDash = document.getElementById('page-dashboard'); if(pgDash) pgDash.style.display = 'none';
     document.getElementById('nova-analise-btn').style.display = '';
     document.getElementById('historico-btn').style.display = '';
     document.getElementById('solicitacoes-btn').style.display = '';
@@ -895,6 +896,8 @@ function enterApp() {
     document.getElementById('ce-btn').style.display = '';
     document.getElementById('dashboard-sv-btn').style.display = 'none';
     document.getElementById('dashboard-btn').style.display = 'none';
+    const pgDash = document.getElementById('page-dashboard'); if(pgDash) pgDash.style.display = 'none';
+    const pgDashSv = document.getElementById('page-dashboard-supervisor'); if(pgDashSv) pgDashSv.style.display = 'none';
     document.getElementById('nova-analise-btn').style.display = 'none';
     document.getElementById('historico-btn').style.display = 'none';
     document.getElementById('assistente-btn').style.display = 'none';
