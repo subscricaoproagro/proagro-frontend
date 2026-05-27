@@ -281,9 +281,77 @@
         <div class="stat-card"><div class="stat-label">Esta semana</div><div class="stat-value" id="stat-semana">—</div><div class="stat-delta">todos os usuários</div></div>
         <div class="stat-card"><div class="stat-label">Em processamento</div><div class="stat-value" id="stat-proc">—</div><div class="stat-delta">jobs ativos</div></div>
         <div class="stat-card" id="card-stat-users"><div class="stat-label">Usuários ativos</div><div class="stat-value" id="stat-users">—</div><div class="stat-delta">com acesso aprovado</div></div>
-        <div class="stat-card" id="card-stat-pendentes" style="display:none;cursor:pointer" onclick="showPage('historico')"><div class="stat-label">Aguardando avaliação</div><div class="stat-value" id="stat-pendentes" style="color:#f59e0b">—</div><div class="stat-delta">sem decisão ainda</div></div>
-        <div class="stat-card" id="card-stat-aprovadas-sub" style="display:none"><div class="stat-label">Aprovadas</div><div class="stat-value" id="stat-aprovadas-sub" style="color:#166534">—</div><div class="stat-delta">propostas aprovadas</div></div>
-        <div class="stat-card" id="card-stat-recusadas-sub" style="display:none"><div class="stat-label">Recusadas</div><div class="stat-value" id="stat-recusadas-sub" style="color:#c0392b">—</div><div class="stat-delta">propostas recusadas</div></div>
+      </div>
+
+      <!-- Cards de status detalhado — analista/admin -->
+      <div id="dash-status-cards" style="display:none;margin-top:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Resumo de decisões (total acumulado)</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px">
+          <div class="stat-card" style="cursor:pointer;border-left:4px solid #f59e0b" onclick="document.getElementById('hist-filter').value='aguardando_analise';showPage('historico')">
+            <div class="stat-label">⏳ Aguardando Análise</div>
+            <div class="stat-value" id="dash-pendentes-sistema" style="color:#f59e0b">—</div>
+            <div class="stat-delta">Sistema sem decisão</div>
+          </div>
+          <div class="stat-card" style="cursor:pointer;border-left:4px solid #f59e0b" onclick="document.getElementById('hist-filter').value='aguardando_analise';showPage('historico')">
+            <div class="stat-label">⏳ Aguardando Envio CE</div>
+            <div class="stat-value" id="dash-pendentes-ce" style="color:#f59e0b">—</div>
+            <div class="stat-delta">CE sem dados preenchidos</div>
+          </div>
+          <div class="stat-card" style="border-left:4px solid #1d4ed8">
+            <div class="stat-label">🖥️ Aprovadas Sistema</div>
+            <div class="stat-value" id="dash-aprov-sistema" style="color:#1d4ed8">—</div>
+            <div class="stat-delta">total aprovado sistema</div>
+          </div>
+          <div class="stat-card" style="border-left:4px solid #166534">
+            <div class="stat-label">⭐ CE Aprovadas</div>
+            <div class="stat-value" id="dash-aprov-ce" style="color:#166534">—</div>
+            <div class="stat-delta">aprovadas pelo AR</div>
+          </div>
+          <div class="stat-card" style="border-left:4px solid #0369a1">
+            <div class="stat-label">🏦 Balcão</div>
+            <div class="stat-value" id="dash-balcao" style="color:#0369a1">—</div>
+            <div class="stat-delta">ofertas de balcão</div>
+          </div>
+          <div class="stat-card" style="border-left:4px solid #c0392b">
+            <div class="stat-label">❌ Recusadas Sistema</div>
+            <div class="stat-value" id="dash-recus-sistema" style="color:#c0392b">—</div>
+            <div class="stat-delta">recusadas pelo analista</div>
+          </div>
+          <div class="stat-card" style="border-left:4px solid #c0392b">
+            <div class="stat-label">❌ Recusadas CE (AR)</div>
+            <div class="stat-value" id="dash-recus-ce" style="color:#c0392b">—</div>
+            <div class="stat-delta">recusadas pelo AR</div>
+          </div>
+        </div>
+
+        <div style="font-size:12px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Esta semana</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
+          <div class="stat-card" style="border-left:4px solid #1d4ed8">
+            <div class="stat-label">🖥️ Aprovadas Sistema</div>
+            <div class="stat-value" id="dash-sem-aprov-sistema" style="color:#1d4ed8">—</div>
+            <div class="stat-delta">na semana</div>
+          </div>
+          <div class="stat-card" style="border-left:4px solid #166534">
+            <div class="stat-label">⭐ CE Aprovadas</div>
+            <div class="stat-value" id="dash-sem-aprov-ce" style="color:#166534">—</div>
+            <div class="stat-delta">na semana</div>
+          </div>
+          <div class="stat-card" style="border-left:4px solid #0369a1">
+            <div class="stat-label">🏦 Balcão</div>
+            <div class="stat-value" id="dash-sem-balcao" style="color:#0369a1">—</div>
+            <div class="stat-delta">na semana</div>
+          </div>
+          <div class="stat-card" style="border-left:4px solid #c0392b">
+            <div class="stat-label">❌ Recusadas Sistema</div>
+            <div class="stat-value" id="dash-sem-recus-sistema" style="color:#c0392b">—</div>
+            <div class="stat-delta">na semana</div>
+          </div>
+          <div class="stat-card" style="border-left:4px solid #c0392b">
+            <div class="stat-label">❌ Recusadas CE (AR)</div>
+            <div class="stat-value" id="dash-sem-recus-ce" style="color:#c0392b">—</div>
+            <div class="stat-delta">na semana</div>
+          </div>
+        </div>
       </div>
       <div class="two-col">
         <div class="card">
@@ -812,23 +880,20 @@ function enterApp() {
     const elR = document.getElementById('card-stat-recusadas-sub'); if(elR) elR.style.display = '';
   }
   if (currentUser.role === 'analista') {
+    document.getElementById('dashboard-btn').style.display = 'none';
     document.getElementById('nova-analise-btn').style.display = '';
     document.getElementById('historico-btn').style.display = '';
     document.getElementById('solicitacoes-btn').style.display = '';
-    document.getElementById('card-stat-users').style.display = 'none';
     document.getElementById('ce-btn').style.display = 'none';
     document.getElementById('admin-btn').style.display = 'none';
     document.getElementById('assistente-btn').style.display = 'none';
-    document.getElementById('card-stat-pendentes').style.display = '';
-    document.getElementById('card-stat-aprovadas-sub').style.display = '';
-    document.getElementById('card-stat-recusadas-sub').style.display = '';
     // Mostra abas Sistema/CE no histórico
     const elAbas = document.getElementById('hist-abas');
     if (elAbas) elAbas.style.display = 'flex';
   }
   if (currentUser.role === 'supervisor') {
     document.getElementById('ce-btn').style.display = '';
-    document.getElementById('dashboard-sv-btn').style.display = '';
+    document.getElementById('dashboard-sv-btn').style.display = 'none';
     document.getElementById('dashboard-btn').style.display = 'none';
     document.getElementById('nova-analise-btn').style.display = 'none';
     document.getElementById('historico-btn').style.display = 'none';
@@ -843,7 +908,7 @@ function enterApp() {
 
   // Redirecionar para o dashboard correto
   if (currentUser.role === 'supervisor') {
-    showPage('dashboard-supervisor');
+    showPage('condicao-especial');
   } else if (currentUser.role === 'analista') {
     showPage('historico');
   }
@@ -1324,18 +1389,60 @@ async function carregarStats() {
     document.getElementById('stat-proc').textContent = s.processando;
     document.getElementById('stat-users').textContent = s.usuarios_ativos;
 
-    // Cards extras para analista
-    if (currentUser?.role === 'analista') {
+    // Cards detalhados para analista e admin
+    if (currentUser?.role === 'admin') {
+      const dashCards = document.getElementById('dash-status-cards');
+      if (dashCards) dashCards.style.display = '';
       try {
-        const jobs = await api('GET', '/jobs');
+        const [jobs, ces] = await Promise.all([
+          api('GET', '/jobs'),
+          api('GET', '/condicoes-especiais').catch(() => [])
+        ]);
+
+        // Atualiza _ceJobIds com dados frescos
+        _ceJobIds = new Set(ces.filter(ce => ce.cliente || ce.municipio).map(ce => ce.job_id));
+
+        const agora = new Date();
+        const inicioSemana = new Date(agora);
+        inicioSemana.setDate(agora.getDate() - agora.getDay());
+        inicioSemana.setHours(0,0,0,0);
+        const naSemana = j => new Date(j.updated_at || j.created_at) >= inicioSemana;
+
+        const isSistema = j => j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '';
+        const isCE      = j => !isSistema(j);
+
         const concluidos = jobs.filter(j => j.status === 'concluido');
-        const pendentes  = concluidos.filter(j => !j.decisao).length;
-        const aprovadas  = concluidos.filter(j => j.decisao === 'aprovado').length;
-        const recusadas  = concluidos.filter(j => j.decisao === 'recusado').length;
-        const elP = document.getElementById('stat-pendentes'); if(elP) elP.textContent = pendentes;
-        const elA = document.getElementById('stat-aprovadas-sub'); if(elA) elA.textContent = aprovadas;
-        const elR = document.getElementById('stat-recusadas-sub'); if(elR) elR.textContent = recusadas;
-      } catch(e) {}
+
+        // Totais
+        const pendSistema = concluidos.filter(j => isSistema(j) && !j.decisao).length;
+        const pendCE      = concluidos.filter(j => isCE(j) && j.decisao === 'aprovado' && !_ceJobIds.has(j.id)).length;
+        const aprovSistema = concluidos.filter(j => isSistema(j) && j.decisao === 'aprovado').length;
+        const aprovCE     = ces.filter(ce => ce.job && ce.job.decisao_risco === 'aprovado').length;
+        const balcao      = ces.filter(ce => ce.job && ce.job.decisao_risco === 'balcao').length;
+        const recusSistema = concluidos.filter(j => isSistema(j) && j.decisao === 'recusado').length;
+        const recusCE     = ces.filter(ce => ce.job && ce.job.decisao_risco === 'recusado').length;
+
+        // Semana
+        const semAprovSistema = concluidos.filter(j => isSistema(j) && j.decisao === 'aprovado' && naSemana(j)).length;
+        const semAprovCE      = ces.filter(ce => ce.job && ce.job.decisao_risco === 'aprovado' && naSemana(ce.job)).length;
+        const semBalcao       = ces.filter(ce => ce.job && ce.job.decisao_risco === 'balcao' && naSemana(ce.job)).length;
+        const semRecusSistema = concluidos.filter(j => isSistema(j) && j.decisao === 'recusado' && naSemana(j)).length;
+        const semRecusCE      = ces.filter(ce => ce.job && ce.job.decisao_risco === 'recusado' && naSemana(ce.job)).length;
+
+        const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+        set('dash-pendentes-sistema', pendSistema);
+        set('dash-pendentes-ce',      pendCE);
+        set('dash-aprov-sistema',     aprovSistema);
+        set('dash-aprov-ce',          aprovCE);
+        set('dash-balcao',            balcao);
+        set('dash-recus-sistema',     recusSistema);
+        set('dash-recus-ce',          recusCE);
+        set('dash-sem-aprov-sistema', semAprovSistema);
+        set('dash-sem-aprov-ce',      semAprovCE);
+        set('dash-sem-balcao',        semBalcao);
+        set('dash-sem-recus-sistema', semRecusSistema);
+        set('dash-sem-recus-ce',      semRecusCE);
+      } catch(e) { console.warn('Stats detalhados:', e.message); }
     }
   } catch(e) { console.warn('Stats:', e.message); }
 }
