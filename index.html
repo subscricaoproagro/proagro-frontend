@@ -1688,22 +1688,18 @@ function abrirTipoAnalise(jobId) {
 
 async function confirmarTipoAnalise(tipo) {
   closeModal('modal-tipo-analise');
-  // Preserva o jobId localmente para não perder se _ceJobId for sobrescrito
-  const jobIdAtual = _ceJobId;
-  if (!jobIdAtual) { showToast('Erro: job não identificado. Tente novamente.', 'error'); return; }
   if (tipo === 'sistema') {
     try {
       // Aprova o job E marca como sistema
-      await api('POST', '/jobs/' + jobIdAtual + '/decisao', { decisao: 'aprovado', justificativa: '' });
-      await api('POST', '/jobs/' + jobIdAtual + '/marcar-sistema');
+      await api('POST', '/jobs/' + _ceJobId + '/decisao', { decisao: 'aprovado', justificativa: '' });
+      await api('POST', '/jobs/' + _ceJobId + '/marcar-sistema');
       await carregarJobs();
       openModal('modal-aviso-sistema');
     } catch(e) { showToast('Erro: ' + e.message, 'error'); }
   } else {
     // Condição especial → aprova o job e abre formulário CE para preenchimento
-    _ceJobId = jobIdAtual; // garante que está setado corretamente antes do modal
     try {
-      await api('POST', '/jobs/' + jobIdAtual + '/decisao', { decisao: 'aprovado', justificativa: '' });
+      await api('POST', '/jobs/' + _ceJobId + '/decisao', { decisao: 'aprovado', justificativa: '' });
     } catch(e) {}
     // Limpa formulário antes de abrir
     const camposLimpar = ['ce-broker','ce-municipio','ce-codigo-ibge','ce-uf','ce-cliente',
@@ -1944,19 +1940,16 @@ async function salvarFormCE() {
   // Proteção: _ceJobId não pode ser null
   if (!_ceJobId) {
     showToast('Erro interno: ID do job perdido. Feche o modal e tente novamente.', 'error');
-    console.error('[salvarFormCE] _ceJobId é null ou undefined');
     return;
   }
-
   // Validação dos campos obrigatórios
-  const broker    = document.getElementById('ce-broker').value.trim();
-  const cliente   = document.getElementById('ce-cliente').value.trim();
-  const municipio = document.getElementById('ce-municipio').value.trim();
+  const broker    = document.getElementById('ce-broker')?.value.trim();
+  const cliente   = document.getElementById('ce-cliente')?.value.trim();
+  const municipio = document.getElementById('ce-municipio')?.value.trim();
   if (!broker || !cliente || !municipio) {
     showToast('Preencha pelo menos Broker, Cliente e Município antes de salvar.', 'error');
     return;
   }
-
   // Desabilita botão para evitar duplo clique
   const btnSalvar = document.querySelector('#modal-form-ce .btn-primary');
   if (btnSalvar) { btnSalvar.disabled = true; btnSalvar.textContent = '⏳ Salvando...'; }
@@ -1982,9 +1975,6 @@ async function salvarFormCE() {
     fecha_siembra:                document.getElementById('ce-fecha-siembra')?.value || '',
     fecha_cosecha:                document.getElementById('ce-fecha-cosecha')?.value || ''
   };
-
-  console.log('[salvarFormCE] job_id:', _ceJobId, '| body:', JSON.stringify(body));
-
   try {
     await api('POST', '/jobs/' + _ceJobId + '/condicao-especial', body);
     closeModal('modal-form-ce');
@@ -1992,7 +1982,6 @@ async function salvarFormCE() {
     await carregarJobs();
     await carregarCondicoesEspeciais();
   } catch(e) {
-    console.error('[salvarFormCE] Erro:', e);
     showToast('Erro ao salvar: ' + e.message, 'error');
     if (btnSalvar) { btnSalvar.disabled = false; btnSalvar.textContent = '💾 Salvar'; }
   }
@@ -4149,6 +4138,7 @@ async function verRelatorio(jobId) {
         <div><label class="ce-label">Cultivo</label><input class="ce-input" id="ce-cultivo" placeholder="Cultivo"></div>
         <div><label class="ce-label">Ajuste</label><input class="ce-input" id="ce-ajuste" placeholder="Ajuste"></div>
         <div><label class="ce-label">Ciclo</label><input class="ce-input" id="ce-ciclo" placeholder="Ciclo"></div>
+
         <div><label class="ce-label">Nível de Cobertura (ex: 0,70)</label><input class="ce-input" id="ce-nivel-cobertura" placeholder="0,70" oninput="calcularCE()"></div>
         <div><label class="ce-label">Produtividade Estimada Bruta (kg/ha)</label><input class="ce-input" id="ce-prod-estimada" placeholder="kg/ha" oninput="calcularCE()"></div>
         <div><label class="ce-label">Produtividade IBGE (kg/ha)</label><input class="ce-input" id="ce-prod-ibge" placeholder="kg/ha" oninput="calcularCE()"></div>
