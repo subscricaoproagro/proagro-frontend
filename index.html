@@ -431,6 +431,7 @@
             <option value="">Todos</option>
             <option value="aguardando">⏳ Aguardando processamento</option>
             <option value="processando">🔄 Em execução</option>
+            <option value="aguardando_analise">🟡 Aguardando Análise</option>
             <option value="concluido_simples">✅ Concluído</option>
             <option value="ce_aprovada">⭐ CE Aprovada</option>
             <option value="recusada">❌ Recusada</option>
@@ -444,6 +445,7 @@
       <div id="hist-contadores" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
         <div onclick="document.getElementById('hist-filter').value='aguardando';carregarJobs()" style="cursor:pointer;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#92400e">⏳ Aguardando: <span id="hcount-aguardando">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='processando';carregarJobs()" style="cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#1d4ed8">🔄 Em execução: <span id="hcount-processando">—</span></div>
+        <div onclick="document.getElementById('hist-filter').value='aguardando_analise';carregarJobs()" style="cursor:pointer;background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#92400e">🟡 Aguardando Análise: <span id="hcount-aguardando-analise">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='concluido_simples';carregarJobs()" style="cursor:pointer;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#166534">✅ Concluído: <span id="hcount-concluido">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='ce_aprovada';carregarJobs()" style="cursor:pointer;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#92400e">⭐ CE Aprovada: <span id="hcount-ce">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='recusada';carregarJobs()" style="cursor:pointer;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#c0392b">❌ Recusada: <span id="hcount-recusada">—</span></div>
@@ -1101,6 +1103,7 @@ async function excluirJobsPorStatus() {
   const filtro = document.getElementById('hist-filter')?.value || '';
   const labelFiltro = filtro === 'aguardando' ? 'Aguardando processamento'
     : filtro === 'processando' ? 'Em execução'
+    : filtro === 'aguardando_analise' ? 'Aguardando Análise'
     : filtro === 'concluido_simples' ? 'Concluído'
     : filtro === 'ce_aprovada' ? 'CE Aprovada'
     : filtro === 'recusada' ? 'Recusada'
@@ -1117,6 +1120,7 @@ async function excluirJobsPorStatus() {
   const filtrados = todos.filter(j => {
     if (filtro === 'aguardando')     return j.status === 'aguardando';
     if (filtro === 'processando')    return j.status === 'processando';
+    if (filtro === 'aguardando_analise') return j.status === 'concluido' && !j.decisao && !j.decisao_risco;
     if (filtro === 'concluido_simples') return j.status === 'concluido' && j.decisao !== 'recusado' && !j.decisao_risco;
     if (filtro === 'ce_aprovada')    return j.status === 'concluido' && j.decisao_risco === 'aprovado';
     if (filtro === 'recusada')       return j.status === 'concluido' && j.decisao === 'recusado';
@@ -1174,7 +1178,8 @@ async function carregarJobs() {
     const setCount = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
     setCount('hcount-aguardando',  allJobs.filter(j => j.status === 'aguardando').length);
     setCount('hcount-processando', allJobs.filter(j => j.status === 'processando').length);
-    setCount('hcount-concluido',   allJobs.filter(j => j.status === 'concluido' && j.decisao !== 'recusado' && !j.decisao_risco).length);
+    setCount('hcount-aguardando-analise', allJobs.filter(j => j.status === 'concluido' && !j.decisao && !j.decisao_risco).length);
+    setCount('hcount-concluido',   allJobs.filter(j => j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco).length);
     setCount('hcount-ce',          allJobs.filter(j => j.status === 'concluido' && j.decisao_risco === 'aprovado').length);
     setCount('hcount-recusada',    allJobs.filter(j => j.status === 'concluido' && j.decisao === 'recusado').length);
     setCount('hcount-erro',        allJobs.filter(j => j.status === 'erro' || j.status === 'cancelado').length);
@@ -1183,6 +1188,7 @@ async function carregarJobs() {
     if (filter) filtered = filtered.filter(j => {
       if (filter === 'aguardando')     return j.status === 'aguardando';
       if (filter === 'processando')    return j.status === 'processando';
+      if (filter === 'aguardando_analise') return j.status === 'concluido' && !j.decisao && !j.decisao_risco;
       if (filter === 'concluido_simples') return j.status === 'concluido' && j.decisao !== 'recusado' && !j.decisao_risco;
       if (filter === 'ce_aprovada')    return j.status === 'concluido' && j.decisao_risco === 'aprovado';
       if (filter === 'recusada')       return j.status === 'concluido' && j.decisao === 'recusado';
