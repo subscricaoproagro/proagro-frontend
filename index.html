@@ -1214,7 +1214,9 @@ function renderJobsTable(jobs) {
           ${concluido ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${j.id}')" title="Visualizar relatório completo">📄 Ver</button>` : ''}
           ${concluido ? `<button class="btn-sm btn-green" onclick="baixarJob('${j.id}')">⬇ Baixar</button>` : ''}
 
-          ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirPreencherCE('${j.id}')">📋 Preencher Dados CE</button>` : ''}
+          ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && !_ceJobIds.has(j.id) ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirPreencherCE('${j.id}')">📋 Preencher Dados CE</button>` : ''}
+          ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) ? `<span class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;cursor:default">📨 Enviado para AR</span>` : ''}
+          ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="reavaliarCEAnalista('${j.id}')">🔄 Reavaliar</button>` : ''}
           ${concluido && j.tipo_analise==='sistema' ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="window.open('https://brasil.proagroinsur.tech','_blank')">🖥️ Acessar Sistema</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="verDecisaoAR('${j.id}')">👁 Ver Decisão AR</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="reavaliarCE('${j.id}')">🔄 Reavaliar</button>` : ''}
@@ -1680,6 +1682,7 @@ function setStatus(itemId, status) {
 // CONDIÇÃO ESPECIAL
 // ══════════════════════════════════════════
 let _ceJobId = null;
+let _ceJobIds = new Set(); // job_ids que já têm CE salva
 
 function abrirTipoAnalise(jobId) {
   _ceJobId = jobId;
@@ -2122,6 +2125,8 @@ async function carregarCondicoesEspeciais() {
   if (!tbody) return;
   try {
     const lista = await api('GET', '/condicoes-especiais');
+    // Atualiza Set de job_ids com CE salva
+    _ceJobIds = new Set(lista.filter(ce => ce.cliente || ce.municipio).map(ce => ce.job_id));
     // Filtra: remove tipo 'sistema', propostas != 0, e CEs sem dados preenchidos
     const listaSemSistema = lista.filter(ce => {
       if (!ce.job) return true;
@@ -2471,6 +2476,19 @@ function abrirModalEmail(ce, job) {
     </div>`;
 
   openModal('modal-email-preview');
+}
+
+async function reavaliarCEAnalista(jobId) {
+  if (!confirm('Deseja realmente reavaliar? Os dados preenchidos serão apagados e a CE voltará para preenchimento.')) return;
+  try {
+    await api('DELETE', '/jobs/' + jobId + '/condicao-especial');
+    _ceJobIds.delete(jobId);
+    showToast('CE removida. Preencha os dados novamente.', 'success');
+    await carregarJobs();
+    await carregarCondicoesEspeciais();
+  } catch(e) {
+    showToast('Erro ao reavaliar: ' + e.message, 'error');
+  }
 }
 
 async function reavaliarCE(jobId) {
