@@ -2015,12 +2015,14 @@ async function carregarCondicoesEspeciais() {
   if (!tbody) return;
   try {
     const lista = await api('GET', '/condicoes-especiais');
-    // Filtra: remove tipo 'sistema' e propostas com número != 0
+    // Filtra: remove tipo 'sistema', propostas != 0, e CEs sem dados preenchidos
     const listaSemSistema = lista.filter(ce => {
       if (!ce.job) return true;
       if (ce.job.tipo_analise === 'sistema') return false;
       const idP = String(ce.job.id_proposta || '0').trim();
       if (idP !== '0' && idP !== '') return false;
+      // Só mostra se tiver dados preenchidos (cliente ou município)
+      if (!ce.cliente && !ce.municipio) return false;
       return true;
     });
 
