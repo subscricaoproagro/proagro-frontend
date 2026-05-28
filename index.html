@@ -256,7 +256,6 @@
       <button class="topbar-btn" id="assistente-btn" onclick="showPage('assistente')" style="display:none">Assistente IA</button>
       <button class="topbar-btn" id="ce-btn" onclick="showPage('condicao-especial')" style="display:none">Condição Especial</button>
       <button class="topbar-btn" id="endosso-btn" onclick="showPage('endosso')" style="display:none">Endosso</button>
-      <button class="topbar-btn" id="comercial-btn" onclick="showPage('comercial')" style="display:none">Comercial</button>
       <button class="topbar-btn" id="admin-btn" onclick="showPage('admin')" style="display:none">Admin</button>
     </nav>
     <div class="topbar-right">
@@ -608,10 +607,6 @@
 
     <!-- CONDIÇÃO ESPECIAL -->
     <div id="page-condicao-especial" class="page-section">
-      <div id="banner-prioridade" style="display:none;background:#fef3c7;border:1px solid #f59e0b;border-radius:var(--r-sm);padding:12px 16px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px">
-        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">⚡</span><div><div style="font-size:13px;font-weight:600;color:#92400e">Solicitação de Prioridade</div><div id="banner-prioridade-texto" style="font-size:12px;color:#78350f;margin-top:2px"></div></div></div>
-        <button onclick="fecharBannerPrioridade()" style="background:none;border:none;cursor:pointer;font-size:16px;color:#92400e">✕</button>
-      </div>
       <div class="section-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
         <div>
           <div class="section-title">Condição Especial</div>
@@ -773,7 +768,7 @@
       <div class="form-group"><label class="form-label">Nome completo</label><input type="text" class="form-input" id="new-name" placeholder="Nome do colaborador"></div>
       <div class="form-group"><label class="form-label">E-mail institucional</label><input type="email" class="form-input" id="new-email" placeholder="colaborador@proagroseguros.com"></div>
       <div class="form-group"><label class="form-label">Perfil</label>
-        <select class="form-input" id="new-role"><option value="analista">Analista</option><option value="supervisor">Supervisor</option><option value="admin">Administrador</option><option value="comercial">Comercial</option></select>
+        <select class="form-input" id="new-role"><option value="analista">Analista</option><option value="supervisor">Supervisor</option><option value="admin">Administrador</option></select>
       </div>
       <div id="new-user-result" style="display:none;background:var(--g50);border:1px solid var(--g100);border-radius:var(--r-sm);padding:12px;font-size:13px;color:var(--g700);margin-bottom:12px"></div>
       <div id="new-user-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px"></div>
@@ -902,7 +897,6 @@ function enterApp() {
   document.getElementById('top-username').textContent = currentUser.name;
 
   if (currentUser.role === 'admin') {
-    document.getElementById('comercial-btn').style.display = '';
     document.getElementById('admin-btn').style.display = '';
     const elRelBtns = document.getElementById('dash-relatorio-btns'); if(elRelBtns) elRelBtns.style.display = 'flex';
     document.getElementById('endosso-btn').style.display = '';
@@ -931,10 +925,6 @@ function enterApp() {
     const elAbas = document.getElementById('hist-abas');
     if (elAbas) elAbas.style.display = 'flex';
   }
-  if (currentUser.role === 'comercial') {
-    document.getElementById('comercial-btn').style.display = '';
-    ['dashboard-btn','nova-analise-btn','historico-btn','ce-btn','admin-btn','assistente-btn','endosso-btn','solicitacoes-btn'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
-  }
   if (currentUser.role === 'supervisor') {
     document.getElementById('ce-btn').style.display = '';
     document.getElementById('dashboard-sv-btn').style.display = 'none';
@@ -958,8 +948,6 @@ function enterApp() {
     showPage('condicao-especial');
   } else if (currentUser.role === 'analista') {
     showPage('historico');
-  } else if (currentUser.role === 'comercial') {
-    showPage('comercial');
   }
 
   // Polling a cada 10s para atualizar jobs em processamento
@@ -970,7 +958,6 @@ function enterApp() {
     const paginaAtiva = document.querySelector('.page-section.active');
     if (paginaAtiva && paginaAtiva.id === 'page-solicitacoes') carregarSolicitacoes();
     if (paginaAtiva && paginaAtiva.id === 'page-condicao-especial') carregarCondicoesEspeciais();
-    if (currentUser?.role === 'supervisor') verificarBannerPrioridade();
   }, 10000);
 }
 
@@ -1060,8 +1047,7 @@ async function verificarBackend() {
 // NAVEGAÇÃO
 // ══════════════════════════════════════════
 function showPage(page) {
-  if (page === 'condicao-especial') { carregarCondicoesEspeciais(); verificarBannerPrioridade(); }
-  if (page === 'comercial') { carregarComercial(); }
+  if (page === 'condicao-especial') carregarCondicoesEspeciais();
   if (page === 'solicitacoes') carregarSolicitacoes();
   if (page === 'endosso') carregarEndossos();
   if (page === 'dashboard-supervisor') carregarDashboardSupervisor();
@@ -1359,7 +1345,6 @@ function renderJobsTable(jobs) {
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) ? `<span class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;cursor:default">📨 Enviado para AR</span>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="reavaliarCEAnalista('${j.id}')">🔄 Reavaliar</button>` : ''}
           ${concluido && (j.tipo_analise==='sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '')) && j.decisao === 'aprovado' ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="window.open('https://brasil.proagroinsur.tech','_blank')">🖥️ Acessar Sistema</button>` : ''}
-          ${concluido && (j.tipo_analise==='sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '')) && j.decisao === 'aprovado' ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="abrirUploadSistema('${j.id}')">📁 Enviar Arquivos</button>` : ''}
           ${concluido && (j.tipo_analise==='sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '')) && j.decisao === 'aprovado' ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="abrirUploadSistema('${j.id}')">📁 Enviar Arquivos</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="verDecisaoAR('${j.id}')">👁 Ver Decisão AR</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="reavaliarCE('${j.id}')">🔄 Reavaliar</button>` : ''}
@@ -1779,11 +1764,6 @@ let _decisaoTipo = null;
 function abrirDecisao(jobId, tipo) {
   _decisaoJobId = jobId;
   _decisaoTipo = tipo;
-  if (tipo === 'aprovado') {
-    const job = allJobs.find(j => j.id === jobId);
-    const isSis = job && (job.tipo_analise === 'sistema' || (job.id_proposta && String(job.id_proposta).trim() !== '0' && String(job.id_proposta).trim() !== ''));
-    if (isSis) { abrirUploadSistema(jobId); return; }
-  }
   const errEl = document.getElementById('modal-decisao-error');
   errEl.style.display = 'none';
   document.getElementById('modal-justificativa').value = '';
@@ -1896,204 +1876,6 @@ async function confirmarUploadSistema() {
     btn.disabled = false;
   }
 }
-
-// COMERCIAL
-let _cesSelecionadas = {};
-let _uploadSistemaJobId = null;
-
-function showComercialTab(tab) {
-  const ce = document.getElementById('comercial-ce-section');
-  const ap = document.getElementById('comercial-apolices-section');
-  const bCe = document.getElementById('tab-ces-btn');
-  const bAp = document.getElementById('tab-apolices-btn');
-  const bAt = document.getElementById('btn-atualizar-comercial');
-  const bPr = document.getElementById('btn-solicitar-prioridade');
-  if (tab === 'ces') {
-    if(ce) ce.style.display=''; if(ap) ap.style.display='none';
-    bCe.style.background='var(--g600)'; bCe.style.color='#fff';
-    bAp.style.background='transparent'; bAp.style.color='var(--gray600)';
-    if(bAt) bAt.onclick=carregarComercial; if(bPr) bPr.style.display='';
-  } else {
-    if(ce) ce.style.display='none'; if(ap) ap.style.display='';
-    bAp.style.background='var(--g600)'; bAp.style.color='#fff';
-    bCe.style.background='transparent'; bCe.style.color='var(--gray600)';
-    if(bAt) bAt.onclick=carregarApolices; if(bPr) bPr.style.display='none';
-    carregarApolices();
-  }
-}
-
-async function carregarComercial() {
-  const tbody = document.getElementById('comercial-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--gray400)">Carregando...</td></tr>';
-  try {
-    const [r1, r2] = await Promise.all([api('GET','/condicoes-especiais'), api('GET','/jobs')]);
-    const ces = r1.condicoes || r1 || [];
-    const jobs = r2.jobs || r2 || [];
-    const jMap = {};
-    jobs.forEach(j => { const n=(j.nome_proponente||'').trim().toLowerCase(); if(!jMap[n])jMap[n]=[]; jMap[n].push(j); });
-    const agora = new Date();
-    tbody.innerHTML = '';
-    _cesSelecionadas = {};
-    if (!ces.length) { tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--gray400)">Sem dados.</td></tr>'; return; }
-    ces.forEach(ce => {
-      const job = ce.job || {};
-      const cliente = ce.cliente||'—', broker=ce.broker||'—', municipio=ce.municipio||'—', uf=(ce.uf||'').toUpperCase();
-      const cultura = job.cultura_desejada||'—', dr = job.decisao_risco;
-      let sn='⏳ Aguardando Análise AT', sc='#92400e';
-      if(dr==='aprovado'){sn='✅ Resposta Enviada';sc='#166534';}
-      else if(dr==='balcao'){sn='🏦 Resposta Enviada';sc='#1e40af';}
-      else if(dr==='recusado'){sn='❌ Resposta Enviada';sc='#991b1b';}
-      let di='', dc='#6b7280';
-      if(dr && job.decisao_risco_em){const d=Math.floor((agora-new Date(job.decisao_risco_em))/86400000);di=d>30?`⚠️ Condição Vencida (${d}d)`:`${d}d desde resposta`;dc=d>30?'#dc2626':'#374151';}
-      else if(ce.criado_em){const d=Math.floor((agora-new Date(ce.criado_em))/86400000);di=`${d}d aguardando`;dc=d>20?'#f59e0b':'#6b7280';}
-      let ap='—', ac='#374151';
-      const js=(jMap[cliente.trim().toLowerCase()]||[]).find(j=>j.tipo_analise==='sistema'||(j.id_proposta&&String(j.id_proposta).trim()!=='0'));
-      if(js){if(js.decisao==='aprovado'){ap='✅ Virou Apólice';ac='#166534';}else if(js.decisao==='recusado'){ap='❌ Recusada';ac='#991b1b';}else{ap='📋 Em Análise';ac='#1e40af';}}
-      const tr = document.createElement('tr');
-      tr.style.borderBottom='1px solid var(--gray100)';
-      tr.innerHTML=`<td style="padding:10px 12px"><input type="checkbox" onchange="toggleCEPrioridade('${ce.id}','${cliente.replace(/'/g,"\\'")}',this)" style="cursor:pointer"></td>
-        <td style="padding:10px 12px;font-size:13px">${cliente}</td>
-        <td style="padding:10px 12px;font-size:12px;color:var(--gray600)">${broker}</td>
-        <td style="padding:10px 12px;font-size:13px">${cultura}</td>
-        <td style="padding:10px 12px;font-size:13px">${municipio}${uf?'/'+uf:''}</td>
-        <td style="padding:10px 12px;font-size:12px;color:${sc};font-weight:500">${sn}</td>
-        <td style="padding:10px 12px;font-size:12px;color:${dc}">${di}</td>
-        <td style="padding:10px 12px;font-size:13px;font-weight:500">${ce.premio||'—'}</td>
-        <td style="padding:10px 12px;font-size:12px;color:${ac};font-weight:500">${ap}</td>`;
-      tbody.appendChild(tr);
-    });
-  } catch(e) { tbody.innerHTML=`<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--red)">Erro: ${e.message}</td></tr>`; }
-}
-
-function toggleCEPrioridade(id, cliente, cb) {
-  if(cb.checked) _cesSelecionadas[id]=cliente; else delete _cesSelecionadas[id];
-  const n=Object.keys(_cesSelecionadas).length;
-  const b=document.getElementById('btn-solicitar-prioridade');
-  b.disabled=n===0; b.style.opacity=n===0?'0.6':'1';
-  b.textContent=n>0?`⚡ Solicitar Prioridade (${n})`:'⚡ Solicitar Prioridade';
-}
-
-async function solicitarPrioridade() {
-  const ids=Object.keys(_cesSelecionadas), cls=Object.values(_cesSelecionadas);
-  if(!ids.length) return;
-  try {
-    await api('POST','/prioridade-comercial',{ce_ids:ids,clientes:cls});
-    showToast('✅ Prioridade solicitada!','success');
-    _cesSelecionadas={};
-    const b=document.getElementById('btn-solicitar-prioridade');
-    b.disabled=true; b.style.opacity='0.6'; b.textContent='⚡ Solicitar Prioridade';
-    carregarComercial();
-  } catch(e) { showToast('Erro: '+e.message,'error'); }
-}
-
-async function verificarBannerPrioridade() {
-  if(!currentUser||currentUser.role!=='supervisor') return;
-  try {
-    const d=await api('GET','/prioridade-comercial');
-    if(d&&d.pendente){
-      const b=document.getElementById('banner-prioridade');
-      const t=document.getElementById('banner-prioridade-texto');
-      if(b&&t){t.textContent=`Clientes: ${d.clientes.join(', ')} — por ${d.solicitado_por}`;b.style.display='flex';b._pid=d.id;}
-    }
-  } catch(e){}
-}
-
-async function fecharBannerPrioridade() {
-  const b=document.getElementById('banner-prioridade');
-  if(b&&b._pid){try{await api('POST','/prioridade-comercial/'+b._pid+'/visto');}catch(e){}}
-  if(b) b.style.display='none';
-}
-
-function abrirUploadSistema(jobId) {
-  _uploadSistemaJobId=jobId;
-  ['upload-proposta','upload-draft','upload-kml'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  const err=document.getElementById('upload-sistema-error'); if(err) err.style.display='none';
-  const obs=document.getElementById('upload-sistema-obs'); if(obs) obs.value='';
-  openModal('modal-upload-sistema');
-}
-
-async function confirmarUploadSistema() {
-  const p=document.getElementById('upload-proposta').files[0];
-  const d=document.getElementById('upload-draft').files[0];
-  const k=document.getElementById('upload-kml').files[0];
-  const obs=document.getElementById('upload-sistema-obs').value.trim();
-  const ds=document.getElementById('upload-data-semeadura').value;
-  const err=document.getElementById('upload-sistema-error'); err.style.display='none';
-  if(!p){err.textContent='Selecione a Proposta.';err.style.display='block';return;}
-  if(!d){err.textContent='Selecione o Draft.';err.style.display='block';return;}
-  if(!k){err.textContent='Selecione o KML.';err.style.display='block';return;}
-  if(!ds){err.textContent='Informe a data de semeadura.';err.style.display='block';return;}
-  const btn=document.getElementById('btn-confirmar-upload-sistema');
-  btn.textContent='Processando…'; btn.disabled=true;
-  try {
-    const form=new FormData();
-    form.append('proposta',p); form.append('draft',d); form.append('kml',k);
-    form.append('obs',obs); form.append('data_semeadura',ds);
-    const token=sessionStorage.getItem('pa_token');
-    const resp=await fetch(BACKEND_URL+'/jobs/'+_uploadSistemaJobId+'/aprovar-sistema',{method:'POST',headers:{'Authorization':'Bearer '+token},body:form});
-    if(!resp.ok){const e=await resp.json().catch(()=>({detail:'Erro desconhecido'}));throw new Error(e.detail||'Erro');}
-    const data=await resp.json();
-    closeModal('modal-upload-sistema');
-    showToast(data.vistoria_previa?'⚠️ Arquivos enviados. Email de vistoria enviado!':'✅ Arquivos enviados com sucesso!', data.vistoria_previa?'warning':'success');
-    carregarJobs();
-  } catch(e){err.textContent=e.message;err.style.display='block';}
-  finally{btn.textContent='Confirmar e Enviar';btn.disabled=false;}
-}
-
-async function carregarApolices() {
-  const cont=document.getElementById('apolices-brokers');
-  const tot=document.getElementById('apolices-totais');
-  if(!cont) return;
-  cont.innerHTML='<div style="color:var(--gray400);padding:32px;text-align:center">Carregando...</div>';
-  const safra=document.getElementById('filtro-safra')?.value||'';
-  const cultivo=document.getElementById('filtro-cultivo')?.value||'';
-  try {
-    let url='/apolices-vigentes';
-    const ps=[];
-    if(safra) ps.push('safra='+encodeURIComponent(safra));
-    if(cultivo) ps.push('cultivo='+encodeURIComponent(cultivo));
-    if(ps.length) url+='?'+ps.join('&');
-    const data=await api('GET',url);
-    const ss=document.getElementById('filtro-safra'), sc=document.getElementById('filtro-cultivo');
-    if(ss&&data.safras){const cv=ss.value;ss.innerHTML='<option value="">Todas as safras</option>';data.safras.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;if(s===cv)o.selected=true;ss.appendChild(o);});}
-    if(sc&&data.cultivos){const cv=sc.value;sc.innerHTML='<option value="">Todos os cultivos</option>';data.cultivos.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;if(c===cv)o.selected=true;sc.appendChild(o);});}
-    if(tot) tot.innerHTML=`
-      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:var(--r-sm);padding:12px 20px;text-align:center;min-width:160px">
-        <div style="font-size:11px;color:#166534;font-weight:600;text-transform:uppercase">Total Prêmio</div>
-        <div style="font-size:20px;font-weight:700;color:#15803d;margin-top:4px">R$ ${data.total_premio.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
-      </div>
-      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--r-sm);padding:12px 20px;text-align:center;min-width:160px">
-        <div style="font-size:11px;color:#1e40af;font-weight:600;text-transform:uppercase">Apólices Emitidas</div>
-        <div style="font-size:20px;font-weight:700;color:#1d4ed8;margin-top:4px">${data.total_apolices}</div>
-      </div>
-      <div style="background:#fefce8;border:1px solid #fde68a;border-radius:var(--r-sm);padding:12px 20px;text-align:center;min-width:160px">
-        <div style="font-size:11px;color:#92400e;font-weight:600;text-transform:uppercase">Brokers</div>
-        <div style="font-size:20px;font-weight:700;color:#b45309;margin-top:4px">${data.brokers.length}</div>
-      </div>`;
-    if(!data.brokers.length){cont.innerHTML='<div style="color:var(--gray400);padding:32px;text-align:center">Nenhuma apólice encontrada.</div>';return;}
-    cont.innerHTML='';
-    data.brokers.forEach(b=>{
-      const card=document.createElement('div');
-      card.style.cssText='background:#fff;border:1px solid var(--gray200);border-radius:var(--r-md);padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06)';
-      card.innerHTML=`<div style="font-size:13px;font-weight:700;color:var(--gray800);margin-bottom:10px;line-height:1.3">${b.broker}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-          <div style="background:#f0fdf4;border-radius:6px;padding:8px 10px"><div style="font-size:10px;color:#166534;font-weight:600;text-transform:uppercase">Prêmio Total</div><div style="font-size:15px;font-weight:700;color:#15803d">R$ ${b.premio_total.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
-          <div style="background:#eff6ff;border-radius:6px;padding:8px 10px"><div style="font-size:10px;color:#1e40af;font-weight:600;text-transform:uppercase">Apólices</div><div style="font-size:15px;font-weight:700;color:#1d4ed8">${b.qtd}</div></div>
-        </div>
-        <div style="font-size:12px;color:var(--gray600);margin-bottom:4px"><strong>Cultivos:</strong> ${b.culturas.join(', ')}</div>
-        <div style="font-size:12px;color:var(--gray600);margin-bottom:4px"><strong>Estados:</strong> ${b.estados.join(', ')}</div>
-        <div style="font-size:12px;color:var(--gray600);margin-bottom:10px"><strong>Municípios:</strong> ${b.municipios.slice(0,5).join(', ')}${b.municipios.length>5?' <span style="color:var(--gray400)">+'+(b.municipios.length-5)+' mais</span>':''}</div>
-        <details style="cursor:pointer"><summary style="font-size:12px;font-weight:600;color:var(--gray700);list-style:none">▶ Ver clientes (${b.clientes.length})</summary>
-          <div style="margin-top:8px;max-height:200px;overflow-y:auto"><table style="width:100%;font-size:11px;border-collapse:collapse">
-            ${b.clientes.map(c=>`<tr style="border-bottom:1px solid var(--gray100)"><td style="padding:4px 6px">${c.cliente}</td><td style="padding:4px 6px;color:var(--gray500)">${c.municipio}/${c.uf}</td><td style="padding:4px 6px;color:var(--gray500)">${c.cultura}</td><td style="padding:4px 6px;color:#15803d;font-weight:500">R$ ${c.premio.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td></tr>`).join('')}
-          </table></div></details>`;
-      cont.appendChild(card);
-    });
-  } catch(e){cont.innerHTML=`<div style="color:var(--red);padding:32px;text-align:center">Erro: ${e.message}</div>`;}
-}
-// FIM COMERCIAL
-
 
 async function confirmarDecisao() {
   const justificativa = document.getElementById('modal-justificativa').value.trim();
@@ -5255,65 +5037,6 @@ async function verRelatorio(jobId) {
       </div>
     </div>
   </div>
-
-    <!-- ═══ PÁGINA COMERCIAL ═══ -->
-    <div id="page-comercial" class="page-section">
-      <div class="section-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
-        <div>
-          <div class="section-title">Comercial</div>
-          <div class="section-sub">Acompanhamento de condições especiais e status de negócios</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <div style="display:flex;gap:4px;background:var(--gray100);border-radius:var(--r-sm);padding:3px">
-            <button id="tab-ces-btn" onclick="showComercialTab('ces')" style="padding:6px 14px;border-radius:var(--r-sm);border:none;font-size:13px;font-weight:500;cursor:pointer;background:var(--g600);color:#fff">Condições Especiais</button>
-            <button id="tab-apolices-btn" onclick="showComercialTab('apolices')" style="padding:6px 14px;border-radius:var(--r-sm);border:none;font-size:13px;font-weight:500;cursor:pointer;background:transparent;color:var(--gray600)">Apólices Vigentes</button>
-          </div>
-          <button class="btn-sm btn-outline" id="btn-atualizar-comercial" onclick="carregarComercial()">↻ Atualizar</button>
-          <button class="btn-sm" id="btn-solicitar-prioridade" disabled style="background:#f59e0b;color:#fff;border:none;opacity:0.6" onclick="solicitarPrioridade()">⚡ Solicitar Prioridade</button>
-        </div>
-      </div>
-
-      <!-- Sub-seção: Condições Especiais -->
-      <div id="comercial-ce-section">
-        <div style="overflow-x:auto;margin-top:16px">
-          <table style="width:100%;border-collapse:collapse;font-size:13px">
-            <thead>
-              <tr style="background:var(--gray50);border-bottom:2px solid var(--gray200)">
-                <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600);width:36px"></th>
-                <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Cliente</th>
-                <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Corretor</th>
-                <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Cultura</th>
-                <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Município/UF</th>
-                <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Status Negócio</th>
-                <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Prazo</th>
-                <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Prêmio</th>
-                <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Apólice</th>
-              </tr>
-            </thead>
-            <tbody id="comercial-tbody">
-              <tr><td colspan="9" style="text-align:center;padding:32px;color:var(--gray400)">Carregando...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Sub-seção: Apólices Vigentes -->
-      <div id="comercial-apolices-section" style="display:none">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:16px;margin-bottom:4px">
-          <select id="filtro-safra" class="form-input" style="width:auto;padding:8px 12px;font-size:13px" onchange="carregarApolices()">
-            <option value="">Todas as safras</option>
-          </select>
-          <select id="filtro-cultivo" class="form-input" style="width:auto;padding:8px 12px;font-size:13px" onchange="carregarApolices()">
-            <option value="">Todos os cultivos</option>
-          </select>
-        </div>
-        <div id="apolices-totais" style="display:flex;gap:16px;margin:16px 0;flex-wrap:wrap"></div>
-        <div id="apolices-brokers" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px">
-          <div style="color:var(--gray400);padding:32px;text-align:center">Clique em "Apólices Vigentes" para carregar.</div>
-        </div>
-      </div>
-    </div>
-
 </div>
 
 <!-- Modal Upload Sistema -->
