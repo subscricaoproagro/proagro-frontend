@@ -1284,7 +1284,7 @@ async function carregarJobs() {
     }
 
     // Atualiza contadores
-    const allJobs = jobs;
+    allJobs = jobs;
     const setCount = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
     setCount('hcount-aguardando',  allJobs.filter(j => j.status === 'aguardando').length);
     setCount('hcount-processando', allJobs.filter(j => j.status === 'processando').length);
@@ -1759,6 +1759,7 @@ async function deletarJob(id) {
 // DECISÃO (APROVAR / RECUSAR)
 // ══════════════════════════════════════════
 let _decisaoJobId = null;
+let allJobs = [];
 let _decisaoTipo = null;
 
 function abrirDecisao(jobId, tipo) {
