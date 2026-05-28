@@ -256,6 +256,7 @@
       <button class="topbar-btn" id="assistente-btn" onclick="showPage('assistente')" style="display:none">Assistente IA</button>
       <button class="topbar-btn" id="ce-btn" onclick="showPage('condicao-especial')" style="display:none">Condição Especial</button>
       <button class="topbar-btn" id="endosso-btn" onclick="showPage('endosso')" style="display:none">Endosso</button>
+      <button class="topbar-btn" id="comercial-btn" onclick="showPage('comercial')" style="display:none">Comercial</button>
       <button class="topbar-btn" id="admin-btn" onclick="showPage('admin')" style="display:none">Admin</button>
     </nav>
     <div class="topbar-right">
@@ -607,6 +608,17 @@
 
     <!-- CONDIÇÃO ESPECIAL -->
     <div id="page-condicao-especial" class="page-section">
+      <!-- Banner de prioridade -->
+      <div id="banner-prioridade" style="display:none;background:#fef3c7;border:1px solid #f59e0b;border-radius:var(--r-sm);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:18px">⚡</span>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:#92400e">Solicitação de Prioridade — Comercial</div>
+            <div id="banner-prioridade-texto" style="font-size:12px;color:#78350f;margin-top:2px"></div>
+          </div>
+        </div>
+        <button onclick="fecharBannerPrioridade()" style="background:none;border:none;cursor:pointer;font-size:16px;color:#92400e;padding:4px">✕</button>
+      </div>
       <div class="section-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
         <div>
           <div class="section-title">Condição Especial</div>
@@ -768,7 +780,7 @@
       <div class="form-group"><label class="form-label">Nome completo</label><input type="text" class="form-input" id="new-name" placeholder="Nome do colaborador"></div>
       <div class="form-group"><label class="form-label">E-mail institucional</label><input type="email" class="form-input" id="new-email" placeholder="colaborador@proagroseguros.com"></div>
       <div class="form-group"><label class="form-label">Perfil</label>
-        <select class="form-input" id="new-role"><option value="analista">Analista</option><option value="supervisor">Supervisor</option><option value="admin">Administrador</option></select>
+        <select class="form-input" id="new-role"><option value="analista">Analista</option><option value="supervisor">Supervisor</option><option value="admin">Administrador</option><option value="comercial">Comercial</option></select>
       </div>
       <div id="new-user-result" style="display:none;background:var(--g50);border:1px solid var(--g100);border-radius:var(--r-sm);padding:12px;font-size:13px;color:var(--g700);margin-bottom:12px"></div>
       <div id="new-user-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px"></div>
@@ -897,6 +909,7 @@ function enterApp() {
   document.getElementById('top-username').textContent = currentUser.name;
 
   if (currentUser.role === 'admin') {
+    document.getElementById('comercial-btn').style.display = '';
     document.getElementById('admin-btn').style.display = '';
     const elRelBtns = document.getElementById('dash-relatorio-btns'); if(elRelBtns) elRelBtns.style.display = 'flex';
     document.getElementById('endosso-btn').style.display = '';
@@ -925,6 +938,17 @@ function enterApp() {
     const elAbas = document.getElementById('hist-abas');
     if (elAbas) elAbas.style.display = 'flex';
   }
+  if (currentUser.role === 'comercial') {
+    document.getElementById('comercial-btn').style.display = '';
+    document.getElementById('dashboard-btn').style.display = 'none';
+    document.getElementById('nova-analise-btn').style.display = 'none';
+    document.getElementById('historico-btn').style.display = 'none';
+    document.getElementById('ce-btn').style.display = 'none';
+    document.getElementById('admin-btn').style.display = 'none';
+    document.getElementById('assistente-btn').style.display = 'none';
+    document.getElementById('endosso-btn').style.display = 'none';
+    document.getElementById('solicitacoes-btn').style.display = 'none';
+  }
   if (currentUser.role === 'supervisor') {
     document.getElementById('ce-btn').style.display = '';
     document.getElementById('dashboard-sv-btn').style.display = 'none';
@@ -948,6 +972,8 @@ function enterApp() {
     showPage('condicao-especial');
   } else if (currentUser.role === 'analista') {
     showPage('historico');
+  } else if (currentUser.role === 'comercial') {
+    showPage('comercial');
   }
 
   // Polling a cada 10s para atualizar jobs em processamento
@@ -958,6 +984,8 @@ function enterApp() {
     const paginaAtiva = document.querySelector('.page-section.active');
     if (paginaAtiva && paginaAtiva.id === 'page-solicitacoes') carregarSolicitacoes();
     if (paginaAtiva && paginaAtiva.id === 'page-condicao-especial') carregarCondicoesEspeciais();
+    if (paginaAtiva && paginaAtiva.id === 'page-comercial') carregarComercial();
+    if (currentUser?.role === 'supervisor') verificarBannerPrioridade();
   }, 10000);
 }
 
@@ -1875,6 +1903,179 @@ async function confirmarUploadSistema() {
     btn.textContent = 'Confirmar e Enviar';
     btn.disabled = false;
   }
+}
+
+// ═══════════════════════════
+// COMERCIAL
+// ═══════════════════════════
+let _cesSelecionadas = new Set();
+
+async function carregarComercial() {
+  const tbody = document.getElementById('comercial-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--gray400)">Carregando...</td></tr>';
+  try {
+    const [cesResp, jobsResp] = await Promise.all([
+      api('GET', '/condicoes-especiais'),
+      api('GET', '/jobs')
+    ]);
+    const ces = cesResp.condicoes || cesResp || [];
+    const jobs = jobsResp.jobs || jobsResp || [];
+
+    // Monta mapa de jobs por nome do proponente (para detectar apólices)
+    const jobsPorNome = {};
+    jobs.forEach(j => {
+      const nome = (j.nome_proponente || '').trim().toLowerCase();
+      if (!jobsPorNome[nome]) jobsPorNome[nome] = [];
+      jobsPorNome[nome].push(j);
+    });
+
+    const agora = new Date();
+    tbody.innerHTML = '';
+    _cesSelecionadas.clear();
+
+    if (!ces.length) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--gray400)">Nenhuma condição especial encontrada.</td></tr>';
+      return;
+    }
+
+    ces.forEach(ce => {
+      const job = ce.job || {};
+      const cliente = ce.cliente || '—';
+      const broker  = ce.broker  || '—';
+      const municipio = ce.municipio || '—';
+      const uf = (ce.uf || '').toUpperCase();
+      const cultura = job.cultura_desejada || '—';
+
+      // Status negócio
+      const decisaoAR = job.decisao_risco;
+      let statusNeg = '', statusColor = '';
+      if (decisaoAR === 'aprovado') {
+        statusNeg = '✅ Resposta Enviada'; statusColor = '#166534';
+      } else if (decisaoAR === 'balcao') {
+        statusNeg = '🏦 Resposta Enviada'; statusColor = '#1e40af';
+      } else if (decisaoAR === 'recusado') {
+        statusNeg = '❌ Resposta Enviada'; statusColor = '#991b1b';
+      } else {
+        statusNeg = '⏳ Aguardando Análise AT'; statusColor = '#92400e';
+      }
+
+      // Dias desde resposta / vencimento
+      let diasInfo = '', diasColor = '#374151';
+      const criado = ce.criado_em ? new Date(ce.criado_em) : null;
+      if (decisaoAR && job.decisao_risco_em) {
+        const dtResp = new Date(job.decisao_risco_em);
+        const dias = Math.floor((agora - dtResp) / 86400000);
+        if (dias > 30) {
+          diasInfo = `⚠️ Condição Vencida (${dias}d)`;
+          diasColor = '#dc2626';
+        } else {
+          diasInfo = `${dias}d desde resposta`;
+        }
+      } else if (criado) {
+        const dias = Math.floor((agora - criado) / 86400000);
+        diasInfo = `${dias}d aguardando`;
+        diasColor = dias > 20 ? '#f59e0b' : '#6b7280';
+      }
+
+      // Detecta apólice — mesmo nome do proponente em job Sistema aprovado
+      const nomeCliente = cliente.trim().toLowerCase();
+      let apolice = '', apoliceColor = '#374151';
+      const jobsMatch = jobsPorNome[nomeCliente] || [];
+      const jobSistema = jobsMatch.find(j => j.tipo_analise === 'sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0'));
+      if (jobSistema) {
+        if (jobSistema.decisao === 'aprovado') {
+          apolice = '✅ Virou Apólice'; apoliceColor = '#166534';
+        } else if (jobSistema.decisao === 'recusado') {
+          apolice = '❌ Proposta Recusada'; apoliceColor = '#991b1b';
+        } else {
+          apolice = '📋 Em Análise'; apoliceColor = '#1e40af';
+        }
+      } else {
+        apolice = '—';
+      }
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="padding:10px 12px">
+          <input type="checkbox" onchange="toggleCEPrioridade('${ce.id}','${cliente.replace(/'/g,"\'")}',this)" style="cursor:pointer">
+        </td>
+        <td style="padding:10px 12px;font-size:13px">${cliente}</td>
+        <td style="padding:10px 12px;font-size:13px">${broker}</td>
+        <td style="padding:10px 12px;font-size:13px">${cultura}</td>
+        <td style="padding:10px 12px;font-size:13px">${municipio}${uf ? '/'+uf : ''}</td>
+        <td style="padding:10px 12px;font-size:12px;color:${statusColor};font-weight:500">${statusNeg}</td>
+        <td style="padding:10px 12px;font-size:12px;color:${diasColor}">${diasInfo}</td>
+        <td style="padding:10px 12px;font-size:12px;color:${apoliceColor};font-weight:500">${apolice}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--red)">Erro: ${e.message}</td></tr>`;
+  }
+}
+
+function toggleCEPrioridade(ceId, cliente, checkbox) {
+  if (checkbox.checked) {
+    _cesSelecionadas.set(ceId, cliente);
+  } else {
+    _cesSelecionadas.delete(ceId);
+  }
+  document.getElementById('btn-solicitar-prioridade').disabled = _cesSelecionadas.size === 0;
+}
+
+// Sobrescreve Map com objeto simples
+_cesSelecionadas = {};
+function toggleCEPrioridade(ceId, cliente, checkbox) {
+  if (checkbox.checked) {
+    _cesSelecionadas[ceId] = cliente;
+  } else {
+    delete _cesSelecionadas[ceId];
+  }
+  const qtd = Object.keys(_cesSelecionadas).length;
+  document.getElementById('btn-solicitar-prioridade').disabled = qtd === 0;
+  document.getElementById('btn-solicitar-prioridade').textContent = qtd > 0 ? `⚡ Solicitar Prioridade (${qtd})` : '⚡ Solicitar Prioridade';
+}
+
+async function solicitarPrioridade() {
+  const ceIds = Object.keys(_cesSelecionadas);
+  const clientes = Object.values(_cesSelecionadas);
+  if (!ceIds.length) return;
+  try {
+    await api('POST', '/prioridade-comercial', { ce_ids: ceIds, clientes });
+    showToast('✅ Prioridade solicitada com sucesso!', 'success');
+    _cesSelecionadas = {};
+    document.getElementById('btn-solicitar-prioridade').disabled = true;
+    document.getElementById('btn-solicitar-prioridade').textContent = '⚡ Solicitar Prioridade';
+    carregarComercial();
+  } catch(e) {
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+async function verificarBannerPrioridade() {
+  if (!currentUser || currentUser.role !== 'supervisor') return;
+  try {
+    const data = await api('GET', '/prioridade-comercial');
+    if (data && data.pendente) {
+      const banner = document.getElementById('banner-prioridade');
+      const texto = document.getElementById('banner-prioridade-texto');
+      if (banner && texto) {
+        texto.textContent = `Clientes: ${data.clientes.join(', ')} — solicitado por ${data.solicitado_por}`;
+        banner.style.display = 'flex';
+        banner._prioridadeId = data.id;
+      }
+    }
+  } catch(e) {}
+}
+
+async function fecharBannerPrioridade() {
+  const banner = document.getElementById('banner-prioridade');
+  const id = banner ? banner._prioridadeId : null;
+  if (id) {
+    try { await api('POST', '/prioridade-comercial/' + id + '/visto'); } catch(e) {}
+  }
+  if (banner) banner.style.display = 'none';
 }
 
 async function confirmarDecisao() {
@@ -5077,5 +5278,41 @@ async function verRelatorio(jobId) {
         <button class="btn-sm" id="btn-confirmar-upload-sistema" style="flex:1;justify-content:center;padding:10px;background:var(--g600);color:#fff;border:none" onclick="confirmarUploadSistema()">Confirmar e Enviar</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ PÁGINA COMERCIAL ═══════════════════════════════ -->
+<div id="page-comercial" class="page-section">
+  <div class="section-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+      <div class="section-title">Comercial</div>
+      <div class="section-sub">Acompanhamento de condições especiais e status de negócios</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn-sm btn-outline" onclick="carregarComercial()">↻ Atualizar</button>
+      <button class="btn-sm" id="btn-solicitar-prioridade" disabled
+        style="background:#f59e0b;color:#fff;border:none;opacity:0.6"
+        onclick="solicitarPrioridade()">⚡ Solicitar Prioridade</button>
+    </div>
+  </div>
+
+  <div style="overflow-x:auto;margin-top:16px">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:var(--gray50);border-bottom:2px solid var(--gray200)">
+          <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600);width:36px"></th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Cliente</th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Corretor</th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Cultura</th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Município/UF</th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Status Negócio</th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Prazo</th>
+          <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Apólice</th>
+        </tr>
+      </thead>
+      <tbody id="comercial-tbody">
+        <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--gray400)">Carregando...</td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
