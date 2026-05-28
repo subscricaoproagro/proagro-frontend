@@ -984,7 +984,7 @@ function enterApp() {
     const paginaAtiva = document.querySelector('.page-section.active');
     if (paginaAtiva && paginaAtiva.id === 'page-solicitacoes') carregarSolicitacoes();
     if (paginaAtiva && paginaAtiva.id === 'page-condicao-especial') carregarCondicoesEspeciais();
-    if (paginaAtiva && paginaAtiva.id === 'page-comercial') carregarComercial();
+    // Comercial não recarrega automaticamente — usuário usa botão Atualizar
     if (currentUser?.role === 'supervisor') verificarBannerPrioridade();
   }, 10000);
 }
@@ -1914,16 +1914,22 @@ function showComercialTab(tab) {
   const apSection  = document.getElementById('comercial-apolices-section');
   const btnCe      = document.getElementById('tab-ces-btn');
   const btnAp      = document.getElementById('tab-apolices-btn');
+  const btnAtual   = document.getElementById('btn-atualizar-comercial');
+  const btnPrior   = document.getElementById('btn-solicitar-prioridade');
   if (tab === 'ces') {
     if(ceSection) ceSection.style.display = '';
     if(apSection) apSection.style.display = 'none';
     btnCe.style.background = 'var(--g600)'; btnCe.style.color = '#fff';
     btnAp.style.background = 'transparent'; btnAp.style.color = 'var(--gray600)';
+    if(btnAtual) { btnAtual.style.display = ''; btnAtual.onclick = carregarComercial; }
+    if(btnPrior) btnPrior.style.display = '';
   } else {
     if(ceSection) ceSection.style.display = 'none';
     if(apSection) apSection.style.display = '';
     btnAp.style.background = 'var(--g600)'; btnAp.style.color = '#fff';
     btnCe.style.background = 'transparent'; btnCe.style.color = 'var(--gray600)';
+    if(btnAtual) { btnAtual.style.display = ''; btnAtual.onclick = carregarApolices; }
+    if(btnPrior) btnPrior.style.display = 'none';
     carregarApolices();
   }
 }
@@ -5409,60 +5415,51 @@ async function verRelatorio(jobId) {
         <button id="tab-ces-btn" onclick="showComercialTab('ces')" style="padding:6px 14px;border-radius:var(--r-sm);border:none;font-size:13px;font-weight:500;cursor:pointer;background:var(--g600);color:#fff">Condições Especiais</button>
         <button id="tab-apolices-btn" onclick="showComercialTab('apolices')" style="padding:6px 14px;border-radius:var(--r-sm);border:none;font-size:13px;font-weight:500;cursor:pointer;background:transparent;color:var(--gray600)">Apólices Vigentes</button>
       </div>
-      <button class="btn-sm btn-outline" onclick="carregarComercial()">↻ Atualizar</button>
+      <button class="btn-sm btn-outline" id="btn-atualizar-comercial" onclick="carregarComercial()">↻ Atualizar</button>
       <button class="btn-sm" id="btn-solicitar-prioridade" disabled
         style="background:#f59e0b;color:#fff;border:none;opacity:0.6"
         onclick="solicitarPrioridade()">⚡ Solicitar Prioridade</button>
     </div>
   </div>
 
-  <!-- Sub-seção CEs -->
+  <!-- SUB-SEÇÃO: Condições Especiais -->
   <div id="comercial-ce-section">
-  <div style="overflow-x:auto;margin-top:16px">
-    <table style="width:100%;border-collapse:collapse;font-size:13px">
-      <thead>
-        <tr style="background:var(--gray50);border-bottom:2px solid var(--gray200)">
-          <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600);width:36px"></th>
-          <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Cliente</th>
-          <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Corretor</th>
-          <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Cultura</th>
-          <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Município/UF</th>
-          <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Status Negócio</th>
-          <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Prazo</th>
-          <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Prêmio</th>
-          <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Apólice</th>
-        </tr>
-      </thead>
-      <tbody id="comercial-tbody">
-        <tr><td colspan="9" style="text-align:center;padding:32px;color:var(--gray400)">Carregando...</td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════ PÁGINA APÓLICES VIGENTES ═══════════════════════════════ -->
-<div id="page-apolices-vigentes" class="page-section">
-  <div class="section-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
-    <div>
-      <div class="section-title">Apólices Vigentes</div>
-      <div class="section-sub">Apólices emitidas — painel por broker</div>
+    <div style="overflow-x:auto;margin-top:16px">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="background:var(--gray50);border-bottom:2px solid var(--gray200)">
+            <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600);width:36px"></th>
+            <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Cliente</th>
+            <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Corretor</th>
+            <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Cultura</th>
+            <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Município/UF</th>
+            <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Status Negócio</th>
+            <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Prazo</th>
+            <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Prêmio</th>
+            <th style="padding:10px 12px;text-align:left;font-weight:600;color:var(--gray600)">Apólice</th>
+          </tr>
+        </thead>
+        <tbody id="comercial-tbody">
+          <tr><td colspan="9" style="text-align:center;padding:32px;color:var(--gray400)">Carregando...</td></tr>
+        </tbody>
+      </table>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  </div>
+
+  <!-- SUB-SEÇÃO: Apólices Vigentes -->
+  <div id="comercial-apolices-section" style="display:none">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:16px;margin-bottom:4px">
       <select id="filtro-safra" class="form-input" style="width:auto;padding:8px 12px;font-size:13px" onchange="carregarApolices()">
         <option value="">Todas as safras</option>
       </select>
       <select id="filtro-cultivo" class="form-input" style="width:auto;padding:8px 12px;font-size:13px" onchange="carregarApolices()">
         <option value="">Todos os cultivos</option>
       </select>
-      <button class="btn-sm btn-outline" onclick="carregarApolices()">↻ Atualizar</button>
+    </div>
+    <div id="apolices-totais" style="display:flex;gap:16px;margin:16px 0;flex-wrap:wrap"></div>
+    <div id="apolices-brokers" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px">
+      <div style="color:var(--gray400);padding:32px;text-align:center">Clique em "Apólices Vigentes" para carregar.</div>
     </div>
   </div>
 
-  <!-- Totalizadores -->
-  <div id="apolices-totais" style="display:flex;gap:16px;margin:16px 0;flex-wrap:wrap"></div>
-
-  <!-- Cards por broker -->
-  <div id="apolices-brokers" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;margin-top:8px">
-    <div style="color:var(--gray400);padding:32px;text-align:center">Carregando...</div>
-  </div>
 </div>
