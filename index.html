@@ -1847,9 +1847,8 @@ async function confirmarUploadSistema() {
     form.append('justificativa', obs);
     form.append('data_semeadura', dataSemeadura);
 
-    const BACKEND = await getBackendUrl();
     const token = localStorage.getItem('token');
-    const resp = await fetch(BACKEND + '/jobs/' + _uploadSistemaJobId + '/aprovar-sistema', {
+    const resp = await fetch(BACKEND_URL + '/jobs/' + _uploadSistemaJobId + '/aprovar-sistema', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token },
       body: form
