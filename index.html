@@ -1855,16 +1855,8 @@ async function confirmarUploadSistema() {
     });
 
     if (!resp.ok) {
-      const err = await resp.json().catch(() => ({ detail: 'Erro desconhecido' }));
-      // Verifica se é alerta de vistoria (não é erro, é aviso)
-      if (resp.status === 202) {
-        const data = await resp.json().catch(() => ({}));
-        closeModal('modal-upload-sistema');
-        showToast('⚠️ Proposta aprovada. Email de vistoria prévia enviado!', 'warning');
-        carregarJobs();
-        return;
-      }
-      throw new Error(err.detail || 'Erro ao aprovar');
+      const errData = await resp.json().catch(() => ({ detail: 'Erro desconhecido' }));
+      throw new Error(errData.detail || 'Erro ao aprovar');
     }
 
     const data = await resp.json();
