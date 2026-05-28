@@ -1772,6 +1772,14 @@ function abrirDecisao(jobId, tipo) {
   const justWrap = document.getElementById('modal-justificativa-wrap');
   const btnConfirmar = document.getElementById('btn-confirmar-decisao');
 
+  // Para aprovação de sistema, abre modal de upload em vez do modal padrão
+  const job = allJobs.find(j => j.id === jobId);
+  const isSistemaJob = job && (job.tipo_analise === 'sistema' || (job.id_proposta && String(job.id_proposta).trim() !== '0' && String(job.id_proposta).trim() !== ''));
+  if (tipo === 'aprovado' && isSistemaJob) {
+    abrirUploadSistema(jobId);
+    return;
+  }
+
   if (tipo === 'aprovado') {
     title.textContent = '✅ Aprovar Proposta';
     info.textContent = 'Ao aprovar, o relatório será movido para a pasta "Propostas Aprovadas" localmente e no storage.';
@@ -1795,6 +1803,86 @@ function abrirDecisao(jobId, tipo) {
   }
 
   openModal('modal-decisao');
+}
+
+let _uploadSistemaJobId = null;
+
+function abrirUploadSistema(jobId) {
+  _uploadSistemaJobId = jobId;
+  // Limpa campos
+  document.getElementById('upload-proposta').value = '';
+  document.getElementById('upload-draft').value = '';
+  document.getElementById('upload-kml').value = '';
+  document.getElementById('upload-sistema-error').style.display = 'none';
+  document.getElementById('upload-sistema-obs').value = '';
+  openModal('modal-upload-sistema');
+}
+
+async function confirmarUploadSistema() {
+  const proposta = document.getElementById('upload-proposta').files[0];
+  const draft    = document.getElementById('upload-draft').files[0];
+  const kml      = document.getElementById('upload-kml').files[0];
+  const obs      = document.getElementById('upload-sistema-obs').value.trim();
+  const errEl    = document.getElementById('upload-sistema-error');
+  errEl.style.display = 'none';
+
+  const dataSemeadura = document.getElementById('upload-data-semeadura').value;
+  if (!proposta)       { errEl.textContent = 'Selecione o arquivo da Proposta.';   errEl.style.display = 'block'; return; }
+  if (!draft)          { errEl.textContent = 'Selecione o arquivo do Draft.';      errEl.style.display = 'block'; return; }
+  if (!kml)            { errEl.textContent = 'Selecione o arquivo KML.';           errEl.style.display = 'block'; return; }
+  if (!dataSemeadura)  { errEl.textContent = 'Informe a data de semeadura.';       errEl.style.display = 'block'; return; }
+
+  const btn = document.getElementById('btn-confirmar-upload-sistema');
+  btn.textContent = 'Processando…';
+  btn.disabled = true;
+
+  try {
+    const form = new FormData();
+    form.append('proposta', proposta);
+    form.append('draft', draft);
+    form.append('kml', kml);
+    form.append('obs', obs);
+    form.append('decisao', 'aprovado');
+    form.append('justificativa', obs);
+    form.append('data_semeadura', dataSemeadura);
+
+    const BACKEND = await getBackendUrl();
+    const token = localStorage.getItem('token');
+    const resp = await fetch(BACKEND + '/jobs/' + _uploadSistemaJobId + '/aprovar-sistema', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: form
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ detail: 'Erro desconhecido' }));
+      // Verifica se é alerta de vistoria (não é erro, é aviso)
+      if (resp.status === 202) {
+        const data = await resp.json().catch(() => ({}));
+        closeModal('modal-upload-sistema');
+        showToast('⚠️ Proposta aprovada. Email de vistoria prévia enviado!', 'warning');
+        carregarJobs();
+        return;
+      }
+      throw new Error(err.detail || 'Erro ao aprovar');
+    }
+
+    const data = await resp.json();
+    closeModal('modal-upload-sistema');
+
+    if (data.vistoria_previa) {
+      showToast('⚠️ Proposta aprovada. Email de vistoria prévia enviado!', 'warning');
+    } else {
+      showToast('✅ Proposta aprovada e arquivos enviados com sucesso!', 'success');
+    }
+    carregarJobs();
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.textContent = 'Confirmar e Enviar';
+    btn.disabled = false;
+  }
 }
 
 async function confirmarDecisao() {
@@ -4954,6 +5042,47 @@ async function verRelatorio(jobId) {
           </span>
           <input type="file" id="dce-planilha-avulsa" style="display:none" accept=".xlsx,.xls,.csv" onchange="uploadPlanilhaAvulsa(this)">
         </label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Upload Sistema -->
+<div class="modal-overlay" id="modal-upload-sistema">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title">📁 Aprovar Proposta — Envio de Arquivos</div>
+      <button class="modal-close" onclick="closeModal('modal-upload-sistema')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--gray50);border-radius:var(--r-sm);padding:12px;margin-bottom:16px;font-size:13px;color:var(--gray600)">
+        Faça o upload dos arquivos obrigatórios. O relatório de subscrição será incluído automaticamente. Os arquivos serão salvos na pasta <strong>Poligonos_sistema</strong> do OneDrive.
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Proposta *</label>
+        <input type="file" id="upload-proposta" accept=".pdf,.docx,.xlsx,.xls" style="width:100%;font-size:13px;padding:6px;border:1px solid var(--gray200);border-radius:var(--r-sm);background:#fff">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Draft *</label>
+        <input type="file" id="upload-draft" accept=".pdf,.docx,.xlsx,.xls" style="width:100%;font-size:13px;padding:6px;border:1px solid var(--gray200);border-radius:var(--r-sm);background:#fff">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">KML *</label>
+        <input type="file" id="upload-kml" accept=".kml,.kmz" style="width:100%;font-size:13px;padding:6px;border:1px solid var(--gray200);border-radius:var(--r-sm);background:#fff">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Data de Semeadura *</label>
+        <input type="date" id="upload-data-semeadura" style="width:100%;font-size:13px;padding:6px;border:1px solid var(--gray200);border-radius:var(--r-sm);background:#fff">
+        <span style="font-size:11px;color:var(--gray500);margin-top:4px;display:block">Se for data passada, será enviado email solicitando vistoria prévia.</span>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Observações (opcional)</label>
+        <textarea id="upload-sistema-obs" rows="2" placeholder="Observações sobre a aprovação..." style="width:100%;font-size:13px;padding:8px;border:1px solid var(--gray200);border-radius:var(--r-sm);resize:vertical;font-family:inherit"></textarea>
+      </div>
+      <div id="upload-sistema-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px;padding:8px;background:#fff5f5;border-radius:var(--r-sm);border:1px solid #fecaca"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm btn-outline" style="flex:1;justify-content:center" onclick="closeModal('modal-upload-sistema')">Cancelar</button>
+        <button class="btn-sm" id="btn-confirmar-upload-sistema" style="flex:1;justify-content:center;padding:10px;background:var(--g600);color:#fff;border:none" onclick="confirmarUploadSistema()">Confirmar e Enviar</button>
       </div>
     </div>
   </div>
