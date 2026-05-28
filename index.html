@@ -5360,49 +5360,6 @@ async function verRelatorio(jobId) {
       </div>
     </div>
   </div>
-</div>
-
-<!-- Modal Upload Sistema -->
-<div class="modal-overlay" id="modal-upload-sistema">
-  <div class="modal-box" style="max-width:480px">
-    <div class="modal-header">
-      <div class="modal-title">📁 Aprovar Proposta — Envio de Arquivos</div>
-      <button class="modal-close" onclick="closeModal('modal-upload-sistema')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div style="background:var(--gray50);border-radius:var(--r-sm);padding:12px;margin-bottom:16px;font-size:13px;color:var(--gray600)">
-        Faça o upload dos arquivos obrigatórios. O relatório de subscrição será incluído automaticamente. Os arquivos serão salvos na pasta <strong>Poligonos_sistema</strong> do OneDrive.
-      </div>
-      <div style="margin-bottom:14px">
-        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Proposta *</label>
-        <input type="file" id="upload-proposta" accept=".pdf,.docx,.xlsx,.xls" style="width:100%;font-size:13px;padding:6px;border:1px solid var(--gray200);border-radius:var(--r-sm);background:#fff">
-      </div>
-      <div style="margin-bottom:14px">
-        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Draft *</label>
-        <input type="file" id="upload-draft" accept=".pdf,.docx,.xlsx,.xls" style="width:100%;font-size:13px;padding:6px;border:1px solid var(--gray200);border-radius:var(--r-sm);background:#fff">
-      </div>
-      <div style="margin-bottom:14px">
-        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">KML *</label>
-        <input type="file" id="upload-kml" accept=".kml,.kmz" style="width:100%;font-size:13px;padding:6px;border:1px solid var(--gray200);border-radius:var(--r-sm);background:#fff">
-      </div>
-      <div style="margin-bottom:14px">
-        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Data de Semeadura *</label>
-        <input type="date" id="upload-data-semeadura" style="width:100%;font-size:13px;padding:6px;border:1px solid var(--gray200);border-radius:var(--r-sm);background:#fff">
-        <span style="font-size:11px;color:var(--gray500);margin-top:4px;display:block">Se for data passada, será enviado email solicitando vistoria prévia.</span>
-      </div>
-      <div style="margin-bottom:14px">
-        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Observações (opcional)</label>
-        <textarea id="upload-sistema-obs" rows="2" placeholder="Observações sobre a aprovação..." style="width:100%;font-size:13px;padding:8px;border:1px solid var(--gray200);border-radius:var(--r-sm);resize:vertical;font-family:inherit"></textarea>
-      </div>
-      <div id="upload-sistema-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px;padding:8px;background:#fff5f5;border-radius:var(--r-sm);border:1px solid #fecaca"></div>
-      <div style="display:flex;gap:8px">
-        <button class="btn-sm btn-outline" style="flex:1;justify-content:center" onclick="closeModal('modal-upload-sistema')">Cancelar</button>
-        <button class="btn-sm" id="btn-confirmar-upload-sistema" style="flex:1;justify-content:center;padding:10px;background:var(--g600);color:#fff;border:none" onclick="confirmarUploadSistema()">Confirmar e Enviar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- ═══════════════════════════════ PÁGINA COMERCIAL ═══════════════════════════════ -->
 <div id="page-comercial" class="page-section">
   <div class="section-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
@@ -5462,4 +5419,47 @@ async function verRelatorio(jobId) {
     </div>
   </div>
 
+</div>
+
+</div>
+
+<!-- Modal Upload Sistema -->
+<div class="modal-overlay" id="modal-upload-sistema">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title">📁 Aprovar Proposta — Envio de Arquivos</div>
+      <button class="modal-close" onclick="closeModal('modal-upload-sistema')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--gray50);border-radius:var(--r-sm);padding:12px;margin-bottom:16px;font-size:13px;color:var(--gray600)">
+        Faça o upload dos arquivos obrigatórios. O relatório de subscrição será incluído automaticamente. Os arquivos serão salvos na pasta <strong>Poligonos_sistema</strong> do OneDrive.
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Proposta *</label>
+        <input type="file" id="upload-proposta" accept=".pdf,.docx,.xlsx,.xls" style="width:100%;font-size:13px;padding:6px;border:1px solid var(--gray200);border-radius:var(--r-sm);background:#fff">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Draft *</label>
+        <input type="file" id="upload-draft" accept=".pdf,.docx,.xlsx,.xls" style="width:100%;font-size:13px;padding:6px;border:1px solid var(--gray200);border-radius:var(--r-sm);background:#fff">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">KML *</label>
+        <input type="file" id="upload-kml" accept=".kml,.kmz" style="width:100%;font-size:13px;padding:6px;border:1px solid var(--gray200);border-radius:var(--r-sm);background:#fff">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Data de Semeadura *</label>
+        <input type="date" id="upload-data-semeadura" style="width:100%;font-size:13px;padding:6px;border:1px solid var(--gray200);border-radius:var(--r-sm);background:#fff">
+        <span style="font-size:11px;color:var(--gray500);margin-top:4px;display:block">Se for data passada, será enviado email solicitando vistoria prévia.</span>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Observações (opcional)</label>
+        <textarea id="upload-sistema-obs" rows="2" placeholder="Observações sobre a aprovação..." style="width:100%;font-size:13px;padding:8px;border:1px solid var(--gray200);border-radius:var(--r-sm);resize:vertical;font-family:inherit"></textarea>
+      </div>
+      <div id="upload-sistema-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px;padding:8px;background:#fff5f5;border-radius:var(--r-sm);border:1px solid #fecaca"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm btn-outline" style="flex:1;justify-content:center" onclick="closeModal('modal-upload-sistema')">Cancelar</button>
+        <button class="btn-sm" id="btn-confirmar-upload-sistema" style="flex:1;justify-content:center;padding:10px;background:var(--g600);color:#fff;border:none" onclick="confirmarUploadSistema()">Confirmar e Enviar</button>
+      </div>
+    </div>
+  </div>
 </div>
