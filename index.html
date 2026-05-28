@@ -2024,7 +2024,6 @@ async function carregarApolices() {
   }
 }
 
-let _cesSelecionadas = new Set();
 
 async function carregarComercial() {
   const tbody = document.getElementById('comercial-tbody');
@@ -2048,7 +2047,7 @@ async function carregarComercial() {
 
     const agora = new Date();
     tbody.innerHTML = '';
-    _cesSelecionadas.clear();
+    _cesSelecionadas = {};
 
     if (!ces.length) {
       tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--gray400)">Nenhuma condição especial encontrada.</td></tr>';
