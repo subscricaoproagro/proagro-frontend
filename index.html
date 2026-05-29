@@ -635,8 +635,8 @@
       <div class="card">
         <div class="overflow-x">
           <table class="jobs-table">
-            <thead><tr><th>Proponente</th><th>Cultura</th><th>Local</th><th>Broker</th><th>Cliente</th><th>Status</th><th>Prêmio</th><th>Chegada</th><th>Tempo Resp.</th><th>Ações</th></tr></thead>
-            <tbody id="ce-tbody"><tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+            <thead><tr><th>Cultura</th><th>Local</th><th>Broker</th><th>Cliente</th><th>Status</th><th>Prêmio</th><th>Chegada</th><th>Tempo Resp.</th><th>Ações</th></tr></thead>
+            <tbody id="ce-tbody"><tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -2504,7 +2504,7 @@ async function carregarCondicoesEspeciais() {
     });
 
     if (!listaFiltrada.length) {
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada para este filtro.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada para este filtro.</td></tr>';
       return;
     }
     tbody.innerHTML = listaFiltrada.map(ce => {
@@ -2512,7 +2512,6 @@ async function carregarCondicoesEspeciais() {
       const dataChegada = ce.data_chegada || ce.criado_em || '';
       const dataChegadaFmt = dataChegada ? new Date(dataChegada).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
       return `<tr>
-        <td>${job.nome_proponente || '—'}</td>
         <td>${job.cultura_desejada || '—'}</td>
         <td>${ce.municipio||'—'}${ce.uf?'/'+ce.uf:''}</td>
         <td>${ce.broker || '—'}</td>
@@ -2534,7 +2533,7 @@ async function carregarCondicoesEspeciais() {
       </tr>`;
     }).join('');
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--red);padding:40px">Erro ao carregar.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:40px">Erro ao carregar.</td></tr>';
   }
 }
 
@@ -5225,20 +5224,19 @@ async function verRelatorio(jobId) {
   #page-condicao-especial .jobs-table { table-layout:fixed; width:100%; font-size:11.5px; }
   #page-condicao-especial .jobs-table th,
   #page-condicao-especial .jobs-table td { padding:5px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  #page-condicao-especial .jobs-table th:nth-child(1){width:14%} /* Proponente */
-  #page-condicao-especial .jobs-table th:nth-child(2){width:8%}  /* Cultura */
-  #page-condicao-especial .jobs-table th:nth-child(3){width:10%} /* Local */
-  #page-condicao-especial .jobs-table th:nth-child(4){width:8%}  /* Broker */
-  #page-condicao-especial .jobs-table th:nth-child(5){width:10%} /* Cliente */
-  #page-condicao-especial .jobs-table th:nth-child(6){width:6%}  /* Status */
-  #page-condicao-especial .jobs-table th:nth-child(7){width:7%}  /* Prêmio */
-  #page-condicao-especial .jobs-table th:nth-child(8){width:10%} /* Chegada */
-  #page-condicao-especial .jobs-table th:nth-child(9){width:9%}  /* Tempo */
-  #page-condicao-especial .jobs-table th:nth-child(10){width:18%}/* Ações */
+  #page-condicao-especial .jobs-table th:nth-child(1){width:9%}  /* Cultura */
+  #page-condicao-especial .jobs-table th:nth-child(2){width:12%} /* Local */
+  #page-condicao-especial .jobs-table th:nth-child(3){width:10%} /* Broker */
+  #page-condicao-especial .jobs-table th:nth-child(4){width:13%} /* Cliente */
+  #page-condicao-especial .jobs-table th:nth-child(5){width:6%}  /* Status */
+  #page-condicao-especial .jobs-table th:nth-child(6){width:9%}  /* Prêmio */
+  #page-condicao-especial .jobs-table th:nth-child(7){width:10%} /* Chegada */
+  #page-condicao-especial .jobs-table th:nth-child(8){width:10%} /* Tempo */
+  #page-condicao-especial .jobs-table th:nth-child(9){width:21%} /* Ações */
   .ce-chegada-cell { font-size:11px; }
   .ce-edit-btn { background:none;border:none;cursor:pointer;font-size:11px;padding:0 2px;opacity:.6 }
   .ce-edit-btn:hover { opacity:1 }
-  .ce-acoes-grid { display:grid; grid-template-columns:1fr 1fr; gap:3px; }
+  .ce-acoes-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:3px; }
   .ce-acoes-grid .btn-sm { font-size:10.5px; padding:3px 5px; }
   .mc-talhao{border:1px solid var(--g100);border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#fcfefd}
   .mc-talhao-head{font-weight:600;font-size:13px;color:var(--g900);margin-bottom:6px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
