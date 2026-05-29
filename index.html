@@ -257,6 +257,7 @@
       <button class="topbar-btn" id="ce-btn" onclick="showPage('condicao-especial')" style="display:none">Condição Especial</button>
       <button class="topbar-btn" id="endosso-btn" onclick="showPage('endosso')" style="display:none">Endosso</button>
       <button class="topbar-btn" id="admin-btn" onclick="showPage('admin')" style="display:none">Admin</button>
+      <button class="topbar-btn" id="monitoramento-btn" onclick="abrirMonitoramento()" style="display:none">Monitoramento de Campo</button>
     </nav>
     <div class="topbar-right">
       <div class="env-chip">PRODUÇÃO</div>
@@ -736,6 +737,55 @@
       </div>
     </div>
 
+    <!-- MONITORAMENTO DE CAMPO (NOVO — exclusivo Admin) -->
+    <div id="page-monitoramento" class="page-section">
+      <div class="section-header">
+        <div class="section-title">Monitoramento de Campo</div>
+        <div class="section-sub">NDVI por satélite e clima do talhão, a partir do KML e da proposta</div>
+      </div>
+
+      <div class="card mc-novo-card">
+        <div class="card-header"><div class="card-title">Nova proposta monitorada</div></div>
+        <div class="card-body">
+          <div class="mc-grid2">
+            <div>
+              <label class="form-label">1 · PDF da proposta (opcional — preenche os campos)</label>
+              <div class="mc-drop" id="mc-pdf-drop" onclick="document.getElementById('mc-pdf-input').click()">
+                <input type="file" id="mc-pdf-input" accept="application/pdf" style="display:none" onchange="mcLerPdf(this.files[0])">
+                <span id="mc-pdf-label">Clique para enviar o PDF e ler os dados automaticamente</span>
+              </div>
+              <div id="mc-pdf-status" class="mc-status"></div>
+            </div>
+            <div>
+              <label class="form-label">2 · Arquivo KML do talhão (obrigatório)</label>
+              <div class="mc-drop" id="mc-kml-drop" onclick="document.getElementById('mc-kml-input').click()">
+                <input type="file" id="mc-kml-input" accept=".kml" style="display:none" onchange="mcSelecionarKml(this.files[0])">
+                <span id="mc-kml-label">Clique para selecionar o KML</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mc-grid3" style="margin-top:14px">
+            <div class="form-group"><label class="form-label">Proponente</label><input class="form-input" id="mc-proponente" placeholder="Nome do segurado"></div>
+            <div class="form-group"><label class="form-label">Cultura</label><input class="form-input" id="mc-cultura" placeholder="Ex.: Soja"></div>
+            <div class="form-group"><label class="form-label">Data de semeadura</label><input type="date" class="form-input" id="mc-semeadura"></div>
+            <div class="form-group"><label class="form-label">Município</label><input class="form-input" id="mc-municipio" placeholder="Município"></div>
+            <div class="form-group"><label class="form-label">UF</label><input class="form-input" id="mc-uf" placeholder="UF" maxlength="2"></div>
+            <div class="form-group"><label class="form-label">Área (ha)</label><input class="form-input" id="mc-area" placeholder="Calculada do KML se vazio"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Observações</label><input class="form-input" id="mc-obs" placeholder="Opcional"></div>
+
+          <div id="mc-form-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:10px"></div>
+          <button class="btn-sm btn-green" id="mc-btn-criar" onclick="mcCriarCard()">Criar card de monitoramento</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px">
+        <div class="card-header"><div class="card-title">Propostas monitoradas</div><button class="btn-sm btn-outline" onclick="mcCarregarLista()">Atualizar</button></div>
+        <div class="card-body"><div id="mc-lista" class="mc-cards"><div class="mc-empty">Carregando…</div></div></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -937,6 +987,12 @@ function enterApp() {
     document.getElementById('endosso-btn').style.display = 'none';
     document.getElementById('admin-btn').style.display = 'none';
     document.getElementById('solicitacoes-btn').style.display = 'none';
+  }
+
+  // Monitoramento de Campo — exclusivo do Admin (bloco aditivo)
+  if (currentUser.role === 'admin') {
+    const _mcBtn = document.getElementById('monitoramento-btn');
+    if (_mcBtn) _mcBtn.style.display = '';
   }
 
   carregarStats();
@@ -5080,3 +5136,247 @@ async function verRelatorio(jobId) {
     </div>
   </div>
 </div>
+
+<!-- ════════ MONITORAMENTO DE CAMPO — estilos (aditivo, prefixo mc-) ════════ -->
+<style>
+  #page-monitoramento .mc-grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  #page-monitoramento .mc-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:760px){#page-monitoramento .mc-grid2,#page-monitoramento .mc-grid3{grid-template-columns:1fr}}
+  .mc-drop{border:2px dashed var(--g200);border-radius:var(--r-md,10px);padding:18px;text-align:center;font-size:13px;color:var(--g600);background:var(--g50);cursor:pointer;transition:.15s}
+  .mc-drop:hover{background:var(--g100)}
+  .mc-drop.filled{border-style:solid;border-color:var(--g500);color:var(--g700)}
+  .mc-status{font-size:12px;color:var(--gray400,#94a3b8);margin-top:6px;min-height:16px}
+  .mc-status.ok{color:var(--g600)} .mc-status.err{color:var(--red,#c0392b)}
+  .mc-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px}
+  @media(max-width:760px){.mc-cards{grid-template-columns:1fr}}
+  .mc-empty{grid-column:1/-1;text-align:center;color:var(--gray400,#94a3b8);font-size:13px;padding:24px 0}
+  .mc-card{border:1px solid var(--g100);border-radius:var(--r-md,10px);overflow:hidden;background:#fff}
+  .mc-card-head{padding:12px 14px;background:var(--g50);border-bottom:1px solid var(--g100)}
+  .mc-card-title{font-weight:700;color:var(--g900);font-size:15px}
+  .mc-card-meta{font-size:12px;color:var(--gray600,#475569);margin-top:3px;display:flex;flex-wrap:wrap;gap:10px}
+  .mc-card-body{padding:12px 14px}
+  .mc-chart-title{font-size:12px;font-weight:600;color:var(--g700);margin:6px 0 4px}
+  .mc-chart-wrap{position:relative;height:170px;width:100%}
+  .mc-warn{font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin:6px 0}
+  .mc-card-foot{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--g100)}
+  .mc-ndvi-now{font-size:12px;color:var(--g700);font-weight:600}
+</style>
+
+<!-- ════════ MONITORAMENTO DE CAMPO — lógica (aditivo) ════════ -->
+<script>
+let _mcKmlFile = null;
+const _mcCharts = {};
+
+// Abre a janela sem alterar showPage() nem o mapeamento existente
+function abrirMonitoramento(){
+  showPage('monitoramento');
+  document.querySelectorAll('.topbar-btn').forEach(b=>b.classList.remove('active'));
+  const b=document.getElementById('monitoramento-btn'); if(b) b.classList.add('active');
+  mcCarregarLista();
+}
+
+// fetch dedicado (timeout maior — NDVI pode demorar)
+async function mcFetch(method, path, opts={}){
+  const timeout = opts.timeout || 20000;
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), timeout);
+  const headers = {'Authorization':'Bearer '+TOKEN,'ngrok-skip-browser-warning':'true'};
+  const conf = {method, headers, signal:ctrl.signal};
+  if(opts.json){ headers['Content-Type']='application/json'; conf.body=JSON.stringify(opts.json); }
+  if(opts.form){ conf.body=opts.form; }
+  try{
+    const res = await fetch(`${BACKEND_URL}${path}`, conf);
+    clearTimeout(t);
+    if(res.status===401){ if(typeof handleLogout==='function') handleLogout(); throw new Error('Sessão expirada.'); }
+    if(!res.ok){ const e=await res.json().catch(()=>({detail:res.statusText})); throw new Error(e.detail||'Erro.'); }
+    return res.json();
+  }catch(e){ clearTimeout(t); throw e; }
+}
+
+// Carrega Chart.js sob demanda (mesmo padrão do xlsx)
+function mcEnsureChart(){
+  return new Promise((resolve,reject)=>{
+    if(window.Chart) return resolve();
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
+    s.onload=()=>resolve(); s.onerror=()=>reject(new Error('Falha ao carregar gráficos.'));
+    document.head.appendChild(s);
+  });
+}
+
+// 1) Lê o PDF e pré-preenche o formulário
+async function mcLerPdf(file){
+  if(!file) return;
+  const st=document.getElementById('mc-pdf-status');
+  document.getElementById('mc-pdf-label').textContent=file.name;
+  document.getElementById('mc-pdf-drop').classList.add('filled');
+  st.className='mc-status'; st.textContent='Lendo PDF…';
+  try{
+    const form=new FormData(); form.append('arquivo', file);
+    const d=await mcFetch('POST','/monitoramento/extrair-pdf',{form, timeout:95000});
+    if(d.erro){ st.className='mc-status err'; st.textContent=d.erro; return; }
+    if(d.proponente) document.getElementById('mc-proponente').value=d.proponente;
+    if(d.cultura) document.getElementById('mc-cultura').value=d.cultura;
+    if(d.data_semeadura) document.getElementById('mc-semeadura').value=d.data_semeadura;
+    if(d.municipio) document.getElementById('mc-municipio').value=d.municipio;
+    if(d.uf) document.getElementById('mc-uf').value=d.uf;
+    if(d.area_ha) document.getElementById('mc-area').value=d.area_ha;
+    st.className='mc-status ok'; st.textContent='Dados extraídos — confira e ajuste se necessário.';
+  }catch(e){ st.className='mc-status err'; st.textContent='Erro ao ler PDF: '+e.message; }
+}
+
+function mcSelecionarKml(file){
+  if(!file) return;
+  _mcKmlFile=file;
+  document.getElementById('mc-kml-label').textContent=file.name;
+  document.getElementById('mc-kml-drop').classList.add('filled');
+}
+
+// 2) Cria o card
+async function mcCriarCard(){
+  const err=document.getElementById('mc-form-error'); err.style.display='none';
+  const proponente=document.getElementById('mc-proponente').value.trim();
+  if(!proponente){ err.textContent='Informe o proponente.'; err.style.display='block'; return; }
+  if(!_mcKmlFile){ err.textContent='Selecione o arquivo KML do talhão.'; err.style.display='block'; return; }
+  const btn=document.getElementById('mc-btn-criar'); const txt=btn.textContent; btn.disabled=true; btn.textContent='Criando…';
+  try{
+    const form=new FormData();
+    form.append('proponente', proponente);
+    form.append('cultura', document.getElementById('mc-cultura').value.trim());
+    form.append('data_semeadura', document.getElementById('mc-semeadura').value);
+    form.append('municipio', document.getElementById('mc-municipio').value.trim());
+    form.append('uf', document.getElementById('mc-uf').value.trim());
+    form.append('area_ha', document.getElementById('mc-area').value.trim());
+    form.append('obs', document.getElementById('mc-obs').value.trim());
+    form.append('kml', _mcKmlFile);
+    const row=await mcFetch('POST','/monitoramento/criar',{form, timeout:60000});
+    // limpa o formulário
+    ['mc-proponente','mc-cultura','mc-semeadura','mc-municipio','mc-uf','mc-area','mc-obs'].forEach(id=>document.getElementById(id).value='');
+    _mcKmlFile=null;
+    document.getElementById('mc-kml-label').textContent='Clique para selecionar o KML';
+    document.getElementById('mc-kml-drop').classList.remove('filled');
+    document.getElementById('mc-pdf-label').textContent='Clique para enviar o PDF e ler os dados automaticamente';
+    document.getElementById('mc-pdf-drop').classList.remove('filled');
+    document.getElementById('mc-pdf-status').textContent='';
+    if(typeof showToast==='function') showToast('Card criado! Calculando NDVI e clima…','success');
+    await mcCarregarLista();
+    mcAtualizarSerie(row.id); // calcula série em segundo plano
+  }catch(e){ err.textContent='Erro: '+e.message; err.style.display='block'; }
+  finally{ btn.disabled=false; btn.textContent=txt; }
+}
+
+async function mcCarregarLista(){
+  const wrap=document.getElementById('mc-lista');
+  wrap.innerHTML='<div class="mc-empty">Carregando…</div>';
+  try{
+    const rows=await mcFetch('GET','/monitoramento',{timeout:20000});
+    if(!rows.length){ wrap.innerHTML='<div class="mc-empty">Nenhuma proposta monitorada ainda.</div>'; return; }
+    wrap.innerHTML='';
+    rows.forEach(r=>wrap.insertAdjacentHTML('beforeend', mcCardHtml(r)));
+    await mcEnsureChart().catch(()=>{});
+    rows.forEach(r=>mcDesenhar(r, r.ndvi_series, r.clima_series));
+  }catch(e){ wrap.innerHTML='<div class="mc-empty">Erro ao carregar: '+e.message+'</div>'; }
+}
+
+function _mcEsc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function mcCardHtml(r){
+  const meta=[];
+  if(r.cultura) meta.push('🌱 '+_mcEsc(r.cultura));
+  if(r.municipio||r.uf) meta.push('📍 '+_mcEsc(r.municipio)+(r.uf?'/'+_mcEsc(r.uf):''));
+  if(r.data_semeadura) meta.push('🗓️ Semeadura: '+_mcEsc(r.data_semeadura));
+  if(r.area_ha) meta.push('📐 '+_mcEsc(r.area_ha)+' ha');
+  return `<div class="mc-card" id="mc-card-${r.id}">
+    <div class="mc-card-head">
+      <div class="mc-card-title">${_mcEsc(r.proponente)||'Proposta'}</div>
+      <div class="mc-card-meta">${meta.join('')||'<span style="color:#94a3b8">Sem metadados</span>'}</div>
+    </div>
+    <div class="mc-card-body">
+      <div class="mc-chart-title">Evolução do NDVI <span class="mc-ndvi-now" id="mc-ndvinow-${r.id}"></span></div>
+      <div id="mc-ndvi-box-${r.id}"><div class="mc-chart-wrap"><canvas id="mc-ndvi-${r.id}"></canvas></div></div>
+      <div class="mc-chart-title" style="margin-top:12px">Clima — chuva e temperatura</div>
+      <div class="mc-chart-wrap"><canvas id="mc-clima-${r.id}"></canvas></div>
+    </div>
+    <div class="mc-card-foot">
+      <button class="btn-sm btn-outline" onclick="mcAtualizarSerie('${r.id}')">Atualizar série</button>
+      <button class="btn-sm btn-outline" style="color:var(--red);border-color:#fecaca" onclick="mcDeletar('${r.id}')">Excluir</button>
+    </div>
+  </div>`;
+}
+
+async function mcAtualizarSerie(id){
+  const box=document.getElementById('mc-ndvi-box-'+id);
+  if(box) box.innerHTML='<div class="mc-warn">Calculando NDVI e clima… (pode levar até 1–2 min)</div>';
+  try{
+    const d=await mcFetch('GET',`/monitoramento/${id}/series?refresh=1`,{timeout:150000});
+    if(box) box.innerHTML='<div class="mc-chart-wrap"><canvas id="mc-ndvi-'+id+'"></canvas></div>';
+    await mcEnsureChart().catch(()=>{});
+    mcDesenhar({id}, d.ndvi, d.clima);
+  }catch(e){ if(box) box.innerHTML='<div class="mc-warn">Erro ao calcular: '+_mcEsc(e.message)+'</div>'; }
+}
+
+function mcDesenhar(r, ndvi, clima){
+  if(!window.Chart) return;
+  // NDVI
+  const boxId='mc-ndvi-box-'+r.id;
+  const cvN=document.getElementById('mc-ndvi-'+r.id);
+  const now=document.getElementById('mc-ndvinow-'+r.id);
+  if(cvN){
+    if(_mcCharts['n'+r.id]) _mcCharts['n'+r.id].destroy();
+    if(ndvi && ndvi.disponivel===false){
+      const box=document.getElementById(boxId);
+      if(box) box.innerHTML='<div class="mc-warn">NDVI indisponível — '+_mcEsc(ndvi.motivo||'')+'</div>';
+    } else {
+      const serie=(ndvi && ndvi.serie)?ndvi.serie:[];
+      if(!serie.length){
+        const box=document.getElementById(boxId);
+        if(box) box.innerHTML='<div class="mc-warn">Sem pontos de NDVI no período (clique em Atualizar série).</div>';
+      } else {
+        if(now) now.textContent='· atual: '+serie[serie.length-1].ndvi.toFixed(2);
+        _mcCharts['n'+r.id]=new Chart(cvN.getContext('2d'),{
+          type:'line',
+          data:{labels:serie.map(p=>p.data),datasets:[{label:'NDVI',data:serie.map(p=>p.ndvi),
+            borderColor:'#1e6b40',backgroundColor:'rgba(30,107,64,.12)',fill:true,tension:.3,pointRadius:2}]},
+          options:{responsive:true,maintainAspectRatio:false,
+            scales:{y:{min:0,max:1,ticks:{stepSize:.2}},x:{ticks:{maxTicksLimit:6,autoSkip:true}}},
+            plugins:{legend:{display:false}}}
+        });
+      }
+    }
+  }
+  // Clima
+  const cvC=document.getElementById('mc-clima-'+r.id);
+  if(cvC){
+    if(_mcCharts['c'+r.id]) _mcCharts['c'+r.id].destroy();
+    const c=clima||[];
+    _mcCharts['c'+r.id]=new Chart(cvC.getContext('2d'),{
+      data:{labels:c.map(p=>p.data),datasets:[
+        {type:'bar',label:'Chuva (mm)',data:c.map(p=>p.chuva),yAxisID:'yC',
+          backgroundColor:'rgba(37,99,235,.55)',borderColor:'rgba(37,99,235,.8)'},
+        {type:'line',label:'T máx (°C)',data:c.map(p=>p.tmax),yAxisID:'yT',
+          borderColor:'#dc2626',pointRadius:0,tension:.3,borderWidth:1.5},
+        {type:'line',label:'T mín (°C)',data:c.map(p=>p.tmin),yAxisID:'yT',
+          borderColor:'#f59e0b',pointRadius:0,tension:.3,borderWidth:1.5}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+        scales:{
+          x:{ticks:{maxTicksLimit:6,autoSkip:true}},
+          yT:{position:'left',title:{display:true,text:'°C'}},
+          yC:{position:'right',title:{display:true,text:'mm'},grid:{drawOnChartArea:false},beginAtZero:true}
+        },
+        plugins:{legend:{labels:{boxWidth:12,font:{size:10}}}}}
+    });
+  }
+}
+
+async function mcDeletar(id){
+  if(!confirm('Excluir este card de monitoramento?')) return;
+  try{
+    await mcFetch('DELETE','/monitoramento/'+id,{timeout:20000});
+    if(_mcCharts['n'+id]){_mcCharts['n'+id].destroy(); delete _mcCharts['n'+id];}
+    if(_mcCharts['c'+id]){_mcCharts['c'+id].destroy(); delete _mcCharts['c'+id];}
+    const el=document.getElementById('mc-card-'+id); if(el) el.remove();
+    const wrap=document.getElementById('mc-lista'); if(wrap && !wrap.children.length) mcCarregarLista();
+  }catch(e){ alert('Erro ao excluir: '+e.message); }
+}
+</script>
