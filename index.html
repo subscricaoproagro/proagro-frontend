@@ -781,7 +781,7 @@
       </div>
 
       <div class="card" style="margin-top:18px">
-        <div class="card-header"><div class="card-title">Propostas monitoradas</div><button class="btn-sm btn-outline" onclick="mcCarregarLista()">Atualizar</button></div>
+        <div class="card-header"><div class="card-title">Propostas monitoradas</div><div style="display:flex;gap:8px"><button class="btn-sm btn-green" id="mc-btn-baixar" onclick="mcBaixarPlanilha()">⬇ Baixar planilha (.xlsx)</button><button class="btn-sm btn-outline" onclick="mcCarregarLista()">Atualizar</button></div></div>
         <div class="card-body"><div id="mc-lista" class="mc-cards"><div class="mc-empty">Carregando…</div></div></div>
       </div>
     </div>
@@ -5372,6 +5372,97 @@ async function mcRevalidar(){
     const presentes=rows.filter(r=>document.getElementById('mc-card-'+r.id));
     if(presentes.length) mcAutoAtualizar(presentes);
   }catch(e){}
+}
+
+// ── Exportar planilha (.xlsx) com todas as apólices ──
+function mcEnsureXlsx(){
+  return new Promise((resolve,reject)=>{
+    if(window.XLSX) return resolve();
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=()=>resolve(); s.onerror=()=>reject(new Error('Falha ao carregar a biblioteca de planilha.'));
+    document.head.appendChild(s);
+  });
+}
+function _mcNum(v){ return (v==null||v==='')?null:Number(v); }
+function _mcRound(v,d){ if(v==null||isNaN(v)) return null; const f=Math.pow(10,d||2); return Math.round(v*f)/f; }
+
+async function mcBaixarPlanilha(){
+  const btn=document.getElementById('mc-btn-baixar');
+  const orig=btn?btn.innerHTML:'';
+  try{
+    await mcEnsureXlsx();
+    const rows=await mcFetch('GET','/monitoramento',{timeout:30000});
+    if(!rows.length){ alert('Não há apólices monitoradas para exportar.'); return; }
+
+    // 1) Força a atualização de TODAS as apólices antes de exportar (dados sempre frescos)
+    if(btn){ btn.disabled=true; }
+    await mcEnsureChart().catch(()=>{});
+    const atualizado={}; let feitos=0, i=0; const total=rows.length;
+    const worker=async()=>{
+      while(i<rows.length){
+        const r=rows[i++];
+        try{
+          const d=await mcFetch('GET',`/monitoramento/${r.id}/series?refresh=1`,{timeout:150000});
+          atualizado[r.id]={ndvi:d.ndvi, clima:d.clima};
+          mcDesenhar({id:r.id}, d.ndvi, d.clima); // atualiza o card na tela também
+        }catch(e){ /* mantém o cache atual desta apólice */ }
+        feitos++;
+        if(btn) btn.textContent=`Atualizando ${feitos}/${total}…`;
+      }
+    };
+    await Promise.all([worker(),worker(),worker()]); // 3 em paralelo
+    if(btn) btn.textContent='Gerando planilha…';
+
+    // aplica os dados recém-atualizados sobre as linhas
+    rows.forEach(r=>{ if(atualizado[r.id]){ r.ndvi_series=atualizado[r.id].ndvi; r.clima_series=atualizado[r.id].clima; } });
+
+    // 2) Monta as 3 abas
+    const resumo=[], ndviRows=[], climaRows=[];
+    rows.forEach(r=>{
+      const local=(r.municipio||'')+(r.uf?'/'+r.uf:'');
+      const serieN=(r.ndvi_series && r.ndvi_series.serie)?r.ndvi_series.serie:[];
+      const serieC=Array.isArray(r.clima_series)?r.clima_series:[];
+
+      const vals=serieN.map(p=>p.ndvi).filter(v=>v!=null && !isNaN(v));
+      const ndviAtual=vals.length?vals[vals.length-1]:null;
+      const ndviMed=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+      const ndviMin=vals.length?Math.min.apply(null,vals):null;
+      const ndviMax=vals.length?Math.max.apply(null,vals):null;
+
+      const chuvas=serieC.map(p=>p.chuva).filter(v=>v!=null && !isNaN(v));
+      const chuvaAcc=chuvas.length?chuvas.reduce((a,b)=>a+b,0):null;
+      const temps=serieC.map(p=> p.tmed!=null ? p.tmed : ((p.tmax!=null&&p.tmin!=null)?(p.tmax+p.tmin)/2:null)).filter(v=>v!=null && !isNaN(v));
+      const tMed=temps.length?temps.reduce((a,b)=>a+b,0)/temps.length:null;
+      const datasC=serieC.map(p=>p.data).filter(Boolean).sort();
+      const periodo=datasC.length?(datasC[0]+' a '+datasC[datasC.length-1]):'';
+
+      resumo.push({
+        'Proponente': r.proponente||'', 'Cultura': r.cultura||'',
+        'Município': r.municipio||'', 'UF': r.uf||'', 'Área (ha)': _mcNum(r.area_ha),
+        'Data de semeadura': r.data_semeadura||'',
+        'Latitude': _mcNum(r.centroid_lat), 'Longitude': _mcNum(r.centroid_lon),
+        'NDVI atual': _mcRound(ndviAtual,3), 'NDVI médio': _mcRound(ndviMed,3),
+        'NDVI mín': _mcRound(ndviMin,3), 'NDVI máx': _mcRound(ndviMax,3),
+        'Nº leituras NDVI': vals.length,
+        'Chuva acumulada (mm)': _mcRound(chuvaAcc,1), 'Temp. média (°C)': _mcRound(tMed,1),
+        'Período (clima)': periodo, 'Última atualização': r.series_atualizado_em||'',
+        'Observações': r.obs||'', 'ID': r.id||''
+      });
+      serieN.forEach(p=>ndviRows.push({'Proponente':r.proponente||'','Cultura':r.cultura||'','Local':local,'Data':p.data,'NDVI':_mcRound(p.ndvi,3)}));
+      serieC.forEach(p=>climaRows.push({'Proponente':r.proponente||'','Cultura':r.cultura||'','Local':local,'Data':p.data,'Chuva (mm)':_mcNum(p.chuva),'Temp máx (°C)':_mcNum(p.tmax),'Temp mín (°C)':_mcNum(p.tmin),'Temp média (°C)':_mcNum(p.tmed)}));
+    });
+
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo), 'Apólices');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ndviRows.length?ndviRows:[{'Proponente':'','Cultura':'','Local':'','Data':'','NDVI':''}]), 'NDVI');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(climaRows.length?climaRows:[{'Proponente':'','Cultura':'','Local':'','Data':'','Chuva (mm)':'','Temp máx (°C)':'','Temp mín (°C)':'','Temp média (°C)':''}]), 'Clima');
+
+    const hoje=new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, `Monitoramento_Campo_${hoje}.xlsx`);
+    if(typeof showToast==='function') showToast('Planilha atualizada e gerada!','success');
+  }catch(e){ alert('Erro ao gerar a planilha: '+(e.message||e)); }
+  finally{ if(btn){ btn.disabled=false; btn.innerHTML=orig||'⬇ Baixar planilha (.xlsx)'; } }
 }
 
 function mcDesenhar(r, ndvi, clima){
