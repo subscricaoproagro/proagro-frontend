@@ -5173,6 +5173,12 @@ function abrirMonitoramento(){
   document.querySelectorAll('.topbar-btn').forEach(b=>b.classList.remove('active'));
   const b=document.getElementById('monitoramento-btn'); if(b) b.classList.add('active');
   mcCarregarLista();
+  // Revalida sozinho a cada 30 min enquanto a janela estiver aberta (sem clicar)
+  if(window._mcInterval) clearInterval(window._mcInterval);
+  window._mcInterval = setInterval(()=>{
+    const pg=document.getElementById('page-monitoramento');
+    if(pg && pg.classList.contains('active')) mcRevalidar();
+  }, 30*60*1000);
 }
 
 // fetch dedicado (timeout maior — NDVI pode demorar)
@@ -5260,7 +5266,7 @@ async function mcCriarCard(){
     document.getElementById('mc-pdf-status').textContent='';
     if(typeof showToast==='function') showToast('Card criado! Calculando NDVI e clima…','success');
     await mcCarregarLista();
-    mcAtualizarSerie(row.id); // calcula série em segundo plano
+    // o card novo entra como "desatualizado" e é calculado automaticamente pela mcCarregarLista
   }catch(e){ err.textContent='Erro: '+e.message; err.style.display='block'; }
   finally{ btn.disabled=false; btn.textContent=txt; }
 }
@@ -5275,6 +5281,8 @@ async function mcCarregarLista(){
     rows.forEach(r=>wrap.insertAdjacentHTML('beforeend', mcCardHtml(r)));
     await mcEnsureChart().catch(()=>{});
     rows.forEach(r=>mcDesenhar(r, r.ndvi_series, r.clima_series));
+    // Atualização automática em segundo plano — sem o usuário clicar em nada
+    mcAutoAtualizar(rows);
   }catch(e){ wrap.innerHTML='<div class="mc-empty">Erro ao carregar: '+e.message+'</div>'; }
 }
 
@@ -5298,7 +5306,7 @@ function mcCardHtml(r){
       <div class="mc-chart-wrap"><canvas id="mc-clima-${r.id}"></canvas></div>
     </div>
     <div class="mc-card-foot">
-      <button class="btn-sm btn-outline" onclick="mcAtualizarSerie('${r.id}')">Atualizar série</button>
+      <button class="btn-sm btn-outline" onclick="mcAtualizarSerie('${r.id}')" title="A atualização já é automática; use só se quiser forçar agora">↻ Forçar atualização</button>
       <button class="btn-sm btn-outline" style="color:var(--red);border-color:#fecaca" onclick="mcDeletar('${r.id}')">Excluir</button>
     </div>
   </div>`;
@@ -5313,6 +5321,57 @@ async function mcAtualizarSerie(id){
     await mcEnsureChart().catch(()=>{});
     mcDesenhar({id}, d.ndvi, d.clima);
   }catch(e){ if(box) box.innerHTML='<div class="mc-warn">Erro ao calcular: '+_mcEsc(e.message)+'</div>'; }
+}
+
+// Considera "desatualizado": nunca calculado, sem dados, de outro dia, ou > N horas
+function _mcDesatualizado(row, horas){
+  if(!row || !row.series_atualizado_em) return true;
+  if(row.ndvi_series==null || row.clima_series==null) return true;
+  let s=row.series_atualizado_em;
+  if(!/[Zz]|[+-]\d\d:?\d\d$/.test(s)) s=s+'Z';   // backend grava em UTC sem fuso
+  const t=Date.parse(s);
+  if(isNaN(t)) return true;
+  const agora=Date.now();
+  if(new Date(t).toDateString()!==new Date(agora).toDateString()) return true; // dia diferente
+  return (agora-t) > (horas||3)*3600*1000;
+}
+
+// Atualiza em segundo plano todos os cards desatualizados (sem clicar)
+async function mcAutoAtualizar(rows){
+  const pend=rows.filter(r=>_mcDesatualizado(r,3));
+  // mostra "atualizando" só onde ainda não há nenhum dado
+  pend.forEach(r=>{
+    if(r.ndvi_series==null){
+      const box=document.getElementById('mc-ndvi-box-'+r.id);
+      if(box) box.innerHTML='<div class="mc-warn">Atualizando automaticamente… (pode levar até 1–2 min na 1ª vez)</div>';
+    }
+  });
+  const ids=pend.map(r=>r.id); let i=0;
+  const worker=async()=>{ while(i<ids.length){ await mcAtualizarSilencioso(ids[i++]); } };
+  await Promise.all([worker(), worker()]); // até 2 em paralelo (poupa cota)
+}
+
+// Atualiza um card sem apagar o gráfico atual (silencioso)
+async function mcAtualizarSilencioso(id){
+  try{
+    const d=await mcFetch('GET',`/monitoramento/${id}/series?refresh=1`,{timeout:150000});
+    const box=document.getElementById('mc-ndvi-box-'+id);
+    if(box && !box.querySelector('canvas')) box.innerHTML='<div class="mc-chart-wrap"><canvas id="mc-ndvi-'+id+'"></canvas></div>';
+    await mcEnsureChart().catch(()=>{});
+    mcDesenhar({id}, d.ndvi, d.clima);
+  }catch(e){
+    const box=document.getElementById('mc-ndvi-box-'+id);
+    if(box && !box.querySelector('canvas')) box.innerHTML='<div class="mc-warn">Não foi possível atualizar agora: '+_mcEsc(e.message)+'</div>';
+  }
+}
+
+// Revalidação periódica enquanto a janela está aberta
+async function mcRevalidar(){
+  try{
+    const rows=await mcFetch('GET','/monitoramento',{timeout:20000});
+    const presentes=rows.filter(r=>document.getElementById('mc-card-'+r.id));
+    if(presentes.length) mcAutoAtualizar(presentes);
+  }catch(e){}
 }
 
 function mcDesenhar(r, ndvi, clima){
@@ -5330,7 +5389,7 @@ function mcDesenhar(r, ndvi, clima){
       const serie=(ndvi && ndvi.serie)?ndvi.serie:[];
       if(!serie.length){
         const box=document.getElementById(boxId);
-        if(box) box.innerHTML='<div class="mc-warn">Sem pontos de NDVI no período (clique em Atualizar série).</div>';
+        if(box) box.innerHTML='<div class="mc-warn">Sem imagens de NDVI válidas no período (provável cobertura de nuvens).</div>';
       } else {
         if(now) now.textContent='· atual: '+serie[serie.length-1].ndvi.toFixed(2);
         _mcCharts['n'+r.id]=new Chart(cvN.getContext('2d'),{
