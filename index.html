@@ -2500,14 +2500,15 @@ async function carregarCondicoesEspeciais() {
     // Média de tempo de resposta (apenas CEs concluídas com timestamps válidos)
     const concluidas = listaSemSistema.filter(ce => {
       const job = ce.job || {};
-      return job.decisao_risco && job.decisao_risco_em && (ce.data_chegada || ce.criado_em);
+      const fim = job.decisao_risco_em || job.concluido_at;
+      return job.decisao_risco && fim && (ce.data_chegada || ce.criado_em);
     });
     const elMedia = document.getElementById('ce-media-tempo');
     const elBase  = document.getElementById('ce-media-base');
     if (elMedia && concluidas.length) {
       const msTotal = concluidas.reduce((acc, ce) => {
         const inicio = Date.parse(ce.data_chegada || ce.criado_em);
-        const fim    = Date.parse(ce.job.decisao_risco_em);
+        const fim    = Date.parse(ce.job.decisao_risco_em || ce.job.concluido_at);
         return acc + (isNaN(inicio)||isNaN(fim) ? 0 : Math.max(0, fim - inicio));
       }, 0);
       const msMedia = msTotal / concluidas.length;
@@ -2580,8 +2581,9 @@ function ceTempoResposta(ce) {
   const concluido = !!job.decisao_risco;
   const inicio = Date.parse(chegada);
   if (isNaN(inicio)) return '—';
-  // Para concluídas: usa decisao_risco_em (quando a decisão do AR foi registrada)
-  const fim = concluido && job.decisao_risco_em ? Date.parse(job.decisao_risco_em) : Date.now();
+  const fim = concluido && (job.decisao_risco_em || job.concluido_at)
+    ? Date.parse(job.decisao_risco_em || job.concluido_at)
+    : Date.now();
   if (isNaN(fim)) return '—';
   const ms = fim - inicio;
   if (ms < 0) return '—';
