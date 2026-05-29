@@ -531,6 +531,12 @@
         <div onclick="document.getElementById('hist-filter').value='ce_aprovada';carregarJobs()" style="cursor:pointer;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#92400e">⭐ CE Aprovada: <span id="hcount-ce">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='recusada';carregarJobs()" style="cursor:pointer;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#c0392b">❌ Recusada: <span id="hcount-recusada">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='erro';carregarJobs()" style="cursor:pointer;background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#c0392b">⚠️ Erro: <span id="hcount-erro">—</span></div>
+        <!-- Card média de tempo de avaliação do analista -->
+        <div style="margin-left:auto;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:6px 18px;display:flex;flex-direction:column;align-items:center;min-width:150px">
+          <div style="font-size:10px;font-weight:600;color:#6d28d9;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">⏱ Média de Avaliação</div>
+          <div id="hist-media-tempo" style="font-size:20px;font-weight:800;color:#4c1d95;line-height:1.2">—</div>
+          <div id="hist-media-base" style="font-size:10px;color:#7c3aed;margin-top:1px">calculando…</div>
+        </div>
       </div>
 
       <!-- Abas Sistema / CE — visíveis só para analista -->
@@ -547,8 +553,8 @@
       <div class="card">
         <div class="overflow-x">
           <table class="jobs-table">
-            <thead><tr><th>Proposta</th><th>Proponente</th><th>Cultura</th><th>Analista</th><th>Iniciado</th><th>Status</th><th>Ações</th></tr></thead>
-            <tbody id="jobs-tbody"><tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+            <thead><tr><th>Proposta</th><th>Proponente</th><th>Cultura</th><th>Analista</th><th>Iniciado</th><th>Status</th><th>Tempo Aval.</th><th>Ações</th></tr></thead>
+            <tbody id="jobs-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1367,6 +1373,22 @@ async function carregarJobs() {
     setCount('hcount-recusada',    allJobs.filter(j => j.status === 'concluido' && j.decisao === 'recusado').length);
     setCount('hcount-erro',        allJobs.filter(j => j.status === 'erro' || j.status === 'cancelado').length);
 
+    // Média de tempo de avaliação — sistema + CE juntos (todos os concluídos)
+    const _concluidos = allJobs.filter(j => j.status === 'concluido' && j.concluido_at && j.created_at);
+    const elHM = document.getElementById('hist-media-tempo');
+    const elHB = document.getElementById('hist-media-base');
+    if (elHM && _concluidos.length) {
+      const msTot = _concluidos.reduce((acc, j) => {
+        const ms = Date.parse(j.concluido_at) - Date.parse(j.created_at);
+        return acc + (isNaN(ms) || ms < 0 ? 0 : ms);
+      }, 0);
+      const msM = msTot / _concluidos.length;
+      const d = Math.floor(msM / 86400000), h = Math.floor((msM % 86400000) / 3600000), m = Math.floor((msM % 3600000) / 60000);
+      const p = []; if (d>0) p.push(d+'d'); if (h>0) p.push(h+'h'); if (d===0) p.push(m+'min');
+      elHM.textContent = p.join(' ') || '< 1 min';
+      if (elHB) elHB.textContent = `base: ${_concluidos.length} análise${_concluidos.length>1?'s':''}`;
+    } else if (elHM) { elHM.textContent='—'; if(elHB) elHB.textContent='sem dados'; }
+
     // Aplica filtro por status
     if (filter) filtered = filtered.filter(j => {
       if (filter === 'aguardando')     return j.status === 'aguardando';
@@ -1393,7 +1415,7 @@ function renderJobsTable(jobs) {
   const tbody = document.getElementById('jobs-tbody');
   if (!tbody) return;
   if (!jobs.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma análise encontrada.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma análise encontrada.</td></tr>`;
     return;
   }
   tbody.innerHTML = jobs.map(j => {
@@ -1408,6 +1430,7 @@ function renderJobsTable(jobs) {
       <td style="font-size:12px;color:var(--gray400)">${j.analista_email}</td>
       <td style="font-size:12px;color:var(--gray400)">${formatDate(j.created_at)}</td>
       <td>${renderStatusBadge(j)}</td>
+      <td style="font-size:11px;white-space:nowrap">${jobTempoAvaliacao(j)}</td>
       <td>
         <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
           <button class="btn-sm btn-outline" onclick="verJob('${j.id}')">Detalhes</button>
@@ -1429,6 +1452,22 @@ function renderJobsTable(jobs) {
       </td>
     </tr>`;
   }).join('');
+}
+
+// Tempo de avaliação do analista por job (created_at → concluido_at)
+function jobTempoAvaliacao(j) {
+  if (!j.created_at) return '—';
+  const concluido = j.status === 'concluido' && j.concluido_at;
+  const inicio = Date.parse(j.created_at);
+  const fim = concluido ? Date.parse(j.concluido_at) : Date.now();
+  if (isNaN(inicio) || isNaN(fim) || fim < inicio) return '—';
+  const ms = fim - inicio;
+  const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000);
+  const p = []; if (d>0) p.push(d+'d'); if (h>0) p.push(h+'h'); if (d===0) p.push(m+'min');
+  const txt = p.join(' ') || '< 1 min';
+  return concluido
+    ? `<span style="color:#166534;font-weight:600">✓ ${txt}</span>`
+    : `<span style="color:#92400e">⏱ ${txt}</span>`;
 }
 
 function renderRecentJobs(jobs) {
