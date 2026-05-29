@@ -515,6 +515,7 @@
             <option value="aguardando_analise">🟡 Aguardando Análise</option>
             <option value="concluido_simples">✅ Concluído</option>
             <option value="ce_aprovada">⭐ CE Aprovada</option>
+            <option value="balcao">🏦 Balcão</option>
             <option value="recusada">❌ Recusada</option>
             <option value="erro">⚠️ Erro</option>
           </select>
@@ -529,6 +530,7 @@
         <div onclick="document.getElementById('hist-filter').value='aguardando_analise';carregarJobs()" style="cursor:pointer;background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#92400e">🟡 Aguardando Análise: <span id="hcount-aguardando-analise">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='concluido_simples';carregarJobs()" style="cursor:pointer;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#166534">✅ Concluído: <span id="hcount-concluido">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='ce_aprovada';carregarJobs()" style="cursor:pointer;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#92400e">⭐ CE Aprovada: <span id="hcount-ce">—</span></div>
+        <div onclick="document.getElementById('hist-filter').value='balcao';carregarJobs()" style="cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#1d4ed8">🏦 Balcão: <span id="hcount-balcao">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='recusada';carregarJobs()" style="cursor:pointer;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#c0392b">❌ Recusada: <span id="hcount-recusada">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='erro';carregarJobs()" style="cursor:pointer;background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#c0392b">⚠️ Erro: <span id="hcount-erro">—</span></div>
         <!-- Card média de tempo de avaliação do analista -->
@@ -832,7 +834,11 @@
       <div class="form-group"><label class="form-label">Nome completo</label><input type="text" class="form-input" id="new-name" placeholder="Nome do colaborador"></div>
       <div class="form-group"><label class="form-label">E-mail institucional</label><input type="email" class="form-input" id="new-email" placeholder="colaborador@proagroseguros.com"></div>
       <div class="form-group"><label class="form-label">Perfil</label>
-        <select class="form-input" id="new-role"><option value="analista">Analista</option><option value="supervisor">Supervisor</option><option value="admin">Administrador</option><option value="campo">Usuário de Campo</option></select>
+        <select class="form-input" id="new-role" onchange="mcAtualizarChkPorRole()" ><option value="analista">Analista</option><option value="supervisor">Supervisor</option><option value="admin">Administrador</option><option value="campo">Usuário de Campo</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Páginas com acesso <span style="font-size:11px;color:var(--gray400)">(baseado no perfil — ajuste se necessário)</span></label>
+        <div id="new-paginas-chk" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;font-size:13px"></div>
       </div>
       <div id="new-user-result" style="display:none;background:var(--g50);border:1px solid var(--g100);border-radius:var(--r-sm);padding:12px;font-size:13px;color:var(--g700);margin-bottom:12px"></div>
       <div id="new-user-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px"></div>
@@ -1014,6 +1020,12 @@ function enterApp() {
     ['dashboard-btn','dashboard-sv-btn','nova-analise-btn','historico-btn',
      'ce-btn','admin-btn','assistente-btn','endosso-btn','solicitacoes-btn'
     ].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  }
+
+  // Permissões por página (override preciso — elimina ambiguidade de role)
+  // Aplica DEPOIS dos blocos de role para garantir precisão
+  if (currentUser.paginas && currentUser.paginas.length) {
+    mcAplicarPaginas(currentUser.paginas);
   }
 
   carregarStats();
@@ -1370,6 +1382,7 @@ async function carregarJobs() {
     setCount('hcount-aguardando-analise', allJobs.filter(j => j.status === 'concluido' && !j.decisao && !j.decisao_risco).length);
     setCount('hcount-concluido',   allJobs.filter(j => j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco).length);
     setCount('hcount-ce',          allJobs.filter(j => j.status === 'concluido' && j.decisao_risco === 'aprovado').length);
+    setCount('hcount-balcao',      allJobs.filter(j => j.status === 'concluido' && j.decisao_risco === 'balcao').length);
     setCount('hcount-recusada',    allJobs.filter(j => j.status === 'concluido' && j.decisao === 'recusado').length);
     setCount('hcount-erro',        allJobs.filter(j => j.status === 'erro' || j.status === 'cancelado').length);
 
@@ -1400,6 +1413,7 @@ async function carregarJobs() {
         return j.status === 'concluido' && _ceJobIds.has(j.id) && !j.decisao_risco;
       }
       if (filter === 'ce_aprovada')    return j.status === 'concluido' && j.decisao_risco === 'aprovado';
+      if (filter === 'balcao')         return j.status === 'concluido' && j.decisao_risco === 'balcao';
       if (filter === 'recusada')       return j.status === 'concluido' && j.decisao === 'recusado';
       if (filter === 'erro')           return j.status === 'erro' || j.status === 'cancelado';
       return j.status === filter;
@@ -1671,22 +1685,109 @@ async function carregarStats() {
 // ══════════════════════════════════════════
 // ADMIN — USUÁRIOS
 // ══════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// SISTEMA DE PERMISSÕES POR PÁGINA
+// ══════════════════════════════════════════════════════════════
+const _PG = {
+  'nova-analise':  { label: 'Nova Análise',           btn: 'nova-analise-btn'  },
+  'historico':     { label: 'Histórico de Análises',  btn: 'historico-btn'     },
+  'ce':            { label: 'Condição Especial',      btn: 'ce-btn'            },
+  'solicitacoes':  { label: 'Solicitações CE',        btn: 'solicitacoes-btn'  },
+  'endosso':       { label: 'Endosso',                btn: 'endosso-btn'       },
+  'assistente':    { label: 'Assistente IA',          btn: 'assistente-btn'    },
+  'admin':         { label: 'Administração',           btn: 'admin-btn'         },
+  'monitoramento': { label: 'Monitoramento de Campo', btn: 'monitoramento-btn' },
+};
+const _PG_DEFAULTS = {
+  admin:      Object.keys(_PG),
+  analista:   ['nova-analise','historico','solicitacoes','endosso'],
+  supervisor: ['ce'],
+  campo:      ['monitoramento'],
+};
+
+function mcAtualizarChkPorRole() {
+  const role = document.getElementById('new-role')?.value || 'analista';
+  const wrap = document.getElementById('new-paginas-chk');
+  if (!wrap) return;
+  const defaults = _PG_DEFAULTS[role] || [];
+  wrap.innerHTML = Object.entries(_PG).map(([key, def]) => `
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:4px 6px;border-radius:6px;border:1px solid var(--g100)">
+      <input type="checkbox" value="${key}" ${defaults.includes(key)?'checked':''} style="cursor:pointer">
+      <span>${def.label}</span>
+    </label>`).join('');
+}
+
+function mcPaginasSelecionadas() {
+  return [...document.querySelectorAll('#new-paginas-chk input:checked')].map(el => el.value);
+}
+
+function mcAplicarPaginas(paginas) {
+  if (!paginas || !paginas.length) return; // sem override → usa lógica de role existente
+  // Esconde todos os botões de navegação administráveis
+  Object.values(_PG).forEach(({btn}) => { const el=document.getElementById(btn); if(el) el.style.display='none'; });
+  // Exibe só os permitidos
+  paginas.forEach(p => { const def=_PG[p]; if(def){ const el=document.getElementById(def.btn); if(el) el.style.display=''; } });
+  // Redireciona para a primeira página permitida
+  const primeiro = paginas[0];
+  if (primeiro === 'monitoramento') { if(typeof abrirMonitoramento==='function') setTimeout(abrirMonitoramento,100); }
+  else if (primeiro === 'ce')       showPage('condicao-especial');
+  else if (_PG[primeiro])           showPage(primeiro);
+}
+
+// Inicializa checkboxes ao abrir o modal de convite
+document.addEventListener('DOMContentLoaded', () => { mcAtualizarChkPorRole(); });
+
 async function carregarUsuarios() {
   try {
     const users = await api('GET', '/usuarios');
     const wrap = document.getElementById('users-list-wrap');
-    wrap.innerHTML = users.map(u => `
-      <div class="user-row">
+    wrap.innerHTML = users.map(u => {
+      const pags = (u.paginas && u.paginas.length) ? u.paginas : (_PG_DEFAULTS[u.role] || []);
+      const pagsHtml = pags.map(p => `<span style="font-size:10px;background:var(--g50);border:1px solid var(--g200);border-radius:4px;padding:1px 5px;color:var(--g700)">${_PG[p]?.label||p}</span>`).join(' ');
+      return `
+      <div class="user-row" style="flex-wrap:wrap;gap:8px">
         <div class="user-row-avatar">${u.name.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase()}</div>
-        <div class="user-row-info">
+        <div class="user-row-info" style="flex:1;min-width:180px">
           <div class="user-row-name">${u.name} ${u.email===currentUser?.email?'<span style="font-size:11px;color:var(--g600)">(você)</span>':''}</div>
           <div class="user-row-email">${u.email} · último acesso: ${u.last_login?formatDate(u.last_login):'nunca'}</div>
+          <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">${pagsHtml}</div>
         </div>
         <span class="badge ${u.role==='admin'?'badge-warning':'badge-neutral'}">${u.role}</span>
         <span class="badge ${u.active?'badge-success':'badge-error'}">${u.active?'Ativo':'Inativo'}</span>
-        <div>${u.email!==currentUser?.email?`<button class="btn-sm btn-outline" onclick="toggleUser('${u.id}',${!u.active})">${u.active?'Desativar':'Ativar'}</button>`:''}</div>
-      </div>`).join('');
+        <div style="display:flex;gap:4px">
+          ${u.email!==currentUser?.email?`<button class="btn-sm btn-outline" onclick="editarAcesso('${u.id}',${JSON.stringify(pags).replace(/"/g,'&quot;')})">📝 Acesso</button>`:''}
+          ${u.email!==currentUser?.email?`<button class="btn-sm btn-outline" onclick="toggleUser('${u.id}',${!u.active})">${u.active?'Desativar':'Ativar'}</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
   } catch(e) { showToast('Erro ao carregar usuários: '+e.message,'error'); }
+}
+
+async function editarAcesso(userId, pagsAtuais) {
+  const existente = document.getElementById('modal-editar-acesso');
+  if (existente) existente.remove();
+  const m = document.createElement('div');
+  m.id = 'modal-editar-acesso'; m.className='modal-overlay'; m.style.display='flex';
+  m.innerHTML = `<div class="modal"><div class="modal-header"><div class="modal-title">Editar acesso ao sistema</div><button class="modal-close" onclick="document.getElementById('modal-editar-acesso').remove()">✕</button></div><div class="modal-body" id="modal-editar-acesso-body"></div></div>`;
+  document.body.appendChild(m);
+  const body = document.getElementById('modal-editar-acesso-body');
+  const grid = document.createElement('div');
+  grid.style = 'display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px';
+  grid.innerHTML = Object.entries(_PG).map(([key,def]) => `
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:4px 6px;border-radius:6px;border:1px solid var(--g100);font-size:13px">
+      <input type="checkbox" value="${key}" ${pagsAtuais.includes(key)?'checked':''} style="cursor:pointer">
+      <span>${def.label}</span>
+    </label>`).join('');
+  body.appendChild(grid);
+  const btn = document.createElement('button');
+  btn.className='btn-sm btn-green'; btn.style='width:100%;justify-content:center;padding:10px';
+  btn.textContent='Salvar acesso';
+  btn.onclick = async () => {
+    const novas = [...grid.querySelectorAll('input:checked')].map(el=>el.value);
+    try { await api('PATCH',`/usuarios/${userId}`,{paginas:novas}); m.remove(); showToast('Acesso atualizado!','success'); carregarUsuarios(); }
+    catch(e) { showToast('Erro: '+e.message,'error'); }
+  };
+  body.appendChild(btn);
 }
 
 async function convidarUsuario() {
@@ -1702,7 +1803,7 @@ async function convidarUsuario() {
   if(!validateDomain(email)){errEl.textContent='E-mail deve pertencer aos domínios autorizados.';errEl.style.display='block';return;}
 
   try {
-    const data = await api('POST', '/usuarios/convidar', {email,name,role});
+    const data = await api('POST', '/usuarios/convidar', {email, name, role, paginas: mcPaginasSelecionadas()});
     resEl.innerHTML = `✅ ${data.message}<br>Senha temporária: <strong>${data.senha_temporaria}</strong><br><em>${data.instrucao}</em>`;
     resEl.style.display='block';
     carregarUsuarios();
