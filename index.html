@@ -621,6 +621,8 @@
             <option value="balcao">🏦 Balcão</option>
             <option value="recusado">❌ Recusadas</option>
           </select>
+          <input class="form-input" id="ce-filter-uf" placeholder="Filtrar UF…" style="width:90px;padding:8px 10px;font-size:13px" oninput="carregarCondicoesEspeciais()">
+          <input class="form-input" id="ce-filter-broker" placeholder="Filtrar Broker…" style="width:140px;padding:8px 10px;font-size:13px" oninput="carregarCondicoesEspeciais()">
           <button class="btn-sm btn-outline" onclick="carregarCondicoesEspeciais()">↻ Atualizar</button>
         </div>
       </div>
@@ -633,8 +635,8 @@
       <div class="card">
         <div class="overflow-x">
           <table class="jobs-table">
-            <thead><tr><th>Proposta</th><th>Proponente</th><th>Cultura</th><th>Município</th><th>UF</th><th>Cliente</th><th>Status Negócio</th><th>Prêmio</th><th>Ações</th></tr></thead>
-            <tbody id="ce-tbody"><tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+            <thead><tr><th>Proposta</th><th>Proponente</th><th>Cultura</th><th>Município</th><th>UF</th><th>Broker</th><th>Cliente</th><th>Status Negócio</th><th>Prêmio</th><th>Data Chegada</th><th>⏱ Tempo Resp.</th><th>Ações</th></tr></thead>
+            <tbody id="ce-tbody"><tr><td colspan="12" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -818,7 +820,7 @@
       <div class="form-group"><label class="form-label">Nome completo</label><input type="text" class="form-input" id="new-name" placeholder="Nome do colaborador"></div>
       <div class="form-group"><label class="form-label">E-mail institucional</label><input type="email" class="form-input" id="new-email" placeholder="colaborador@proagroseguros.com"></div>
       <div class="form-group"><label class="form-label">Perfil</label>
-        <select class="form-input" id="new-role"><option value="analista">Analista</option><option value="supervisor">Supervisor</option><option value="admin">Administrador</option></select>
+        <select class="form-input" id="new-role"><option value="analista">Analista</option><option value="supervisor">Supervisor</option><option value="admin">Administrador</option><option value="campo">Usuário de Campo</option></select>
       </div>
       <div id="new-user-result" style="display:none;background:var(--g50);border:1px solid var(--g100);border-radius:var(--r-sm);padding:12px;font-size:13px;color:var(--g700);margin-bottom:12px"></div>
       <div id="new-user-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px"></div>
@@ -989,10 +991,17 @@ function enterApp() {
     document.getElementById('solicitacoes-btn').style.display = 'none';
   }
 
-  // Monitoramento de Campo — exclusivo do Admin (bloco aditivo)
-  if (currentUser.role === 'admin') {
+  // Monitoramento de Campo — visível para Admin e Campo (bloco aditivo)
+  if (currentUser.role === 'admin' || currentUser.role === 'campo') {
     const _mcBtn = document.getElementById('monitoramento-btn');
     if (_mcBtn) _mcBtn.style.display = '';
+  }
+
+  // Usuário de Campo: acessa APENAS o Monitoramento de Campo
+  if (currentUser.role === 'campo') {
+    ['dashboard-btn','dashboard-sv-btn','nova-analise-btn','historico-btn',
+     'ce-btn','admin-btn','assistente-btn','endosso-btn','solicitacoes-btn'
+    ].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
   }
 
   carregarStats();
@@ -1004,6 +1013,8 @@ function enterApp() {
     showPage('condicao-especial');
   } else if (currentUser.role === 'analista') {
     showPage('historico');
+  } else if (currentUser.role === 'campo') {
+    if (typeof abrirMonitoramento === 'function') abrirMonitoramento();
   }
 
   // Polling a cada 10s para atualizar jobs em processamento
@@ -2466,7 +2477,6 @@ async function carregarCondicoesEspeciais() {
       if (ce.job.tipo_analise === 'sistema') return false;
       const idP = String(ce.job.id_proposta || '0').trim();
       if (idP !== '0' && idP !== '') return false;
-      // Só mostra se tiver dados preenchidos (cliente ou município)
       if (!ce.cliente && !ce.municipio) return false;
       return true;
     });
@@ -2481,29 +2491,41 @@ async function carregarCondicoesEspeciais() {
     const elB = document.getElementById('ce-n-balcao');   if(elB) elB.textContent = nBalcao;
     const elR = document.getElementById('ce-n-recusado'); if(elR) elR.textContent = nRecusado;
 
-    // Aplica filtro selecionado
-    const filtro = document.getElementById('ce-filter')?.value || '';
+    // Aplica filtros — status, UF e Broker
+    const filtro       = document.getElementById('ce-filter')?.value || '';
+    const filtroUF     = (document.getElementById('ce-filter-uf')?.value || '').trim().toUpperCase();
+    const filtroBroker = (document.getElementById('ce-filter-broker')?.value || '').trim().toLowerCase();
     const listaFiltrada = listaSemSistema.filter(ce => {
-      if (!filtro) return true;
-      if (filtro === 'pendente') return ce.job && !ce.job.decisao_risco;
-      return ce.job && ce.job.decisao_risco === filtro;
+      if (filtro === 'pendente' && !(ce.job && !ce.job.decisao_risco)) return false;
+      if (filtro && filtro !== 'pendente' && !(ce.job && ce.job.decisao_risco === filtro)) return false;
+      if (filtroUF && (ce.uf || '').toUpperCase() !== filtroUF) return false;
+      if (filtroBroker && !(ce.broker || '').toLowerCase().includes(filtroBroker)) return false;
+      return true;
     });
 
     if (!listaFiltrada.length) {
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada para este filtro.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada para este filtro.</td></tr>';
       return;
     }
     tbody.innerHTML = listaFiltrada.map(ce => {
       const job = ce.job || {};
+      const dataChegada = ce.data_chegada || ce.criado_em || '';
+      const dataChegadaFmt = dataChegada ? new Date(dataChegada).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
       return `<tr>
         <td><strong>${job.id_proposta || '—'}</strong></td>
         <td>${job.nome_proponente || '—'}</td>
         <td>${job.cultura_desejada || '—'}</td>
         <td>${ce.municipio || '—'}</td>
         <td>${ce.uf || '—'}</td>
+        <td>${ce.broker || '—'}</td>
         <td>${ce.cliente || '—'}</td>
         <td>${ce.status_negocio || '—'}</td>
         <td>${ce.premio || '—'}</td>
+        <td style="white-space:nowrap;font-size:12px">
+          ${dataChegadaFmt}
+          <button title="Editar data de chegada" onclick="ceEditarDataChegada('${ce.job_id}','${dataChegada}')" style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 2px">✏️</button>
+        </td>
+        <td style="white-space:nowrap;font-size:12px">${ceTempoResposta(ce)}</td>
         <td>
           <div style="display:flex;gap:5px;flex-wrap:wrap">
             <button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${ce.job_id}')">📄 Relatório</button>
@@ -2514,8 +2536,43 @@ async function carregarCondicoesEspeciais() {
       </tr>`;
     }).join('');
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:40px">Erro ao carregar.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--red);padding:40px">Erro ao carregar.</td></tr>';
   }
+}
+
+// Calcula e formata o tempo de resposta de uma CE
+function ceTempoResposta(ce) {
+  const chegada = ce.data_chegada || ce.criado_em;
+  if (!chegada) return '—';
+  const job = ce.job || {};
+  const concluido = !!job.decisao_risco;
+  const inicio = Date.parse(chegada);
+  const fim = concluido && job.updated_at ? Date.parse(job.updated_at) : Date.now();
+  if (isNaN(inicio) || isNaN(fim)) return '—';
+  const ms = fim - inicio;
+  if (ms < 0) return '—';
+  const d = Math.floor(ms / 86400000);
+  const h = Math.floor((ms % 86400000) / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const partes = [];
+  if (d > 0) partes.push(d + 'd');
+  if (h > 0 || d > 0) partes.push(h + 'h');
+  partes.push(m + 'min');
+  const txt = partes.join(' ');
+  return concluido
+    ? `<span style="color:#166534;font-weight:600">${txt}</span>`
+    : `<span style="color:#b45309;font-weight:600">⏱ ${txt}</span>`;
+}
+
+// Edição da data de chegada da CE
+async function ceEditarDataChegada(jobId, atual) {
+  const atualFmt = atual ? new Date(atual).toISOString().slice(0,16) : '';
+  const nova = prompt('Data e hora de chegada (AAAA-MM-DDThh:mm):', atualFmt);
+  if (nova === null) return;
+  try {
+    await api('PATCH', '/condicoes-especiais/' + jobId + '/data-chegada', { data_chegada: nova || null });
+    carregarCondicoesEspeciais();
+  } catch(e) { showToast('Erro ao salvar data: ' + e.message, 'error'); }
 }
 
 // ── Aprovação de Condição Especial ──
