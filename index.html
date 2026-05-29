@@ -5160,6 +5160,9 @@ async function verRelatorio(jobId) {
   .mc-warn{font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin:6px 0}
   .mc-card-foot{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--g100)}
   .mc-ndvi-now{font-size:12px;color:var(--g700);font-weight:600}
+  .mc-talhao{border:1px solid var(--g100);border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#fcfefd}
+  .mc-talhao-head{font-weight:600;font-size:13px;color:var(--g900);margin-bottom:6px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .mc-talhao-area{font-size:11px;color:var(--gray600,#475569);font-weight:500}
 </style>
 
 <!-- ════════ MONITORAMENTO DE CAMPO — lógica (aditivo) ════════ -->
@@ -5271,6 +5274,10 @@ async function mcCriarCard(){
   finally{ btn.disabled=false; btn.textContent=txt; }
 }
 
+function _mcTemSerie(row){
+  return row && row.poligonos && row.poligonos.length && row.poligonos.some(p=>p.ndvi!=null||p.clima!=null);
+}
+
 async function mcCarregarLista(){
   const wrap=document.getElementById('mc-lista');
   wrap.innerHTML='<div class="mc-empty">Carregando…</div>';
@@ -5280,7 +5287,7 @@ async function mcCarregarLista(){
     wrap.innerHTML='';
     rows.forEach(r=>wrap.insertAdjacentHTML('beforeend', mcCardHtml(r)));
     await mcEnsureChart().catch(()=>{});
-    rows.forEach(r=>mcDesenhar(r, r.ndvi_series, r.clima_series));
+    rows.forEach(r=>{ if(_mcTemSerie(r)) mcRenderTalhoes(r.id, r.poligonos); });
     // Atualização automática em segundo plano — sem o usuário clicar em nada
     mcAutoAtualizar(rows);
   }catch(e){ wrap.innerHTML='<div class="mc-empty">Erro ao carregar: '+e.message+'</div>'; }
@@ -5293,17 +5300,16 @@ function mcCardHtml(r){
   if(r.cultura) meta.push('🌱 '+_mcEsc(r.cultura));
   if(r.municipio||r.uf) meta.push('📍 '+_mcEsc(r.municipio)+(r.uf?'/'+_mcEsc(r.uf):''));
   if(r.data_semeadura) meta.push('🗓️ Semeadura: '+_mcEsc(r.data_semeadura));
-  if(r.area_ha) meta.push('📐 '+_mcEsc(r.area_ha)+' ha');
+  if(r.area_ha) meta.push('📐 '+_mcEsc(r.area_ha)+' ha total');
+  const nPoli=(r.poligonos&&r.poligonos.length)||0;
+  if(nPoli) meta.push('🗺️ '+nPoli+(nPoli>1?' talhões':' talhão'));
   return `<div class="mc-card" id="mc-card-${r.id}">
     <div class="mc-card-head">
       <div class="mc-card-title">${_mcEsc(r.proponente)||'Proposta'}</div>
       <div class="mc-card-meta">${meta.join('')||'<span style="color:#94a3b8">Sem metadados</span>'}</div>
     </div>
-    <div class="mc-card-body">
-      <div class="mc-chart-title">Evolução do NDVI <span class="mc-ndvi-now" id="mc-ndvinow-${r.id}"></span></div>
-      <div id="mc-ndvi-box-${r.id}"><div class="mc-chart-wrap"><canvas id="mc-ndvi-${r.id}"></canvas></div></div>
-      <div class="mc-chart-title" style="margin-top:12px">Clima — chuva e temperatura</div>
-      <div class="mc-chart-wrap"><canvas id="mc-clima-${r.id}"></canvas></div>
+    <div class="mc-card-body" id="mc-talhoes-${r.id}">
+      <div class="mc-warn">Carregando talhões…</div>
     </div>
     <div class="mc-card-foot">
       <button class="btn-sm btn-outline" onclick="mcAtualizarSerie('${r.id}')" title="A atualização já é automática; use só se quiser forçar agora">↻ Forçar atualização</button>
@@ -5312,21 +5318,100 @@ function mcCardHtml(r){
   </div>`;
 }
 
-async function mcAtualizarSerie(id){
-  const box=document.getElementById('mc-ndvi-box-'+id);
-  if(box) box.innerHTML='<div class="mc-warn">Calculando NDVI e clima… (pode levar até 1–2 min)</div>';
-  try{
-    const d=await mcFetch('GET',`/monitoramento/${id}/series?refresh=1`,{timeout:150000});
-    if(box) box.innerHTML='<div class="mc-chart-wrap"><canvas id="mc-ndvi-'+id+'"></canvas></div>';
-    await mcEnsureChart().catch(()=>{});
-    mcDesenhar({id}, d.ndvi, d.clima);
-  }catch(e){ if(box) box.innerHTML='<div class="mc-warn">Erro ao calcular: '+_mcEsc(e.message)+'</div>'; }
+// Monta os blocos de cada talhão (polígono) dentro do card e desenha os gráficos
+function mcRenderTalhoes(id, poligonos){
+  const cont=document.getElementById('mc-talhoes-'+id);
+  if(!cont) return;
+  // limpa gráficos antigos deste card
+  Object.keys(_mcCharts).forEach(k=>{ if(k.indexOf('|'+id+'|')>=0){ try{_mcCharts[k].destroy();}catch(e){} delete _mcCharts[k]; } });
+  if(!poligonos || !poligonos.length){ cont.innerHTML='<div class="mc-warn">Sem talhões para exibir.</div>'; return; }
+  let html='';
+  poligonos.forEach((p,i)=>{
+    const area=p.area_ha!=null?(' · '+p.area_ha+' ha'):'';
+    html+=`<div class="mc-talhao">
+      <div class="mc-talhao-head">${_mcEsc(p.nome||('Polígono '+(i+1)))}<span class="mc-talhao-area">${area}</span><span class="mc-ndvi-now" id="mc-ndvinow-${id}-${i}"></span></div>
+      <div class="mc-chart-title">Evolução do NDVI</div>
+      <div id="mc-ndvi-box-${id}-${i}"><div class="mc-chart-wrap"><canvas id="mc-ndvi-${id}-${i}"></canvas></div></div>
+      <div class="mc-chart-title" style="margin-top:8px">Clima — chuva e temperatura</div>
+      <div class="mc-chart-wrap"><canvas id="mc-clima-${id}-${i}"></canvas></div>
+    </div>`;
+  });
+  cont.innerHTML=html;
+  poligonos.forEach((p,i)=>mcDesenharPoli(id, i, p.ndvi, p.clima));
 }
 
-// Considera "desatualizado": nunca calculado, sem dados, de outro dia, ou > N horas
+// Desenha NDVI + clima de um talhão específico
+function mcDesenharPoli(id, i, ndvi, clima){
+  if(!window.Chart) return;
+  const kN='n|'+id+'|'+i, kC='c|'+id+'|'+i;
+  // NDVI
+  const boxId='mc-ndvi-box-'+id+'-'+i;
+  const cvN=document.getElementById('mc-ndvi-'+id+'-'+i);
+  const now=document.getElementById('mc-ndvinow-'+id+'-'+i);
+  if(cvN){
+    if(_mcCharts[kN]){ try{_mcCharts[kN].destroy();}catch(e){} }
+    if(ndvi && ndvi.disponivel===false){
+      const box=document.getElementById(boxId);
+      if(box) box.innerHTML='<div class="mc-warn">NDVI indisponível — '+_mcEsc(ndvi.motivo||'')+'</div>';
+    } else {
+      const serie=(ndvi && ndvi.serie)?ndvi.serie:[];
+      if(!serie.length){
+        const box=document.getElementById(boxId);
+        if(box) box.innerHTML='<div class="mc-warn">Sem imagens de NDVI válidas no período (provável cobertura de nuvens).</div>';
+      } else {
+        if(now) now.textContent='· NDVI atual: '+serie[serie.length-1].ndvi.toFixed(2);
+        _mcCharts[kN]=new Chart(cvN.getContext('2d'),{
+          type:'line',
+          data:{labels:serie.map(p=>p.data),datasets:[{label:'NDVI',data:serie.map(p=>p.ndvi),
+            borderColor:'#1e6b40',backgroundColor:'rgba(30,107,64,.12)',fill:true,tension:.3,pointRadius:2}]},
+          options:{responsive:true,maintainAspectRatio:false,
+            scales:{y:{min:0,max:1,ticks:{stepSize:.2}},x:{ticks:{maxTicksLimit:6,autoSkip:true}}},
+            plugins:{legend:{display:false}}}
+        });
+      }
+    }
+  }
+  // Clima
+  const cvC=document.getElementById('mc-clima-'+id+'-'+i);
+  if(cvC){
+    if(_mcCharts[kC]){ try{_mcCharts[kC].destroy();}catch(e){} }
+    const c=clima||[];
+    _mcCharts[kC]=new Chart(cvC.getContext('2d'),{
+      data:{labels:c.map(p=>p.data),datasets:[
+        {type:'bar',label:'Chuva (mm)',data:c.map(p=>p.chuva),yAxisID:'yC',
+          backgroundColor:'rgba(37,99,235,.55)',borderColor:'rgba(37,99,235,.8)'},
+        {type:'line',label:'T máx (°C)',data:c.map(p=>p.tmax),yAxisID:'yT',
+          borderColor:'#dc2626',pointRadius:0,tension:.3,borderWidth:1.5},
+        {type:'line',label:'T mín (°C)',data:c.map(p=>p.tmin),yAxisID:'yT',
+          borderColor:'#f59e0b',pointRadius:0,tension:.3,borderWidth:1.5}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+        scales:{
+          x:{ticks:{maxTicksLimit:6,autoSkip:true}},
+          yT:{position:'left',title:{display:true,text:'°C'}},
+          yC:{position:'right',title:{display:true,text:'mm'},grid:{drawOnChartArea:false},beginAtZero:true}
+        },
+        plugins:{legend:{labels:{boxWidth:12,font:{size:10}}}}}
+    });
+  }
+}
+
+async function mcAtualizarSerie(id){
+  const cont=document.getElementById('mc-talhoes-'+id);
+  if(cont) cont.innerHTML='<div class="mc-warn">Calculando NDVI e clima dos talhões… (pode levar 1–2 min)</div>';
+  try{
+    const d=await mcFetch('GET',`/monitoramento/${id}/series?refresh=1`,{timeout:180000});
+    await mcEnsureChart().catch(()=>{});
+    if(d.erro && (!d.poligonos||!d.poligonos.length)){ if(cont) cont.innerHTML='<div class="mc-warn">'+_mcEsc(d.erro)+'</div>'; return; }
+    mcRenderTalhoes(id, d.poligonos);
+  }catch(e){ if(cont) cont.innerHTML='<div class="mc-warn">Erro ao calcular: '+_mcEsc(e.message)+'</div>'; }
+}
+
+// Considera "desatualizado": sem série, de outro dia, ou > N horas
 function _mcDesatualizado(row, horas){
-  if(!row || !row.series_atualizado_em) return true;
-  if(row.ndvi_series==null || row.clima_series==null) return true;
+  if(!row) return true;
+  if(!_mcTemSerie(row)) return true;
+  if(!row.series_atualizado_em) return true;
   let s=row.series_atualizado_em;
   if(!/[Zz]|[+-]\d\d:?\d\d$/.test(s)) s=s+'Z';   // backend grava em UTC sem fuso
   const t=Date.parse(s);
@@ -5339,11 +5424,10 @@ function _mcDesatualizado(row, horas){
 // Atualiza em segundo plano todos os cards desatualizados (sem clicar)
 async function mcAutoAtualizar(rows){
   const pend=rows.filter(r=>_mcDesatualizado(r,3));
-  // mostra "atualizando" só onde ainda não há nenhum dado
   pend.forEach(r=>{
-    if(r.ndvi_series==null){
-      const box=document.getElementById('mc-ndvi-box-'+r.id);
-      if(box) box.innerHTML='<div class="mc-warn">Atualizando automaticamente… (pode levar até 1–2 min na 1ª vez)</div>';
+    if(!_mcTemSerie(r)){
+      const cont=document.getElementById('mc-talhoes-'+r.id);
+      if(cont) cont.innerHTML='<div class="mc-warn">Atualizando automaticamente… (pode levar 1–2 min na 1ª vez)</div>';
     }
   });
   const ids=pend.map(r=>r.id); let i=0;
@@ -5351,17 +5435,19 @@ async function mcAutoAtualizar(rows){
   await Promise.all([worker(), worker()]); // até 2 em paralelo (poupa cota)
 }
 
-// Atualiza um card sem apagar o gráfico atual (silencioso)
+// Atualiza um card silenciosamente e redesenha os talhões
 async function mcAtualizarSilencioso(id){
   try{
-    const d=await mcFetch('GET',`/monitoramento/${id}/series?refresh=1`,{timeout:150000});
-    const box=document.getElementById('mc-ndvi-box-'+id);
-    if(box && !box.querySelector('canvas')) box.innerHTML='<div class="mc-chart-wrap"><canvas id="mc-ndvi-'+id+'"></canvas></div>';
+    const d=await mcFetch('GET',`/monitoramento/${id}/series?refresh=1`,{timeout:180000});
     await mcEnsureChart().catch(()=>{});
-    mcDesenhar({id}, d.ndvi, d.clima);
+    if(d.poligonos && d.poligonos.length) mcRenderTalhoes(id, d.poligonos);
+    else {
+      const cont=document.getElementById('mc-talhoes-'+id);
+      if(cont && cont.querySelector('.mc-warn')) cont.innerHTML='<div class="mc-warn">'+_mcEsc(d.erro||'Sem dados.')+'</div>';
+    }
   }catch(e){
-    const box=document.getElementById('mc-ndvi-box-'+id);
-    if(box && !box.querySelector('canvas')) box.innerHTML='<div class="mc-warn">Não foi possível atualizar agora: '+_mcEsc(e.message)+'</div>';
+    const cont=document.getElementById('mc-talhoes-'+id);
+    if(cont && cont.querySelector('.mc-warn')) cont.innerHTML='<div class="mc-warn">Não foi possível atualizar agora: '+_mcEsc(e.message)+'</div>';
   }
 }
 
@@ -5395,18 +5481,17 @@ async function mcBaixarPlanilha(){
     const rows=await mcFetch('GET','/monitoramento',{timeout:30000});
     if(!rows.length){ alert('Não há apólices monitoradas para exportar.'); return; }
 
-    // 1) Força a atualização de TODAS as apólices antes de exportar (dados sempre frescos)
+    // 1) Força a atualização de TODAS as apólices/talhões antes de exportar
     if(btn){ btn.disabled=true; }
     await mcEnsureChart().catch(()=>{});
-    const atualizado={}; let feitos=0, i=0; const total=rows.length;
+    const poliPorCard={}; let feitos=0, i=0; const total=rows.length;
     const worker=async()=>{
       while(i<rows.length){
         const r=rows[i++];
         try{
-          const d=await mcFetch('GET',`/monitoramento/${r.id}/series?refresh=1`,{timeout:150000});
-          atualizado[r.id]={ndvi:d.ndvi, clima:d.clima};
-          mcDesenhar({id:r.id}, d.ndvi, d.clima); // atualiza o card na tela também
-        }catch(e){ /* mantém o cache atual desta apólice */ }
+          const d=await mcFetch('GET',`/monitoramento/${r.id}/series?refresh=1`,{timeout:180000});
+          if(d.poligonos){ poliPorCard[r.id]=d.poligonos; mcRenderTalhoes(r.id, d.poligonos); }
+        }catch(e){ /* mantém o que já tinha */ }
         feitos++;
         if(btn) btn.textContent=`Atualizando ${feitos}/${total}…`;
       }
@@ -5414,49 +5499,46 @@ async function mcBaixarPlanilha(){
     await Promise.all([worker(),worker(),worker()]); // 3 em paralelo
     if(btn) btn.textContent='Gerando planilha…';
 
-    // aplica os dados recém-atualizados sobre as linhas
-    rows.forEach(r=>{ if(atualizado[r.id]){ r.ndvi_series=atualizado[r.id].ndvi; r.clima_series=atualizado[r.id].clima; } });
-
-    // 2) Monta as 3 abas
-    const resumo=[], ndviRows=[], climaRows=[];
+    // 2) Monta as abas — UMA LINHA POR TALHÃO
+    const talhoes=[], ndviRows=[], climaRows=[];
     rows.forEach(r=>{
       const local=(r.municipio||'')+(r.uf?'/'+r.uf:'');
-      const serieN=(r.ndvi_series && r.ndvi_series.serie)?r.ndvi_series.serie:[];
-      const serieC=Array.isArray(r.clima_series)?r.clima_series:[];
-
-      const vals=serieN.map(p=>p.ndvi).filter(v=>v!=null && !isNaN(v));
-      const ndviAtual=vals.length?vals[vals.length-1]:null;
-      const ndviMed=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
-      const ndviMin=vals.length?Math.min.apply(null,vals):null;
-      const ndviMax=vals.length?Math.max.apply(null,vals):null;
-
-      const chuvas=serieC.map(p=>p.chuva).filter(v=>v!=null && !isNaN(v));
-      const chuvaAcc=chuvas.length?chuvas.reduce((a,b)=>a+b,0):null;
-      const temps=serieC.map(p=> p.tmed!=null ? p.tmed : ((p.tmax!=null&&p.tmin!=null)?(p.tmax+p.tmin)/2:null)).filter(v=>v!=null && !isNaN(v));
-      const tMed=temps.length?temps.reduce((a,b)=>a+b,0)/temps.length:null;
-      const datasC=serieC.map(p=>p.data).filter(Boolean).sort();
-      const periodo=datasC.length?(datasC[0]+' a '+datasC[datasC.length-1]):'';
-
-      resumo.push({
-        'Proponente': r.proponente||'', 'Cultura': r.cultura||'',
-        'Município': r.municipio||'', 'UF': r.uf||'', 'Área (ha)': _mcNum(r.area_ha),
-        'Data de semeadura': r.data_semeadura||'',
-        'Latitude': _mcNum(r.centroid_lat), 'Longitude': _mcNum(r.centroid_lon),
-        'NDVI atual': _mcRound(ndviAtual,3), 'NDVI médio': _mcRound(ndviMed,3),
-        'NDVI mín': _mcRound(ndviMin,3), 'NDVI máx': _mcRound(ndviMax,3),
-        'Nº leituras NDVI': vals.length,
-        'Chuva acumulada (mm)': _mcRound(chuvaAcc,1), 'Temp. média (°C)': _mcRound(tMed,1),
-        'Período (clima)': periodo, 'Última atualização': r.series_atualizado_em||'',
-        'Observações': r.obs||'', 'ID': r.id||''
+      const polis = poliPorCard[r.id] || r.poligonos || [];
+      polis.forEach((p,idx)=>{
+        const nome=p.nome||('Polígono '+(idx+1));
+        const serieN=(p.ndvi && p.ndvi.serie)?p.ndvi.serie:[];
+        const serieC=Array.isArray(p.clima)?p.clima:[];
+        const vals=serieN.map(x=>x.ndvi).filter(v=>v!=null && !isNaN(v));
+        const nAtual=vals.length?vals[vals.length-1]:null;
+        const nMed=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+        const nMin=vals.length?Math.min.apply(null,vals):null;
+        const nMax=vals.length?Math.max.apply(null,vals):null;
+        const chuvas=serieC.map(x=>x.chuva).filter(v=>v!=null && !isNaN(v));
+        const chuvaAcc=chuvas.length?chuvas.reduce((a,b)=>a+b,0):null;
+        const temps=serieC.map(x=> x.tmed!=null ? x.tmed : ((x.tmax!=null&&x.tmin!=null)?(x.tmax+x.tmin)/2:null)).filter(v=>v!=null && !isNaN(v));
+        const tMed=temps.length?temps.reduce((a,b)=>a+b,0)/temps.length:null;
+        const ndviObs=(p.ndvi && p.ndvi.disponivel===false)?(p.ndvi.motivo||'indisponível'):'';
+        talhoes.push({
+          'Proponente': r.proponente||'', 'Cultura': r.cultura||'',
+          'Município': r.municipio||'', 'UF': r.uf||'',
+          'Talhão': nome, 'Área (ha)': _mcNum(p.area_ha),
+          'Data de semeadura': r.data_semeadura||'',
+          'Latitude': _mcNum(p.centroid_lat), 'Longitude': _mcNum(p.centroid_lon),
+          'NDVI atual': _mcRound(nAtual,3), 'NDVI médio': _mcRound(nMed,3),
+          'NDVI mín': _mcRound(nMin,3), 'NDVI máx': _mcRound(nMax,3),
+          'Nº leituras NDVI': vals.length, 'NDVI obs': ndviObs,
+          'Chuva acumulada (mm)': _mcRound(chuvaAcc,1), 'Temp. média (°C)': _mcRound(tMed,1),
+          'Última atualização': r.series_atualizado_em||'', 'Observações': r.obs||'', 'ID': r.id||''
+        });
+        serieN.forEach(x=>ndviRows.push({'Proponente':r.proponente||'','Talhão':nome,'Local':local,'Data':x.data,'NDVI':_mcRound(x.ndvi,3)}));
+        serieC.forEach(x=>climaRows.push({'Proponente':r.proponente||'','Talhão':nome,'Local':local,'Data':x.data,'Chuva (mm)':_mcNum(x.chuva),'Temp máx (°C)':_mcNum(x.tmax),'Temp mín (°C)':_mcNum(x.tmin),'Temp média (°C)':_mcNum(x.tmed)}));
       });
-      serieN.forEach(p=>ndviRows.push({'Proponente':r.proponente||'','Cultura':r.cultura||'','Local':local,'Data':p.data,'NDVI':_mcRound(p.ndvi,3)}));
-      serieC.forEach(p=>climaRows.push({'Proponente':r.proponente||'','Cultura':r.cultura||'','Local':local,'Data':p.data,'Chuva (mm)':_mcNum(p.chuva),'Temp máx (°C)':_mcNum(p.tmax),'Temp mín (°C)':_mcNum(p.tmin),'Temp média (°C)':_mcNum(p.tmed)}));
     });
 
     const wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo), 'Apólices');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ndviRows.length?ndviRows:[{'Proponente':'','Cultura':'','Local':'','Data':'','NDVI':''}]), 'NDVI');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(climaRows.length?climaRows:[{'Proponente':'','Cultura':'','Local':'','Data':'','Chuva (mm)':'','Temp máx (°C)':'','Temp mín (°C)':'','Temp média (°C)':''}]), 'Clima');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(talhoes.length?talhoes:[{'Proponente':''}]), 'Talhões');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ndviRows.length?ndviRows:[{'Proponente':'','Talhão':'','Local':'','Data':'','NDVI':''}]), 'NDVI');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(climaRows.length?climaRows:[{'Proponente':'','Talhão':'','Local':'','Data':'','Chuva (mm)':'','Temp máx (°C)':'','Temp mín (°C)':'','Temp média (°C)':''}]), 'Clima');
 
     const hoje=new Date().toISOString().slice(0,10);
     XLSX.writeFile(wb, `Monitoramento_Campo_${hoje}.xlsx`);
@@ -5465,66 +5547,11 @@ async function mcBaixarPlanilha(){
   finally{ if(btn){ btn.disabled=false; btn.innerHTML=orig||'⬇ Baixar planilha (.xlsx)'; } }
 }
 
-function mcDesenhar(r, ndvi, clima){
-  if(!window.Chart) return;
-  // NDVI
-  const boxId='mc-ndvi-box-'+r.id;
-  const cvN=document.getElementById('mc-ndvi-'+r.id);
-  const now=document.getElementById('mc-ndvinow-'+r.id);
-  if(cvN){
-    if(_mcCharts['n'+r.id]) _mcCharts['n'+r.id].destroy();
-    if(ndvi && ndvi.disponivel===false){
-      const box=document.getElementById(boxId);
-      if(box) box.innerHTML='<div class="mc-warn">NDVI indisponível — '+_mcEsc(ndvi.motivo||'')+'</div>';
-    } else {
-      const serie=(ndvi && ndvi.serie)?ndvi.serie:[];
-      if(!serie.length){
-        const box=document.getElementById(boxId);
-        if(box) box.innerHTML='<div class="mc-warn">Sem imagens de NDVI válidas no período (provável cobertura de nuvens).</div>';
-      } else {
-        if(now) now.textContent='· atual: '+serie[serie.length-1].ndvi.toFixed(2);
-        _mcCharts['n'+r.id]=new Chart(cvN.getContext('2d'),{
-          type:'line',
-          data:{labels:serie.map(p=>p.data),datasets:[{label:'NDVI',data:serie.map(p=>p.ndvi),
-            borderColor:'#1e6b40',backgroundColor:'rgba(30,107,64,.12)',fill:true,tension:.3,pointRadius:2}]},
-          options:{responsive:true,maintainAspectRatio:false,
-            scales:{y:{min:0,max:1,ticks:{stepSize:.2}},x:{ticks:{maxTicksLimit:6,autoSkip:true}}},
-            plugins:{legend:{display:false}}}
-        });
-      }
-    }
-  }
-  // Clima
-  const cvC=document.getElementById('mc-clima-'+r.id);
-  if(cvC){
-    if(_mcCharts['c'+r.id]) _mcCharts['c'+r.id].destroy();
-    const c=clima||[];
-    _mcCharts['c'+r.id]=new Chart(cvC.getContext('2d'),{
-      data:{labels:c.map(p=>p.data),datasets:[
-        {type:'bar',label:'Chuva (mm)',data:c.map(p=>p.chuva),yAxisID:'yC',
-          backgroundColor:'rgba(37,99,235,.55)',borderColor:'rgba(37,99,235,.8)'},
-        {type:'line',label:'T máx (°C)',data:c.map(p=>p.tmax),yAxisID:'yT',
-          borderColor:'#dc2626',pointRadius:0,tension:.3,borderWidth:1.5},
-        {type:'line',label:'T mín (°C)',data:c.map(p=>p.tmin),yAxisID:'yT',
-          borderColor:'#f59e0b',pointRadius:0,tension:.3,borderWidth:1.5}
-      ]},
-      options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-        scales:{
-          x:{ticks:{maxTicksLimit:6,autoSkip:true}},
-          yT:{position:'left',title:{display:true,text:'°C'}},
-          yC:{position:'right',title:{display:true,text:'mm'},grid:{drawOnChartArea:false},beginAtZero:true}
-        },
-        plugins:{legend:{labels:{boxWidth:12,font:{size:10}}}}}
-    });
-  }
-}
-
 async function mcDeletar(id){
   if(!confirm('Excluir este card de monitoramento?')) return;
   try{
     await mcFetch('DELETE','/monitoramento/'+id,{timeout:20000});
-    if(_mcCharts['n'+id]){_mcCharts['n'+id].destroy(); delete _mcCharts['n'+id];}
-    if(_mcCharts['c'+id]){_mcCharts['c'+id].destroy(); delete _mcCharts['c'+id];}
+    Object.keys(_mcCharts).forEach(k=>{ if(k.indexOf('|'+id+'|')>=0){ try{_mcCharts[k].destroy();}catch(e){} delete _mcCharts[k]; } });
     const el=document.getElementById('mc-card-'+id); if(el) el.remove();
     const wrap=document.getElementById('mc-lista'); if(wrap && !wrap.children.length) mcCarregarLista();
   }catch(e){ alert('Erro ao excluir: '+e.message); }
