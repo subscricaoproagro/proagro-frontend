@@ -1373,8 +1373,8 @@ async function carregarJobs() {
     setCount('hcount-recusada',    allJobs.filter(j => j.status === 'concluido' && j.decisao === 'recusado').length);
     setCount('hcount-erro',        allJobs.filter(j => j.status === 'erro' || j.status === 'cancelado').length);
 
-    // Média de tempo de avaliação — sistema + CE juntos (todos os concluídos)
-    const _concluidos = allJobs.filter(j => j.status === 'concluido' && j.concluido_at && j.created_at);
+    // Média de tempo de avaliação — sistema + CE juntos (somente onde analista decidiu)
+    const _concluidos = allJobs.filter(j => j.concluido_at && j.created_at && !!(j.decisao || j.decisao_risco));
     const elHM = document.getElementById('hist-media-tempo');
     const elHB = document.getElementById('hist-media-base');
     if (elHM && _concluidos.length) {
@@ -1457,17 +1457,27 @@ function renderJobsTable(jobs) {
 // Tempo de avaliação do analista por job (created_at → concluido_at)
 function jobTempoAvaliacao(j) {
   if (!j.created_at) return '—';
-  const concluido = j.status === 'concluido' && j.concluido_at;
-  const inicio = Date.parse(j.created_at);
-  const fim = concluido ? Date.parse(j.concluido_at) : Date.now();
-  if (isNaN(inicio) || isNaN(fim) || fim < inicio) return '—';
-  const ms = fim - inicio;
-  const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000);
-  const p = []; if (d>0) p.push(d+'d'); if (h>0) p.push(h+'h'); if (d===0) p.push(m+'min');
-  const txt = p.join(' ') || '< 1 min';
-  return concluido
-    ? `<span style="color:#166534;font-weight:600">✓ ${txt}</span>`
-    : `<span style="color:#92400e">⏱ ${txt}</span>`;
+  // Analista respondeu = tem decisão (aprovado/recusado) ou decisão de risco (CE)
+  const analistaDecidiu = !!(j.decisao || j.decisao_risco);
+  const aiFez = j.status === 'concluido' && j.concluido_at;
+
+  if (!aiFez) return '—'; // ainda processando pela IA
+
+  if (analistaDecidiu) {
+    // Analista já respondeu — mostra tempo total (criação até IA concluir como proxy)
+    const ms = Date.parse(j.concluido_at) - Date.parse(j.created_at);
+    if (isNaN(ms) || ms < 0) return '—';
+    const d = Math.floor(ms/86400000), h = Math.floor((ms%86400000)/3600000), m = Math.floor((ms%3600000)/60000);
+    const p = []; if(d>0) p.push(d+'d'); if(h>0) p.push(h+'h'); if(d===0) p.push(m+'min');
+    return `<span style="color:#166534;font-weight:600;font-size:11px">✓ ${p.join(' ')||'< 1 min'}</span>`;
+  } else {
+    // IA concluiu mas analista ainda não avaliou — mostra quanto tempo está aguardando
+    const ms = Date.now() - Date.parse(j.concluido_at);
+    if (isNaN(ms) || ms < 0) return '—';
+    const d = Math.floor(ms/86400000), h = Math.floor((ms%86400000)/3600000), m = Math.floor((ms%3600000)/60000);
+    const p = []; if(d>0) p.push(d+'d'); if(h>0) p.push(h+'h'); if(d===0) p.push(m+'min');
+    return `<span style="color:#92400e;font-size:11px">⏳ ${p.join(' ')||'< 1 min'}</span>`;
+  }
 }
 
 function renderRecentJobs(jobs) {
