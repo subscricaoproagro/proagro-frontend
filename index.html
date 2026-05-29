@@ -635,8 +635,8 @@
       <div class="card">
         <div class="overflow-x">
           <table class="jobs-table">
-            <thead><tr><th>Proposta</th><th>Proponente</th><th>Cultura</th><th>Município</th><th>UF</th><th>Broker</th><th>Cliente</th><th>Status Negócio</th><th>Prêmio</th><th>Data Chegada</th><th>⏱ Tempo Resp.</th><th>Ações</th></tr></thead>
-            <tbody id="ce-tbody"><tr><td colspan="12" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+            <thead><tr><th>Proponente</th><th>Cultura</th><th>Local</th><th>Broker</th><th>Cliente</th><th>Status</th><th>Prêmio</th><th>Chegada</th><th>Tempo Resp.</th><th>Ações</th></tr></thead>
+            <tbody id="ce-tbody"><tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -2504,7 +2504,7 @@ async function carregarCondicoesEspeciais() {
     });
 
     if (!listaFiltrada.length) {
-      tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada para este filtro.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada para este filtro.</td></tr>';
       return;
     }
     tbody.innerHTML = listaFiltrada.map(ce => {
@@ -2512,43 +2512,45 @@ async function carregarCondicoesEspeciais() {
       const dataChegada = ce.data_chegada || ce.criado_em || '';
       const dataChegadaFmt = dataChegada ? new Date(dataChegada).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
       return `<tr>
-        <td><strong>${job.id_proposta || '—'}</strong></td>
         <td>${job.nome_proponente || '—'}</td>
         <td>${job.cultura_desejada || '—'}</td>
-        <td>${ce.municipio || '—'}</td>
-        <td>${ce.uf || '—'}</td>
+        <td>${ce.municipio||'—'}${ce.uf?'/'+ce.uf:''}</td>
         <td>${ce.broker || '—'}</td>
         <td>${ce.cliente || '—'}</td>
         <td>${ce.status_negocio || '—'}</td>
         <td>${ce.premio || '—'}</td>
-        <td style="white-space:nowrap;font-size:12px">
+        <td class="ce-chegada-cell">
           ${dataChegadaFmt}
-          <button title="Editar data de chegada" onclick="ceEditarDataChegada('${ce.job_id}','${dataChegada}')" style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 2px">✏️</button>
+          <button title="Editar data de chegada" onclick="ceEditarDataChegada('${ce.job_id}','${dataChegada}')" class="ce-edit-btn">✏️</button>
         </td>
-        <td style="white-space:nowrap;font-size:12px">${ceTempoResposta(ce)}</td>
+        <td>${ceTempoResposta(ce)}</td>
         <td>
-          <div style="display:flex;gap:5px;flex-wrap:wrap">
-            <button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${ce.job_id}')">📄 Relatório</button>
+          <div class="ce-acoes-grid">
+            <button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;font-size:11px;padding:3px 6px" onclick="verRelatorio('${ce.job_id}')">📄 Rel.</button>
             ${renderBtnsCE(ce)}
-            <button class="btn-sm btn-danger" onclick="excluirCE('${ce.job_id}')" title="Excluir">🗑</button>
+            <button class="btn-sm btn-danger" onclick="excluirCE('${ce.job_id}')" title="Excluir" style="font-size:11px;padding:3px 6px">🗑</button>
           </div>
         </td>
       </tr>`;
     }).join('');
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--red);padding:40px">Erro ao carregar.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--red);padding:40px">Erro ao carregar.</td></tr>';
   }
 }
 
-// Calcula e formata o tempo de resposta de uma CE
+// Tempo de resposta: para concluídas = tempo da chegada até a decisão do supervisor (fixo).
+// Para pendentes = tempo em espera desde a chegada (indicativo, não é o "tempo de resposta").
 function ceTempoResposta(ce) {
   const chegada = ce.data_chegada || ce.criado_em;
   if (!chegada) return '—';
   const job = ce.job || {};
   const concluido = !!job.decisao_risco;
   const inicio = Date.parse(chegada);
+  if (isNaN(inicio)) return '—';
+  // Para concluídas: usa a data da decisão (updated_at do job) como fim fixo.
+  // Para pendentes: usa o momento atual como indicador de espera.
   const fim = concluido && job.updated_at ? Date.parse(job.updated_at) : Date.now();
-  if (isNaN(inicio) || isNaN(fim)) return '—';
+  if (isNaN(fim)) return '—';
   const ms = fim - inicio;
   if (ms < 0) return '—';
   const d = Math.floor(ms / 86400000);
@@ -2556,12 +2558,14 @@ function ceTempoResposta(ce) {
   const m = Math.floor((ms % 3600000) / 60000);
   const partes = [];
   if (d > 0) partes.push(d + 'd');
-  if (h > 0 || d > 0) partes.push(h + 'h');
-  partes.push(m + 'min');
-  const txt = partes.join(' ');
-  return concluido
-    ? `<span style="color:#166534;font-weight:600">${txt}</span>`
-    : `<span style="color:#b45309;font-weight:600">⏱ ${txt}</span>`;
+  if (h > 0) partes.push(h + 'h');
+  if (d === 0) partes.push(m + 'min');
+  const txt = partes.join(' ') || '< 1 min';
+  if (concluido) {
+    return `<span style="color:#166534;font-weight:600;font-size:11px">✓ ${txt}</span>`;
+  } else {
+    return `<span style="color:#b45309;font-size:11px">Aguardando há ${txt}</span>`;
+  }
 }
 
 // Edição da data de chegada da CE
@@ -5217,6 +5221,25 @@ async function verRelatorio(jobId) {
   .mc-warn{font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin:6px 0}
   .mc-card-foot{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--g100)}
   .mc-ndvi-now{font-size:12px;color:var(--g700);font-weight:600}
+  /* ── Tabela Condições Especiais — compacta para caber sem scroll ── */
+  #page-condicao-especial .jobs-table { table-layout:fixed; width:100%; font-size:11.5px; }
+  #page-condicao-especial .jobs-table th,
+  #page-condicao-especial .jobs-table td { padding:5px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #page-condicao-especial .jobs-table th:nth-child(1){width:14%} /* Proponente */
+  #page-condicao-especial .jobs-table th:nth-child(2){width:8%}  /* Cultura */
+  #page-condicao-especial .jobs-table th:nth-child(3){width:10%} /* Local */
+  #page-condicao-especial .jobs-table th:nth-child(4){width:8%}  /* Broker */
+  #page-condicao-especial .jobs-table th:nth-child(5){width:10%} /* Cliente */
+  #page-condicao-especial .jobs-table th:nth-child(6){width:6%}  /* Status */
+  #page-condicao-especial .jobs-table th:nth-child(7){width:7%}  /* Prêmio */
+  #page-condicao-especial .jobs-table th:nth-child(8){width:10%} /* Chegada */
+  #page-condicao-especial .jobs-table th:nth-child(9){width:9%}  /* Tempo */
+  #page-condicao-especial .jobs-table th:nth-child(10){width:18%}/* Ações */
+  .ce-chegada-cell { font-size:11px; }
+  .ce-edit-btn { background:none;border:none;cursor:pointer;font-size:11px;padding:0 2px;opacity:.6 }
+  .ce-edit-btn:hover { opacity:1 }
+  .ce-acoes-grid { display:grid; grid-template-columns:1fr 1fr; gap:3px; }
+  .ce-acoes-grid .btn-sm { font-size:10.5px; padding:3px 5px; }
   .mc-talhao{border:1px solid var(--g100);border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#fcfefd}
   .mc-talhao-head{font-weight:600;font-size:13px;color:var(--g900);margin-bottom:6px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   .mc-talhao-area{font-size:11px;color:var(--gray600,#475569);font-weight:500}
