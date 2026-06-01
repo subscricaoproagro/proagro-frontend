@@ -1552,7 +1552,11 @@ async function verJob(id) {
 async function baixarJob(id) {
   try {
     const data = await api('GET', `/jobs/${id}/baixar`);
-    data.arquivos.forEach(a => { window.open(a.url, '_blank'); });
+    data.arquivos.forEach(a => {
+      // URL relativa = arquivo local no backend; URL absoluta = Supabase (legado)
+      const url = a.url.startsWith('http') ? a.url : BACKEND_URL + a.url;
+      window.open(url, '_blank');
+    });
     showToast('Downloads iniciados!', 'success');
   } catch(e) { showToast('Erro: '+e.message,'error'); }
 }
