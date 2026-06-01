@@ -2360,6 +2360,9 @@ function preencherCamposCE(sol) {
 
   setVal('ce-broker',          sol.corretora || sol.responsavel);
   setVal('ce-email-corretora', sol.email_corretora || '');
+  // Vincula a solicitação específica — elimina ambiguidade no email do corretor
+  const elSolId = document.getElementById('ce-solicitacao-id');
+  if (elSolId) elSolId.value = sol.id || '';
   setVal('ce-municipio',       municipioLimpo);
   setVal('ce-uf',              uf);
   setVal('ce-cliente',         sol.produtor);
@@ -2464,6 +2467,7 @@ async function salvarFormCE() {
   const body = {
     broker:                       document.getElementById('ce-broker')?.value || '',
     email_corretora:              document.getElementById('ce-email-corretora')?.value.trim() || '',
+    solicitacao_id:               document.getElementById('ce-solicitacao-id')?.value || null,
     municipio:                    document.getElementById('ce-municipio')?.value || '',
     codigo_ibge:                  document.getElementById('ce-codigo-ibge')?.value || '',
     uf:                           document.getElementById('ce-uf')?.value || '',
@@ -2499,7 +2503,7 @@ async function salvarFormCE() {
 async function abrirPreencherCE(jobId) {
   _ceJobId = jobId;
   // Limpa formulário
-  const camposLimpar = ['ce-broker','ce-email-corretora','ce-municipio','ce-codigo-ibge','ce-uf','ce-cliente',
+  const camposLimpar = ['ce-broker','ce-email-corretora','ce-solicitacao-id','ce-municipio','ce-codigo-ibge','ce-uf','ce-cliente',
     'ce-area-solicitada','ce-cultivo','ce-ajuste','ce-ciclo','ce-modalidade',
     'ce-nivel-cobertura','ce-prod-estimada','ce-prod-ibge','ce-diferenca',
     'ce-preco-saca','ce-cuota','ce-premio','ce-cpf-busca'];
@@ -4756,6 +4760,7 @@ async function verRelatorio(jobId) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <div><label class="ce-label">Broker</label><input class="ce-input" id="ce-broker" placeholder="Nome do broker"></div>
         <div><label class="ce-label">E-mail do Corretor</label><input class="ce-input" id="ce-email-corretora" placeholder="email@corretor.com" type="email"></div>
+        <input type="hidden" id="ce-solicitacao-id">
         <div><label class="ce-label">Município</label><input class="ce-input" id="ce-municipio" placeholder="Município"></div>
         <div><label class="ce-label">Código IBGE</label><input class="ce-input" id="ce-codigo-ibge" placeholder="0000000"></div>
         <div><label class="ce-label">UF</label><input class="ce-input" id="ce-uf" placeholder="UF" maxlength="2" style="text-transform:uppercase"></div>
