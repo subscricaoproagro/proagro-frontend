@@ -2355,6 +2355,7 @@ function preencherCamposCE(sol) {
   })();
 
   setVal('ce-broker',          sol.corretora || sol.responsavel);
+  setVal('ce-email-corretora', sol.email_corretora || '');
   setVal('ce-municipio',       municipioLimpo);
   setVal('ce-uf',              uf);
   setVal('ce-cliente',         sol.produtor);
@@ -2458,6 +2459,7 @@ async function salvarFormCE() {
 
   const body = {
     broker:                       document.getElementById('ce-broker')?.value || '',
+    email_corretora:              document.getElementById('ce-email-corretora')?.value.trim() || '',
     municipio:                    document.getElementById('ce-municipio')?.value || '',
     codigo_ibge:                  document.getElementById('ce-codigo-ibge')?.value || '',
     uf:                           document.getElementById('ce-uf')?.value || '',
@@ -2493,7 +2495,7 @@ async function salvarFormCE() {
 async function abrirPreencherCE(jobId) {
   _ceJobId = jobId;
   // Limpa formulário
-  const camposLimpar = ['ce-broker','ce-municipio','ce-codigo-ibge','ce-uf','ce-cliente',
+  const camposLimpar = ['ce-broker','ce-email-corretora','ce-municipio','ce-codigo-ibge','ce-uf','ce-cliente',
     'ce-area-solicitada','ce-cultivo','ce-ajuste','ce-ciclo','ce-modalidade',
     'ce-nivel-cobertura','ce-prod-estimada','ce-prod-ibge','ce-diferenca',
     'ce-preco-saca','ce-cuota','ce-premio','ce-cpf-busca'];
@@ -2875,6 +2877,7 @@ async function abrirEdicaoCE(jobId) {
     const ce = await api('GET', '/jobs/' + jobId + '/condicao-especial');
     const map = {
       'ce-broker': ce.broker,
+      'ce-email-corretora': ce.email_corretora || '',
       'ce-municipio': ce.municipio,
       'ce-codigo-ibge': ce.codigo_ibge,
       'ce-uf': ce.uf,
@@ -3792,6 +3795,7 @@ function renderSolicitacoes() {
     <td style="font-size:12px">
       <div style="font-weight:500">${s.corretora || '—'}</div>
       <div style="color:var(--gray400)">${s.responsavel || ''}</div>
+      ${s.email_corretora ? `<div style="color:var(--g600);font-size:11px">✉ ${s.email_corretora}</div>` : ''}
     </td>
     <td style="font-weight:500">${s.produtor || '—'}</td>
     <td style="font-size:12px;color:var(--gray400)">${s.cpf_cnpj || '—'}</td>
@@ -4747,6 +4751,7 @@ async function verRelatorio(jobId) {
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <div><label class="ce-label">Broker</label><input class="ce-input" id="ce-broker" placeholder="Nome do broker"></div>
+        <div><label class="ce-label">E-mail do Corretor</label><input class="ce-input" id="ce-email-corretora" placeholder="email@corretor.com" type="email"></div>
         <div><label class="ce-label">Município</label><input class="ce-input" id="ce-municipio" placeholder="Município"></div>
         <div><label class="ce-label">Código IBGE</label><input class="ce-input" id="ce-codigo-ibge" placeholder="0000000"></div>
         <div><label class="ce-label">UF</label><input class="ce-input" id="ce-uf" placeholder="UF" maxlength="2" style="text-transform:uppercase"></div>
