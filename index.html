@@ -2555,7 +2555,7 @@ async function verCondicaoEspecial(jobId) {
     ]);
     // Preenche visualização somente leitura
     const campos = {
-      'vce-broker': ce.broker, 'vce-municipio': ce.municipio,
+      'vce-broker': ce.broker, 'vce-email-corretora': ce.email_corretora || '—', 'vce-municipio': ce.municipio,
       'vce-codigo-ibge': ce.codigo_ibge, 'vce-uf': ce.uf,
       'vce-cliente': ce.cliente, 'vce-premio': ce.premio,
       'vce-area-solicitada': ce.area_solicitada, 'vce-cultivo': ce.cultivo,
@@ -4759,7 +4759,10 @@ async function verRelatorio(jobId) {
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
         <div><label class="ce-label">Broker</label><input class="ce-input" id="ce-broker" placeholder="Nome do broker"></div>
-        <div><label class="ce-label">E-mail do Corretor</label><input class="ce-input" id="ce-email-corretora" placeholder="email@corretor.com" type="email"></div>
+        <div>
+          <label class="ce-label">✉ E-mail do Corretor <span style="color:#dc2626;font-size:11px">* para devolutivas</span></label>
+          <input class="ce-input" id="ce-email-corretora" placeholder="email@corretor.com" type="email" style="border-color:#fbbf24">
+        </div>
         <input type="hidden" id="ce-solicitacao-id">
         <div><label class="ce-label">Município</label><input class="ce-input" id="ce-municipio" placeholder="Município"></div>
         <div><label class="ce-label">Código IBGE</label><input class="ce-input" id="ce-codigo-ibge" placeholder="0000000"></div>
@@ -4811,6 +4814,7 @@ async function verRelatorio(jobId) {
       <!-- Dados somente leitura -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
         <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Broker</div><div class="ce-val" id="vce-broker">—</div></div>
+        <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">✉ E-mail Corretor</div><div class="ce-val" id="vce-email-corretora" style="color:#2563eb">—</div></div>
         <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Município</div><div class="ce-val" id="vce-municipio">—</div></div>
         <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">Código IBGE</div><div class="ce-val" id="vce-codigo-ibge">—</div></div>
         <div><div style="font-size:11px;color:var(--gray400);text-transform:uppercase;margin-bottom:2px">UF</div><div class="ce-val" id="vce-uf">—</div></div>
