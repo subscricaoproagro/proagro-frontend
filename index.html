@@ -1451,6 +1451,7 @@ function renderJobsTable(jobs) {
           ${concluido ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${j.id}')" title="Visualizar relatório completo">📄 Ver</button>` : ''}
           ${concluido ? `<button class="btn-sm btn-green" onclick="baixarJob('${j.id}')">⬇ Baixar</button>` : ''}
 
+          ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao && !j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirEdicaoCE('${j.id}')">📋 Preencher CE</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && (!j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '') && !j.decisao_risco && j.decisao === 'aprovado' && !_ceJobIds.has(j.id) ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirPreencherCE('${j.id}')">📋 Preencher Dados CE</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) ? `<span class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;cursor:default">📨 Enviado para AR</span>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="reavaliarCEAnalista('${j.id}')">🔄 Reavaliar</button>` : ''}
@@ -2489,6 +2490,11 @@ async function salvarFormCE() {
   };
   try {
     await api('POST', '/jobs/' + _ceJobId + '/condicao-especial', body);
+    // Se o job não tinha decisão ainda (ex: stuck em CE sem aprovação), aprova agora
+    if (window._ceJobSemDecisao) {
+      await api('POST', '/jobs/' + _ceJobId + '/decisao', { decisao: 'aprovado', justificativa: '' });
+      window._ceJobSemDecisao = false;
+    }
     _ceJobIds.add(_ceJobId); // atualiza Set imediatamente sem precisar recarregar
     closeModal('modal-form-ce');
     showToast('Condição especial salva com sucesso!', 'success');
@@ -2898,6 +2904,11 @@ async function abrirEdicaoCE(jobId) {
   _ceJobId = jobId;
   try {
     const ce = await api('GET', '/jobs/' + jobId + '/condicao-especial');
+    // Guarda estado atual da decisão para salvarFormCE saber se precisa aprovar
+    window._ceJobSemDecisao = !ce.decisao;
+    // Recarrega o solicitacao_id da CE (evita usar ID stale de sessão anterior)
+    const elSolId = document.getElementById('ce-solicitacao-id');
+    if (elSolId) elSolId.value = ce.solicitacao_id || '';
     const map = {
       'ce-broker': ce.broker,
       'ce-email-corretora': ce.email_corretora || '',
