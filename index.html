@@ -257,7 +257,6 @@
       <button class="topbar-btn" id="ce-btn" onclick="showPage('condicao-especial')" style="display:none">Condição Especial</button>
       <button class="topbar-btn" id="endosso-btn" onclick="showPage('endosso')" style="display:none">Endosso</button>
       <button class="topbar-btn" id="admin-btn" onclick="showPage('admin')" style="display:none">Admin</button>
-      <button class="topbar-btn" id="monitoramento-btn" onclick="abrirMonitoramento()" style="display:none">Monitoramento de Campo</button>
     </nav>
     <div class="topbar-right">
       <div class="env-chip">PRODUÇÃO</div>
@@ -515,7 +514,6 @@
             <option value="aguardando_analise">🟡 Aguardando Análise</option>
             <option value="concluido_simples">✅ Concluído</option>
             <option value="ce_aprovada">⭐ CE Aprovada</option>
-            <option value="balcao">🏦 Balcão</option>
             <option value="recusada">❌ Recusada</option>
             <option value="erro">⚠️ Erro</option>
           </select>
@@ -530,15 +528,8 @@
         <div onclick="document.getElementById('hist-filter').value='aguardando_analise';carregarJobs()" style="cursor:pointer;background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#92400e">🟡 Aguardando Análise: <span id="hcount-aguardando-analise">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='concluido_simples';carregarJobs()" style="cursor:pointer;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#166534">✅ Concluído: <span id="hcount-concluido">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='ce_aprovada';carregarJobs()" style="cursor:pointer;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#92400e">⭐ CE Aprovada: <span id="hcount-ce">—</span></div>
-        <div onclick="document.getElementById('hist-filter').value='balcao';carregarJobs()" style="cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#1d4ed8">🏦 Balcão: <span id="hcount-balcao">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='recusada';carregarJobs()" style="cursor:pointer;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#c0392b">❌ Recusada: <span id="hcount-recusada">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='erro';carregarJobs()" style="cursor:pointer;background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#c0392b">⚠️ Erro: <span id="hcount-erro">—</span></div>
-        <!-- Card média de tempo de avaliação do analista -->
-        <div style="margin-left:auto;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:6px 18px;display:flex;flex-direction:column;align-items:center;min-width:150px">
-          <div style="font-size:10px;font-weight:600;color:#6d28d9;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">⏱ Média de Avaliação</div>
-          <div id="hist-media-tempo" style="font-size:20px;font-weight:800;color:#4c1d95;line-height:1.2">—</div>
-          <div id="hist-media-base" style="font-size:10px;color:#7c3aed;margin-top:1px">calculando…</div>
-        </div>
       </div>
 
       <!-- Abas Sistema / CE — visíveis só para analista -->
@@ -555,8 +546,8 @@
       <div class="card">
         <div class="overflow-x">
           <table class="jobs-table">
-            <thead><tr><th>Proposta</th><th>Proponente</th><th>Cultura</th><th>Analista</th><th>Iniciado</th><th>Status</th><th>Tempo Aval.</th><th>Ações</th></tr></thead>
-            <tbody id="jobs-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+            <thead><tr><th>Proposta</th><th>Proponente</th><th>Cultura</th><th>Analista</th><th>Iniciado</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody id="jobs-tbody"><tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -594,6 +585,7 @@
             <thead>
               <tr>
                 <th>Corretora</th>
+                <th>Email Corretor</th>
                 <th>Produtor</th>
                 <th>CPF/CNPJ</th>
                 <th>Município/UF</th>
@@ -629,8 +621,6 @@
             <option value="balcao">🏦 Balcão</option>
             <option value="recusado">❌ Recusadas</option>
           </select>
-          <input class="form-input" id="ce-filter-uf" placeholder="Filtrar UF…" style="width:90px;padding:8px 10px;font-size:13px" oninput="carregarCondicoesEspeciais()">
-          <input class="form-input" id="ce-filter-broker" placeholder="Filtrar Broker…" style="width:140px;padding:8px 10px;font-size:13px" oninput="carregarCondicoesEspeciais()">
           <button class="btn-sm btn-outline" onclick="carregarCondicoesEspeciais()">↻ Atualizar</button>
         </div>
       </div>
@@ -639,17 +629,11 @@
         <div id="ce-count-aprovado" onclick="document.getElementById('ce-filter').value='aprovado';carregarCondicoesEspeciais()" style="cursor:pointer;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#166534">✅ Aprovadas: <span id="ce-n-aprovado">—</span></div>
         <div id="ce-count-balcao" onclick="document.getElementById('ce-filter').value='balcao';carregarCondicoesEspeciais()" style="cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#1d4ed8">🏦 Balcão: <span id="ce-n-balcao">—</span></div>
         <div id="ce-count-recusado" onclick="document.getElementById('ce-filter').value='recusado';carregarCondicoesEspeciais()" style="cursor:pointer;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#c0392b">❌ Recusadas: <span id="ce-n-recusado">—</span></div>
-        <!-- Card de média de tempo de resposta -->
-        <div style="margin-left:auto;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:8px 20px;display:flex;flex-direction:column;align-items:center;min-width:160px">
-          <div style="font-size:10px;font-weight:600;color:#6d28d9;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">⏱ Média de Resposta</div>
-          <div id="ce-media-tempo" style="font-size:22px;font-weight:800;color:#4c1d95;line-height:1.2">—</div>
-          <div id="ce-media-base" style="font-size:10px;color:#7c3aed;margin-top:1px">calculando…</div>
-        </div>
       </div>
       <div class="card">
         <div class="overflow-x">
           <table class="jobs-table">
-            <thead><tr><th>Cultura</th><th>Local</th><th>Broker</th><th>Cliente</th><th>Status</th><th>Prêmio</th><th>Chegada</th><th>Tempo Resp.</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Proposta</th><th>Proponente</th><th>Cultura</th><th>Município</th><th>UF</th><th>Cliente</th><th>Status Negócio</th><th>Prêmio</th><th>Ações</th></tr></thead>
             <tbody id="ce-tbody"><tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
           </table>
         </div>
@@ -753,55 +737,6 @@
       </div>
     </div>
 
-    <!-- MONITORAMENTO DE CAMPO (NOVO — exclusivo Admin) -->
-    <div id="page-monitoramento" class="page-section">
-      <div class="section-header">
-        <div class="section-title">Monitoramento de Campo</div>
-        <div class="section-sub">NDVI por satélite e clima do talhão, a partir do KML e da proposta</div>
-      </div>
-
-      <div class="card mc-novo-card">
-        <div class="card-header"><div class="card-title">Nova proposta monitorada</div></div>
-        <div class="card-body">
-          <div class="mc-grid2">
-            <div>
-              <label class="form-label">1 · PDF da proposta (opcional — preenche os campos)</label>
-              <div class="mc-drop" id="mc-pdf-drop" onclick="document.getElementById('mc-pdf-input').click()">
-                <input type="file" id="mc-pdf-input" accept="application/pdf" style="display:none" onchange="mcLerPdf(this.files[0])">
-                <span id="mc-pdf-label">Clique para enviar o PDF e ler os dados automaticamente</span>
-              </div>
-              <div id="mc-pdf-status" class="mc-status"></div>
-            </div>
-            <div>
-              <label class="form-label">2 · Arquivo KML do talhão (obrigatório)</label>
-              <div class="mc-drop" id="mc-kml-drop" onclick="document.getElementById('mc-kml-input').click()">
-                <input type="file" id="mc-kml-input" accept=".kml" style="display:none" onchange="mcSelecionarKml(this.files[0])">
-                <span id="mc-kml-label">Clique para selecionar o KML</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="mc-grid3" style="margin-top:14px">
-            <div class="form-group"><label class="form-label">Proponente</label><input class="form-input" id="mc-proponente" placeholder="Nome do segurado"></div>
-            <div class="form-group"><label class="form-label">Cultura</label><input class="form-input" id="mc-cultura" placeholder="Ex.: Soja"></div>
-            <div class="form-group"><label class="form-label">Data de semeadura</label><input type="date" class="form-input" id="mc-semeadura"></div>
-            <div class="form-group"><label class="form-label">Município</label><input class="form-input" id="mc-municipio" placeholder="Município"></div>
-            <div class="form-group"><label class="form-label">UF</label><input class="form-input" id="mc-uf" placeholder="UF" maxlength="2"></div>
-            <div class="form-group"><label class="form-label">Área (ha)</label><input class="form-input" id="mc-area" placeholder="Calculada do KML se vazio"></div>
-          </div>
-          <div class="form-group"><label class="form-label">Observações</label><input class="form-input" id="mc-obs" placeholder="Opcional"></div>
-
-          <div id="mc-form-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:10px"></div>
-          <button class="btn-sm btn-green" id="mc-btn-criar" onclick="mcCriarCard()">Criar card de monitoramento</button>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:18px">
-        <div class="card-header"><div class="card-title">Propostas monitoradas</div><div style="display:flex;gap:8px"><button class="btn-sm btn-green" id="mc-btn-baixar" onclick="mcBaixarPlanilha()">⬇ Baixar planilha (.xlsx)</button><button class="btn-sm btn-outline" onclick="mcCarregarLista()">Atualizar</button></div></div>
-        <div class="card-body"><div id="mc-lista" class="mc-cards"><div class="mc-empty">Carregando…</div></div></div>
-      </div>
-    </div>
-
   </div>
 </div>
 
@@ -834,11 +769,7 @@
       <div class="form-group"><label class="form-label">Nome completo</label><input type="text" class="form-input" id="new-name" placeholder="Nome do colaborador"></div>
       <div class="form-group"><label class="form-label">E-mail institucional</label><input type="email" class="form-input" id="new-email" placeholder="colaborador@proagroseguros.com"></div>
       <div class="form-group"><label class="form-label">Perfil</label>
-        <select class="form-input" id="new-role" onchange="mcAtualizarChkPorRole()" ><option value="analista">Analista</option><option value="supervisor">Supervisor</option><option value="admin">Administrador</option><option value="campo">Usuário de Campo</option></select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Páginas com acesso <span style="font-size:11px;color:var(--gray400)">(baseado no perfil — ajuste se necessário)</span></label>
-        <div id="new-paginas-chk" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;font-size:13px"></div>
+        <select class="form-input" id="new-role"><option value="analista">Analista</option><option value="supervisor">Supervisor</option><option value="admin">Administrador</option></select>
       </div>
       <div id="new-user-result" style="display:none;background:var(--g50);border:1px solid var(--g100);border-radius:var(--r-sm);padding:12px;font-size:13px;color:var(--g700);margin-bottom:12px"></div>
       <div id="new-user-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px"></div>
@@ -1009,25 +940,6 @@ function enterApp() {
     document.getElementById('solicitacoes-btn').style.display = 'none';
   }
 
-  // Monitoramento de Campo — visível para Admin e Campo (bloco aditivo)
-  if (currentUser.role === 'admin' || currentUser.role === 'campo') {
-    const _mcBtn = document.getElementById('monitoramento-btn');
-    if (_mcBtn) _mcBtn.style.display = '';
-  }
-
-  // Usuário de Campo: acessa APENAS o Monitoramento de Campo
-  if (currentUser.role === 'campo') {
-    ['dashboard-btn','dashboard-sv-btn','nova-analise-btn','historico-btn',
-     'ce-btn','admin-btn','assistente-btn','endosso-btn','solicitacoes-btn'
-    ].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
-  }
-
-  // Permissões por página (override preciso — elimina ambiguidade de role)
-  // Aplica DEPOIS dos blocos de role para garantir precisão
-  if (currentUser.paginas && currentUser.paginas.length) {
-    mcAplicarPaginas(currentUser.paginas);
-  }
-
   carregarStats();
   if (currentUser.role !== 'supervisor') carregarJobs();
   verificarBackend();
@@ -1037,8 +949,6 @@ function enterApp() {
     showPage('condicao-especial');
   } else if (currentUser.role === 'analista') {
     showPage('historico');
-  } else if (currentUser.role === 'campo') {
-    if (typeof abrirMonitoramento === 'function') abrirMonitoramento();
   }
 
   // Polling a cada 10s para atualizar jobs em processamento
@@ -1382,25 +1292,8 @@ async function carregarJobs() {
     setCount('hcount-aguardando-analise', allJobs.filter(j => j.status === 'concluido' && !j.decisao && !j.decisao_risco).length);
     setCount('hcount-concluido',   allJobs.filter(j => j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco).length);
     setCount('hcount-ce',          allJobs.filter(j => j.status === 'concluido' && j.decisao_risco === 'aprovado').length);
-    setCount('hcount-balcao',      allJobs.filter(j => j.status === 'concluido' && j.decisao_risco === 'balcao').length);
     setCount('hcount-recusada',    allJobs.filter(j => j.status === 'concluido' && j.decisao === 'recusado').length);
     setCount('hcount-erro',        allJobs.filter(j => j.status === 'erro' || j.status === 'cancelado').length);
-
-    // Média de tempo de avaliação — sistema + CE juntos (somente onde analista decidiu)
-    const _concluidos = allJobs.filter(j => j.concluido_at && j.created_at && !!(j.decisao || j.decisao_risco));
-    const elHM = document.getElementById('hist-media-tempo');
-    const elHB = document.getElementById('hist-media-base');
-    if (elHM && _concluidos.length) {
-      const msTot = _concluidos.reduce((acc, j) => {
-        const ms = Date.parse(j.concluido_at) - Date.parse(j.created_at);
-        return acc + (isNaN(ms) || ms < 0 ? 0 : ms);
-      }, 0);
-      const msM = msTot / _concluidos.length;
-      const d = Math.floor(msM / 86400000), h = Math.floor((msM % 86400000) / 3600000), m = Math.floor((msM % 3600000) / 60000);
-      const p = []; if (d>0) p.push(d+'d'); if (h>0) p.push(h+'h'); if (d===0) p.push(m+'min');
-      elHM.textContent = p.join(' ') || '< 1 min';
-      if (elHB) elHB.textContent = `base: ${_concluidos.length} análise${_concluidos.length>1?'s':''}`;
-    } else if (elHM) { elHM.textContent='—'; if(elHB) elHB.textContent='sem dados'; }
 
     // Aplica filtro por status
     if (filter) filtered = filtered.filter(j => {
@@ -1413,7 +1306,6 @@ async function carregarJobs() {
         return j.status === 'concluido' && _ceJobIds.has(j.id) && !j.decisao_risco;
       }
       if (filter === 'ce_aprovada')    return j.status === 'concluido' && j.decisao_risco === 'aprovado';
-      if (filter === 'balcao')         return j.status === 'concluido' && j.decisao_risco === 'balcao';
       if (filter === 'recusada')       return j.status === 'concluido' && j.decisao === 'recusado';
       if (filter === 'erro')           return j.status === 'erro' || j.status === 'cancelado';
       return j.status === filter;
@@ -1429,7 +1321,7 @@ function renderJobsTable(jobs) {
   const tbody = document.getElementById('jobs-tbody');
   if (!tbody) return;
   if (!jobs.length) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma análise encontrada.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma análise encontrada.</td></tr>`;
     return;
   }
   tbody.innerHTML = jobs.map(j => {
@@ -1444,7 +1336,6 @@ function renderJobsTable(jobs) {
       <td style="font-size:12px;color:var(--gray400)">${j.analista_email}</td>
       <td style="font-size:12px;color:var(--gray400)">${formatDate(j.created_at)}</td>
       <td>${renderStatusBadge(j)}</td>
-      <td style="font-size:11px;white-space:nowrap">${jobTempoAvaliacao(j)}</td>
       <td>
         <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
           <button class="btn-sm btn-outline" onclick="verJob('${j.id}')">Detalhes</button>
@@ -1466,32 +1357,6 @@ function renderJobsTable(jobs) {
       </td>
     </tr>`;
   }).join('');
-}
-
-// Tempo de avaliação do analista por job (created_at → concluido_at)
-function jobTempoAvaliacao(j) {
-  if (!j.created_at) return '—';
-  // Analista respondeu = tem decisão (aprovado/recusado) ou decisão de risco (CE)
-  const analistaDecidiu = !!(j.decisao || j.decisao_risco);
-  const aiFez = j.status === 'concluido' && j.concluido_at;
-
-  if (!aiFez) return '—'; // ainda processando pela IA
-
-  if (analistaDecidiu) {
-    // Analista já respondeu — mostra tempo total (criação até IA concluir como proxy)
-    const ms = Date.parse(j.concluido_at) - Date.parse(j.created_at);
-    if (isNaN(ms) || ms < 0) return '—';
-    const d = Math.floor(ms/86400000), h = Math.floor((ms%86400000)/3600000), m = Math.floor((ms%3600000)/60000);
-    const p = []; if(d>0) p.push(d+'d'); if(h>0) p.push(h+'h'); if(d===0) p.push(m+'min');
-    return `<span style="color:#166534;font-weight:600;font-size:11px">✓ ${p.join(' ')||'< 1 min'}</span>`;
-  } else {
-    // IA concluiu mas analista ainda não avaliou — mostra quanto tempo está aguardando
-    const ms = Date.now() - Date.parse(j.concluido_at);
-    if (isNaN(ms) || ms < 0) return '—';
-    const d = Math.floor(ms/86400000), h = Math.floor((ms%86400000)/3600000), m = Math.floor((ms%3600000)/60000);
-    const p = []; if(d>0) p.push(d+'d'); if(h>0) p.push(h+'h'); if(d===0) p.push(m+'min');
-    return `<span style="color:#92400e;font-size:11px">⏳ ${p.join(' ')||'< 1 min'}</span>`;
-  }
 }
 
 function renderRecentJobs(jobs) {
@@ -1685,109 +1550,22 @@ async function carregarStats() {
 // ══════════════════════════════════════════
 // ADMIN — USUÁRIOS
 // ══════════════════════════════════════════
-// ══════════════════════════════════════════════════════════════
-// SISTEMA DE PERMISSÕES POR PÁGINA
-// ══════════════════════════════════════════════════════════════
-const _PG = {
-  'nova-analise':  { label: 'Nova Análise',           btn: 'nova-analise-btn'  },
-  'historico':     { label: 'Histórico de Análises',  btn: 'historico-btn'     },
-  'ce':            { label: 'Condição Especial',      btn: 'ce-btn'            },
-  'solicitacoes':  { label: 'Solicitações CE',        btn: 'solicitacoes-btn'  },
-  'endosso':       { label: 'Endosso',                btn: 'endosso-btn'       },
-  'assistente':    { label: 'Assistente IA',          btn: 'assistente-btn'    },
-  'admin':         { label: 'Administração',           btn: 'admin-btn'         },
-  'monitoramento': { label: 'Monitoramento de Campo', btn: 'monitoramento-btn' },
-};
-const _PG_DEFAULTS = {
-  admin:      Object.keys(_PG),
-  analista:   ['nova-analise','historico','solicitacoes','endosso'],
-  supervisor: ['ce'],
-  campo:      ['monitoramento'],
-};
-
-function mcAtualizarChkPorRole() {
-  const role = document.getElementById('new-role')?.value || 'analista';
-  const wrap = document.getElementById('new-paginas-chk');
-  if (!wrap) return;
-  const defaults = _PG_DEFAULTS[role] || [];
-  wrap.innerHTML = Object.entries(_PG).map(([key, def]) => `
-    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:4px 6px;border-radius:6px;border:1px solid var(--g100)">
-      <input type="checkbox" value="${key}" ${defaults.includes(key)?'checked':''} style="cursor:pointer">
-      <span>${def.label}</span>
-    </label>`).join('');
-}
-
-function mcPaginasSelecionadas() {
-  return [...document.querySelectorAll('#new-paginas-chk input:checked')].map(el => el.value);
-}
-
-function mcAplicarPaginas(paginas) {
-  if (!paginas || !paginas.length) return; // sem override → usa lógica de role existente
-  // Esconde todos os botões de navegação administráveis
-  Object.values(_PG).forEach(({btn}) => { const el=document.getElementById(btn); if(el) el.style.display='none'; });
-  // Exibe só os permitidos
-  paginas.forEach(p => { const def=_PG[p]; if(def){ const el=document.getElementById(def.btn); if(el) el.style.display=''; } });
-  // Redireciona para a primeira página permitida
-  const primeiro = paginas[0];
-  if (primeiro === 'monitoramento') { if(typeof abrirMonitoramento==='function') setTimeout(abrirMonitoramento,100); }
-  else if (primeiro === 'ce')       showPage('condicao-especial');
-  else if (_PG[primeiro])           showPage(primeiro);
-}
-
-// Inicializa checkboxes ao abrir o modal de convite
-document.addEventListener('DOMContentLoaded', () => { mcAtualizarChkPorRole(); });
-
 async function carregarUsuarios() {
   try {
     const users = await api('GET', '/usuarios');
     const wrap = document.getElementById('users-list-wrap');
-    wrap.innerHTML = users.map(u => {
-      const pags = (u.paginas && u.paginas.length) ? u.paginas : (_PG_DEFAULTS[u.role] || []);
-      const pagsHtml = pags.map(p => `<span style="font-size:10px;background:var(--g50);border:1px solid var(--g200);border-radius:4px;padding:1px 5px;color:var(--g700)">${_PG[p]?.label||p}</span>`).join(' ');
-      return `
-      <div class="user-row" style="flex-wrap:wrap;gap:8px">
+    wrap.innerHTML = users.map(u => `
+      <div class="user-row">
         <div class="user-row-avatar">${u.name.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase()}</div>
-        <div class="user-row-info" style="flex:1;min-width:180px">
+        <div class="user-row-info">
           <div class="user-row-name">${u.name} ${u.email===currentUser?.email?'<span style="font-size:11px;color:var(--g600)">(você)</span>':''}</div>
           <div class="user-row-email">${u.email} · último acesso: ${u.last_login?formatDate(u.last_login):'nunca'}</div>
-          <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">${pagsHtml}</div>
         </div>
         <span class="badge ${u.role==='admin'?'badge-warning':'badge-neutral'}">${u.role}</span>
         <span class="badge ${u.active?'badge-success':'badge-error'}">${u.active?'Ativo':'Inativo'}</span>
-        <div style="display:flex;gap:4px">
-          ${u.email!==currentUser?.email?`<button class="btn-sm btn-outline" onclick="editarAcesso('${u.id}',${JSON.stringify(pags).replace(/"/g,'&quot;')})">📝 Acesso</button>`:''}
-          ${u.email!==currentUser?.email?`<button class="btn-sm btn-outline" onclick="toggleUser('${u.id}',${!u.active})">${u.active?'Desativar':'Ativar'}</button>`:''}
-        </div>
-      </div>`;
-    }).join('');
+        <div>${u.email!==currentUser?.email?`<button class="btn-sm btn-outline" onclick="toggleUser('${u.id}',${!u.active})">${u.active?'Desativar':'Ativar'}</button>`:''}</div>
+      </div>`).join('');
   } catch(e) { showToast('Erro ao carregar usuários: '+e.message,'error'); }
-}
-
-async function editarAcesso(userId, pagsAtuais) {
-  const existente = document.getElementById('modal-editar-acesso');
-  if (existente) existente.remove();
-  const m = document.createElement('div');
-  m.id = 'modal-editar-acesso'; m.className='modal-overlay'; m.style.display='flex';
-  m.innerHTML = `<div class="modal"><div class="modal-header"><div class="modal-title">Editar acesso ao sistema</div><button class="modal-close" onclick="document.getElementById('modal-editar-acesso').remove()">✕</button></div><div class="modal-body" id="modal-editar-acesso-body"></div></div>`;
-  document.body.appendChild(m);
-  const body = document.getElementById('modal-editar-acesso-body');
-  const grid = document.createElement('div');
-  grid.style = 'display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px';
-  grid.innerHTML = Object.entries(_PG).map(([key,def]) => `
-    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:4px 6px;border-radius:6px;border:1px solid var(--g100);font-size:13px">
-      <input type="checkbox" value="${key}" ${pagsAtuais.includes(key)?'checked':''} style="cursor:pointer">
-      <span>${def.label}</span>
-    </label>`).join('');
-  body.appendChild(grid);
-  const btn = document.createElement('button');
-  btn.className='btn-sm btn-green'; btn.style='width:100%;justify-content:center;padding:10px';
-  btn.textContent='Salvar acesso';
-  btn.onclick = async () => {
-    const novas = [...grid.querySelectorAll('input:checked')].map(el=>el.value);
-    try { await api('PATCH',`/usuarios/${userId}`,{paginas:novas}); m.remove(); showToast('Acesso atualizado!','success'); carregarUsuarios(); }
-    catch(e) { showToast('Erro: '+e.message,'error'); }
-  };
-  body.appendChild(btn);
 }
 
 async function convidarUsuario() {
@@ -1803,7 +1581,7 @@ async function convidarUsuario() {
   if(!validateDomain(email)){errEl.textContent='E-mail deve pertencer aos domínios autorizados.';errEl.style.display='block';return;}
 
   try {
-    const data = await api('POST', '/usuarios/convidar', {email, name, role, paginas: mcPaginasSelecionadas()});
+    const data = await api('POST', '/usuarios/convidar', {email,name,role});
     resEl.innerHTML = `✅ ${data.message}<br>Senha temporária: <strong>${data.senha_temporaria}</strong><br><em>${data.instrucao}</em>`;
     resEl.style.display='block';
     carregarUsuarios();
@@ -2633,6 +2411,7 @@ async function carregarCondicoesEspeciais() {
       if (ce.job.tipo_analise === 'sistema') return false;
       const idP = String(ce.job.id_proposta || '0').trim();
       if (idP !== '0' && idP !== '') return false;
+      // Só mostra se tiver dados preenchidos (cliente ou município)
       if (!ce.cliente && !ce.municipio) return false;
       return true;
     });
@@ -2647,45 +2426,12 @@ async function carregarCondicoesEspeciais() {
     const elB = document.getElementById('ce-n-balcao');   if(elB) elB.textContent = nBalcao;
     const elR = document.getElementById('ce-n-recusado'); if(elR) elR.textContent = nRecusado;
 
-    // Média de tempo de resposta (apenas CEs concluídas com timestamps válidos)
-    const concluidas = listaSemSistema.filter(ce => {
-      const job = ce.job || {};
-      const fim = job.decisao_risco_em || job.concluido_at;
-      return job.decisao_risco && fim && (ce.data_chegada || ce.criado_em);
-    });
-    const elMedia = document.getElementById('ce-media-tempo');
-    const elBase  = document.getElementById('ce-media-base');
-    if (elMedia && concluidas.length) {
-      const msTotal = concluidas.reduce((acc, ce) => {
-        const inicio = Date.parse(ce.data_chegada || ce.criado_em);
-        const fim    = Date.parse(ce.job.decisao_risco_em || ce.job.concluido_at);
-        return acc + (isNaN(inicio)||isNaN(fim) ? 0 : Math.max(0, fim - inicio));
-      }, 0);
-      const msMedia = msTotal / concluidas.length;
-      const d = Math.floor(msMedia / 86400000);
-      const h = Math.floor((msMedia % 86400000) / 3600000);
-      const m = Math.floor((msMedia % 3600000) / 60000);
-      const partes = [];
-      if (d > 0) partes.push(d + 'd');
-      if (h > 0) partes.push(h + 'h');
-      if (d === 0) partes.push(m + 'min');
-      elMedia.textContent = partes.join(' ') || '< 1 min';
-      elBase.textContent = `base: ${concluidas.length} CE${concluidas.length>1?'s':''} concluída${concluidas.length>1?'s':''}`;
-    } else if (elMedia) {
-      elMedia.textContent = '—';
-      if (elBase) elBase.textContent = 'sem CEs concluídas';
-    }
-
-    // Aplica filtros — status, UF e Broker
-    const filtro       = document.getElementById('ce-filter')?.value || '';
-    const filtroUF     = (document.getElementById('ce-filter-uf')?.value || '').trim().toUpperCase();
-    const filtroBroker = (document.getElementById('ce-filter-broker')?.value || '').trim().toLowerCase();
+    // Aplica filtro selecionado
+    const filtro = document.getElementById('ce-filter')?.value || '';
     const listaFiltrada = listaSemSistema.filter(ce => {
-      if (filtro === 'pendente' && !(ce.job && !ce.job.decisao_risco)) return false;
-      if (filtro && filtro !== 'pendente' && !(ce.job && ce.job.decisao_risco === filtro)) return false;
-      if (filtroUF && (ce.uf || '').toUpperCase() !== filtroUF) return false;
-      if (filtroBroker && !(ce.broker || '').toLowerCase().includes(filtroBroker)) return false;
-      return true;
+      if (!filtro) return true;
+      if (filtro === 'pendente') return ce.job && !ce.job.decisao_risco;
+      return ce.job && ce.job.decisao_risco === filtro;
     });
 
     if (!listaFiltrada.length) {
@@ -2694,25 +2440,20 @@ async function carregarCondicoesEspeciais() {
     }
     tbody.innerHTML = listaFiltrada.map(ce => {
       const job = ce.job || {};
-      const dataChegada = ce.data_chegada || ce.criado_em || '';
-      const dataChegadaFmt = dataChegada ? new Date(dataChegada).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
       return `<tr>
+        <td><strong>${job.id_proposta || '—'}</strong></td>
+        <td>${job.nome_proponente || '—'}</td>
         <td>${job.cultura_desejada || '—'}</td>
-        <td>${ce.municipio||'—'}${ce.uf?'/'+ce.uf:''}</td>
-        <td>${ce.broker || '—'}</td>
+        <td>${ce.municipio || '—'}</td>
+        <td>${ce.uf || '—'}</td>
         <td>${ce.cliente || '—'}</td>
         <td>${ce.status_negocio || '—'}</td>
         <td>${ce.premio || '—'}</td>
-        <td class="ce-chegada-cell">
-          ${dataChegadaFmt}
-          <button title="Editar data de chegada" onclick="ceEditarDataChegada('${ce.job_id}','${dataChegada}')" class="ce-edit-btn">✏️</button>
-        </td>
-        <td>${ceTempoResposta(ce)}</td>
         <td>
-          <div class="ce-acoes-grid">
-            <button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;font-size:11px;padding:3px 6px" onclick="verRelatorio('${ce.job_id}')">📄 Rel.</button>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${ce.job_id}')">📄 Relatório</button>
             ${renderBtnsCE(ce)}
-            <button class="btn-sm btn-danger" onclick="excluirCE('${ce.job_id}')" title="Excluir" style="font-size:11px;padding:3px 6px">🗑</button>
+            <button class="btn-sm btn-danger" onclick="excluirCE('${ce.job_id}')" title="Excluir">🗑</button>
           </div>
         </td>
       </tr>`;
@@ -2720,47 +2461,6 @@ async function carregarCondicoesEspeciais() {
   } catch(e) {
     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:40px">Erro ao carregar.</td></tr>';
   }
-}
-
-// Tempo de resposta: para concluídas = tempo da chegada até a decisão do supervisor (fixo).
-// Para pendentes = tempo em espera desde a chegada (indicativo, não é o "tempo de resposta").
-function ceTempoResposta(ce) {
-  const chegada = ce.data_chegada || ce.criado_em;
-  if (!chegada) return '—';
-  const job = ce.job || {};
-  const concluido = !!job.decisao_risco;
-  const inicio = Date.parse(chegada);
-  if (isNaN(inicio)) return '—';
-  const fim = concluido && (job.decisao_risco_em || job.concluido_at)
-    ? Date.parse(job.decisao_risco_em || job.concluido_at)
-    : Date.now();
-  if (isNaN(fim)) return '—';
-  const ms = fim - inicio;
-  if (ms < 0) return '—';
-  const d = Math.floor(ms / 86400000);
-  const h = Math.floor((ms % 86400000) / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  const partes = [];
-  if (d > 0) partes.push(d + 'd');
-  if (h > 0) partes.push(h + 'h');
-  if (d === 0) partes.push(m + 'min');
-  const txt = partes.join(' ') || '< 1 min';
-  if (concluido) {
-    return `<span style="color:#166534;font-weight:600;font-size:11px">✓ ${txt}</span>`;
-  } else {
-    return `<span style="color:#b45309;font-size:11px">Aguardando há ${txt}</span>`;
-  }
-}
-
-// Edição da data de chegada da CE
-async function ceEditarDataChegada(jobId, atual) {
-  const atualFmt = atual ? new Date(atual).toISOString().slice(0,16) : '';
-  const nova = prompt('Data e hora de chegada (AAAA-MM-DDThh:mm):', atualFmt);
-  if (nova === null) return;
-  try {
-    await api('PATCH', '/condicoes-especiais/' + jobId + '/data-chegada', { data_chegada: nova || null });
-    carregarCondicoesEspeciais();
-  } catch(e) { showToast('Erro ao salvar data: ' + e.message, 'error'); }
 }
 
 // ── Aprovação de Condição Especial ──
@@ -3793,6 +3493,7 @@ function renderSolicitacoes() {
       <div style="font-weight:500">${s.corretora || '—'}</div>
       <div style="color:var(--gray400)">${s.responsavel || ''}</div>
     </td>
+    <td style="font-size:11px;color:var(--gray500)">${s.email_corretora || '—'}</td>
     <td style="font-weight:500">${s.produtor || '—'}</td>
     <td style="font-size:12px;color:var(--gray400)">${s.cpf_cnpj || '—'}</td>
     <td style="font-size:12px">${s.municipio_uf || '—'}</td>
@@ -5381,442 +5082,3 @@ async function verRelatorio(jobId) {
     </div>
   </div>
 </div>
-
-<!-- ════════ MONITORAMENTO DE CAMPO — estilos (aditivo, prefixo mc-) ════════ -->
-<style>
-  #page-monitoramento .mc-grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  #page-monitoramento .mc-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-  @media(max-width:760px){#page-monitoramento .mc-grid2,#page-monitoramento .mc-grid3{grid-template-columns:1fr}}
-  .mc-drop{border:2px dashed var(--g200);border-radius:var(--r-md,10px);padding:18px;text-align:center;font-size:13px;color:var(--g600);background:var(--g50);cursor:pointer;transition:.15s}
-  .mc-drop:hover{background:var(--g100)}
-  .mc-drop.filled{border-style:solid;border-color:var(--g500);color:var(--g700)}
-  .mc-status{font-size:12px;color:var(--gray400,#94a3b8);margin-top:6px;min-height:16px}
-  .mc-status.ok{color:var(--g600)} .mc-status.err{color:var(--red,#c0392b)}
-  .mc-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px}
-  @media(max-width:760px){.mc-cards{grid-template-columns:1fr}}
-  .mc-empty{grid-column:1/-1;text-align:center;color:var(--gray400,#94a3b8);font-size:13px;padding:24px 0}
-  .mc-card{border:1px solid var(--g100);border-radius:var(--r-md,10px);overflow:hidden;background:#fff}
-  .mc-card-head{padding:12px 14px;background:var(--g50);border-bottom:1px solid var(--g100)}
-  .mc-card-title{font-weight:700;color:var(--g900);font-size:15px}
-  .mc-card-meta{font-size:12px;color:var(--gray600,#475569);margin-top:3px;display:flex;flex-wrap:wrap;gap:10px}
-  .mc-card-body{padding:12px 14px}
-  .mc-chart-title{font-size:12px;font-weight:600;color:var(--g700);margin:6px 0 4px}
-  .mc-chart-wrap{position:relative;height:170px;width:100%}
-  .mc-warn{font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin:6px 0}
-  .mc-card-foot{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--g100)}
-  .mc-ndvi-now{font-size:12px;color:var(--g700);font-weight:600}
-  /* ── Tabela Condições Especiais — compacta para caber sem scroll ── */
-  #page-condicao-especial .jobs-table { table-layout:fixed; width:100%; font-size:11.5px; }
-  #page-condicao-especial .jobs-table th { padding:5px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  #page-condicao-especial .jobs-table td { padding:5px 6px; white-space:normal; word-break:break-word; vertical-align:top; }
-  #page-condicao-especial .jobs-table th:nth-child(1){width:9%}  /* Cultura */
-  #page-condicao-especial .jobs-table th:nth-child(2){width:12%} /* Local */
-  #page-condicao-especial .jobs-table th:nth-child(3){width:10%} /* Broker */
-  #page-condicao-especial .jobs-table th:nth-child(4){width:13%} /* Cliente */
-  #page-condicao-especial .jobs-table th:nth-child(5){width:6%}  /* Status */
-  #page-condicao-especial .jobs-table th:nth-child(6){width:9%}  /* Prêmio */
-  #page-condicao-especial .jobs-table th:nth-child(7){width:10%} /* Chegada */
-  #page-condicao-especial .jobs-table th:nth-child(8){width:10%} /* Tempo */
-  #page-condicao-especial .jobs-table th:nth-child(9){width:21%} /* Ações */
-  .ce-chegada-cell { font-size:11px; }
-  .ce-edit-btn { background:none;border:none;cursor:pointer;font-size:11px;padding:0 2px;opacity:.6 }
-  .ce-edit-btn:hover { opacity:1 }
-  .ce-acoes-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:3px; }
-  .ce-acoes-grid .btn-sm { font-size:10.5px; padding:3px 5px; }
-  .mc-talhao{border:1px solid var(--g100);border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#fcfefd}
-  .mc-talhao-head{font-weight:600;font-size:13px;color:var(--g900);margin-bottom:6px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-  .mc-talhao-area{font-size:11px;color:var(--gray600,#475569);font-weight:500}
-</style>
-
-<!-- ════════ MONITORAMENTO DE CAMPO — lógica (aditivo) ════════ -->
-<script>
-let _mcKmlFile = null;
-const _mcCharts = {};
-
-// Abre a janela sem alterar showPage() nem o mapeamento existente
-function abrirMonitoramento(){
-  showPage('monitoramento');
-  document.querySelectorAll('.topbar-btn').forEach(b=>b.classList.remove('active'));
-  const b=document.getElementById('monitoramento-btn'); if(b) b.classList.add('active');
-  mcCarregarLista();
-  // Revalida sozinho a cada 30 min enquanto a janela estiver aberta (sem clicar)
-  if(window._mcInterval) clearInterval(window._mcInterval);
-  window._mcInterval = setInterval(()=>{
-    const pg=document.getElementById('page-monitoramento');
-    if(pg && pg.classList.contains('active')) mcRevalidar();
-  }, 30*60*1000);
-}
-
-// fetch dedicado (timeout maior — NDVI pode demorar)
-async function mcFetch(method, path, opts={}){
-  const timeout = opts.timeout || 20000;
-  const ctrl = new AbortController();
-  const t = setTimeout(()=>ctrl.abort(), timeout);
-  const headers = {'Authorization':'Bearer '+TOKEN,'ngrok-skip-browser-warning':'true'};
-  const conf = {method, headers, signal:ctrl.signal};
-  if(opts.json){ headers['Content-Type']='application/json'; conf.body=JSON.stringify(opts.json); }
-  if(opts.form){ conf.body=opts.form; }
-  try{
-    const res = await fetch(`${BACKEND_URL}${path}`, conf);
-    clearTimeout(t);
-    if(res.status===401){ if(typeof handleLogout==='function') handleLogout(); throw new Error('Sessão expirada.'); }
-    if(!res.ok){ const e=await res.json().catch(()=>({detail:res.statusText})); throw new Error(e.detail||'Erro.'); }
-    return res.json();
-  }catch(e){ clearTimeout(t); throw e; }
-}
-
-// Carrega Chart.js sob demanda (mesmo padrão do xlsx)
-function mcEnsureChart(){
-  return new Promise((resolve,reject)=>{
-    if(window.Chart) return resolve();
-    const s=document.createElement('script');
-    s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
-    s.onload=()=>resolve(); s.onerror=()=>reject(new Error('Falha ao carregar gráficos.'));
-    document.head.appendChild(s);
-  });
-}
-
-// 1) Lê o PDF e pré-preenche o formulário
-async function mcLerPdf(file){
-  if(!file) return;
-  const st=document.getElementById('mc-pdf-status');
-  document.getElementById('mc-pdf-label').textContent=file.name;
-  document.getElementById('mc-pdf-drop').classList.add('filled');
-  st.className='mc-status'; st.textContent='Lendo PDF…';
-  try{
-    const form=new FormData(); form.append('arquivo', file);
-    const d=await mcFetch('POST','/monitoramento/extrair-pdf',{form, timeout:95000});
-    if(d.erro){ st.className='mc-status err'; st.textContent=d.erro; return; }
-    if(d.proponente) document.getElementById('mc-proponente').value=d.proponente;
-    if(d.cultura) document.getElementById('mc-cultura').value=d.cultura;
-    if(d.data_semeadura) document.getElementById('mc-semeadura').value=d.data_semeadura;
-    if(d.municipio) document.getElementById('mc-municipio').value=d.municipio;
-    if(d.uf) document.getElementById('mc-uf').value=d.uf;
-    if(d.area_ha) document.getElementById('mc-area').value=d.area_ha;
-    st.className='mc-status ok'; st.textContent='Dados extraídos — confira e ajuste se necessário.';
-  }catch(e){ st.className='mc-status err'; st.textContent='Erro ao ler PDF: '+e.message; }
-}
-
-function mcSelecionarKml(file){
-  if(!file) return;
-  _mcKmlFile=file;
-  document.getElementById('mc-kml-label').textContent=file.name;
-  document.getElementById('mc-kml-drop').classList.add('filled');
-}
-
-// 2) Cria o card
-async function mcCriarCard(){
-  const err=document.getElementById('mc-form-error'); err.style.display='none';
-  const proponente=document.getElementById('mc-proponente').value.trim();
-  if(!proponente){ err.textContent='Informe o proponente.'; err.style.display='block'; return; }
-  if(!_mcKmlFile){ err.textContent='Selecione o arquivo KML do talhão.'; err.style.display='block'; return; }
-  const btn=document.getElementById('mc-btn-criar'); const txt=btn.textContent; btn.disabled=true; btn.textContent='Criando…';
-  try{
-    const form=new FormData();
-    form.append('proponente', proponente);
-    form.append('cultura', document.getElementById('mc-cultura').value.trim());
-    form.append('data_semeadura', document.getElementById('mc-semeadura').value);
-    form.append('municipio', document.getElementById('mc-municipio').value.trim());
-    form.append('uf', document.getElementById('mc-uf').value.trim());
-    form.append('area_ha', document.getElementById('mc-area').value.trim());
-    form.append('obs', document.getElementById('mc-obs').value.trim());
-    form.append('kml', _mcKmlFile);
-    const row=await mcFetch('POST','/monitoramento/criar',{form, timeout:60000});
-    // limpa o formulário
-    ['mc-proponente','mc-cultura','mc-semeadura','mc-municipio','mc-uf','mc-area','mc-obs'].forEach(id=>document.getElementById(id).value='');
-    _mcKmlFile=null;
-    document.getElementById('mc-kml-label').textContent='Clique para selecionar o KML';
-    document.getElementById('mc-kml-drop').classList.remove('filled');
-    document.getElementById('mc-pdf-label').textContent='Clique para enviar o PDF e ler os dados automaticamente';
-    document.getElementById('mc-pdf-drop').classList.remove('filled');
-    document.getElementById('mc-pdf-status').textContent='';
-    if(typeof showToast==='function') showToast('Card criado! Calculando NDVI e clima…','success');
-    await mcCarregarLista();
-    // o card novo entra como "desatualizado" e é calculado automaticamente pela mcCarregarLista
-  }catch(e){ err.textContent='Erro: '+e.message; err.style.display='block'; }
-  finally{ btn.disabled=false; btn.textContent=txt; }
-}
-
-function _mcTemSerie(row){
-  return row && row.poligonos && row.poligonos.length && row.poligonos.some(p=>p.ndvi!=null||p.clima!=null);
-}
-
-async function mcCarregarLista(){
-  const wrap=document.getElementById('mc-lista');
-  wrap.innerHTML='<div class="mc-empty">Carregando…</div>';
-  try{
-    const rows=await mcFetch('GET','/monitoramento',{timeout:20000});
-    if(!rows.length){ wrap.innerHTML='<div class="mc-empty">Nenhuma proposta monitorada ainda.</div>'; return; }
-    wrap.innerHTML='';
-    rows.forEach(r=>wrap.insertAdjacentHTML('beforeend', mcCardHtml(r)));
-    await mcEnsureChart().catch(()=>{});
-    rows.forEach(r=>{ if(_mcTemSerie(r)) mcRenderTalhoes(r.id, r.poligonos); });
-    // Atualização automática em segundo plano — sem o usuário clicar em nada
-    mcAutoAtualizar(rows);
-  }catch(e){ wrap.innerHTML='<div class="mc-empty">Erro ao carregar: '+e.message+'</div>'; }
-}
-
-function _mcEsc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-
-function mcCardHtml(r){
-  const meta=[];
-  if(r.cultura) meta.push('🌱 '+_mcEsc(r.cultura));
-  if(r.municipio||r.uf) meta.push('📍 '+_mcEsc(r.municipio)+(r.uf?'/'+_mcEsc(r.uf):''));
-  if(r.data_semeadura) meta.push('🗓️ Semeadura: '+_mcEsc(r.data_semeadura));
-  if(r.area_ha) meta.push('📐 '+_mcEsc(r.area_ha)+' ha total');
-  const nPoli=(r.poligonos&&r.poligonos.length)||0;
-  if(nPoli) meta.push('🗺️ '+nPoli+(nPoli>1?' talhões':' talhão'));
-  return `<div class="mc-card" id="mc-card-${r.id}">
-    <div class="mc-card-head">
-      <div class="mc-card-title">${_mcEsc(r.proponente)||'Proposta'}</div>
-      <div class="mc-card-meta">${meta.join('')||'<span style="color:#94a3b8">Sem metadados</span>'}</div>
-    </div>
-    <div class="mc-card-body" id="mc-talhoes-${r.id}">
-      <div class="mc-warn">Carregando talhões…</div>
-    </div>
-    <div class="mc-card-foot">
-      <button class="btn-sm btn-outline" onclick="mcAtualizarSerie('${r.id}')" title="A atualização já é automática; use só se quiser forçar agora">↻ Forçar atualização</button>
-      <button class="btn-sm btn-outline" style="color:var(--red);border-color:#fecaca" onclick="mcDeletar('${r.id}')">Excluir</button>
-    </div>
-  </div>`;
-}
-
-// Monta os blocos de cada talhão (polígono) dentro do card e desenha os gráficos
-function mcRenderTalhoes(id, poligonos){
-  const cont=document.getElementById('mc-talhoes-'+id);
-  if(!cont) return;
-  // limpa gráficos antigos deste card
-  Object.keys(_mcCharts).forEach(k=>{ if(k.indexOf('|'+id+'|')>=0){ try{_mcCharts[k].destroy();}catch(e){} delete _mcCharts[k]; } });
-  if(!poligonos || !poligonos.length){ cont.innerHTML='<div class="mc-warn">Sem talhões para exibir.</div>'; return; }
-  let html='';
-  poligonos.forEach((p,i)=>{
-    const area=p.area_ha!=null?(' · '+p.area_ha+' ha'):'';
-    html+=`<div class="mc-talhao">
-      <div class="mc-talhao-head">${_mcEsc(p.nome||('Polígono '+(i+1)))}<span class="mc-talhao-area">${area}</span><span class="mc-ndvi-now" id="mc-ndvinow-${id}-${i}"></span></div>
-      <div class="mc-chart-title">Evolução do NDVI</div>
-      <div id="mc-ndvi-box-${id}-${i}"><div class="mc-chart-wrap"><canvas id="mc-ndvi-${id}-${i}"></canvas></div></div>
-      <div class="mc-chart-title" style="margin-top:8px">Clima — chuva e temperatura</div>
-      <div class="mc-chart-wrap"><canvas id="mc-clima-${id}-${i}"></canvas></div>
-    </div>`;
-  });
-  cont.innerHTML=html;
-  poligonos.forEach((p,i)=>mcDesenharPoli(id, i, p.ndvi, p.clima));
-}
-
-// Desenha NDVI + clima de um talhão específico
-function mcDesenharPoli(id, i, ndvi, clima){
-  if(!window.Chart) return;
-  const kN='n|'+id+'|'+i, kC='c|'+id+'|'+i;
-  // NDVI
-  const boxId='mc-ndvi-box-'+id+'-'+i;
-  const cvN=document.getElementById('mc-ndvi-'+id+'-'+i);
-  const now=document.getElementById('mc-ndvinow-'+id+'-'+i);
-  if(cvN){
-    if(_mcCharts[kN]){ try{_mcCharts[kN].destroy();}catch(e){} }
-    if(ndvi && ndvi.disponivel===false){
-      const box=document.getElementById(boxId);
-      if(box) box.innerHTML='<div class="mc-warn">NDVI indisponível — '+_mcEsc(ndvi.motivo||'')+'</div>';
-    } else {
-      const serie=(ndvi && ndvi.serie)?ndvi.serie:[];
-      if(!serie.length){
-        const box=document.getElementById(boxId);
-        if(box) box.innerHTML='<div class="mc-warn">Sem imagens de NDVI válidas no período (provável cobertura de nuvens).</div>';
-      } else {
-        if(now) now.textContent='· NDVI atual: '+serie[serie.length-1].ndvi.toFixed(2);
-        _mcCharts[kN]=new Chart(cvN.getContext('2d'),{
-          type:'line',
-          data:{labels:serie.map(p=>p.data),datasets:[{label:'NDVI',data:serie.map(p=>p.ndvi),
-            borderColor:'#1e6b40',backgroundColor:'rgba(30,107,64,.12)',fill:true,tension:.3,pointRadius:2}]},
-          options:{responsive:true,maintainAspectRatio:false,
-            scales:{y:{min:0,max:1,ticks:{stepSize:.2}},x:{ticks:{maxTicksLimit:6,autoSkip:true}}},
-            plugins:{legend:{display:false}}}
-        });
-      }
-    }
-  }
-  // Clima
-  const cvC=document.getElementById('mc-clima-'+id+'-'+i);
-  if(cvC){
-    if(_mcCharts[kC]){ try{_mcCharts[kC].destroy();}catch(e){} }
-    const c=clima||[];
-    _mcCharts[kC]=new Chart(cvC.getContext('2d'),{
-      data:{labels:c.map(p=>p.data),datasets:[
-        {type:'bar',label:'Chuva (mm)',data:c.map(p=>p.chuva),yAxisID:'yC',
-          backgroundColor:'rgba(37,99,235,.55)',borderColor:'rgba(37,99,235,.8)'},
-        {type:'line',label:'T máx (°C)',data:c.map(p=>p.tmax),yAxisID:'yT',
-          borderColor:'#dc2626',pointRadius:0,tension:.3,borderWidth:1.5},
-        {type:'line',label:'T mín (°C)',data:c.map(p=>p.tmin),yAxisID:'yT',
-          borderColor:'#f59e0b',pointRadius:0,tension:.3,borderWidth:1.5}
-      ]},
-      options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-        scales:{
-          x:{ticks:{maxTicksLimit:6,autoSkip:true}},
-          yT:{position:'left',title:{display:true,text:'°C'}},
-          yC:{position:'right',title:{display:true,text:'mm'},grid:{drawOnChartArea:false},beginAtZero:true}
-        },
-        plugins:{legend:{labels:{boxWidth:12,font:{size:10}}}}}
-    });
-  }
-}
-
-async function mcAtualizarSerie(id){
-  const cont=document.getElementById('mc-talhoes-'+id);
-  if(cont) cont.innerHTML='<div class="mc-warn">Calculando NDVI e clima dos talhões… (pode levar 1–2 min)</div>';
-  try{
-    const d=await mcFetch('GET',`/monitoramento/${id}/series?refresh=1`,{timeout:180000});
-    await mcEnsureChart().catch(()=>{});
-    if(d.erro && (!d.poligonos||!d.poligonos.length)){ if(cont) cont.innerHTML='<div class="mc-warn">'+_mcEsc(d.erro)+'</div>'; return; }
-    mcRenderTalhoes(id, d.poligonos);
-  }catch(e){ if(cont) cont.innerHTML='<div class="mc-warn">Erro ao calcular: '+_mcEsc(e.message)+'</div>'; }
-}
-
-// Considera "desatualizado": sem série, de outro dia, ou > N horas
-function _mcDesatualizado(row, horas){
-  if(!row) return true;
-  if(!_mcTemSerie(row)) return true;
-  if(!row.series_atualizado_em) return true;
-  let s=row.series_atualizado_em;
-  if(!/[Zz]|[+-]\d\d:?\d\d$/.test(s)) s=s+'Z';   // backend grava em UTC sem fuso
-  const t=Date.parse(s);
-  if(isNaN(t)) return true;
-  const agora=Date.now();
-  if(new Date(t).toDateString()!==new Date(agora).toDateString()) return true; // dia diferente
-  return (agora-t) > (horas||3)*3600*1000;
-}
-
-// Atualiza em segundo plano todos os cards desatualizados (sem clicar)
-async function mcAutoAtualizar(rows){
-  const pend=rows.filter(r=>_mcDesatualizado(r,3));
-  pend.forEach(r=>{
-    if(!_mcTemSerie(r)){
-      const cont=document.getElementById('mc-talhoes-'+r.id);
-      if(cont) cont.innerHTML='<div class="mc-warn">Atualizando automaticamente… (pode levar 1–2 min na 1ª vez)</div>';
-    }
-  });
-  const ids=pend.map(r=>r.id); let i=0;
-  const worker=async()=>{ while(i<ids.length){ await mcAtualizarSilencioso(ids[i++]); } };
-  await Promise.all([worker(), worker()]); // até 2 em paralelo (poupa cota)
-}
-
-// Atualiza um card silenciosamente e redesenha os talhões
-async function mcAtualizarSilencioso(id){
-  try{
-    const d=await mcFetch('GET',`/monitoramento/${id}/series?refresh=1`,{timeout:180000});
-    await mcEnsureChart().catch(()=>{});
-    if(d.poligonos && d.poligonos.length) mcRenderTalhoes(id, d.poligonos);
-    else {
-      const cont=document.getElementById('mc-talhoes-'+id);
-      if(cont && cont.querySelector('.mc-warn')) cont.innerHTML='<div class="mc-warn">'+_mcEsc(d.erro||'Sem dados.')+'</div>';
-    }
-  }catch(e){
-    const cont=document.getElementById('mc-talhoes-'+id);
-    if(cont && cont.querySelector('.mc-warn')) cont.innerHTML='<div class="mc-warn">Não foi possível atualizar agora: '+_mcEsc(e.message)+'</div>';
-  }
-}
-
-// Revalidação periódica enquanto a janela está aberta
-async function mcRevalidar(){
-  try{
-    const rows=await mcFetch('GET','/monitoramento',{timeout:20000});
-    const presentes=rows.filter(r=>document.getElementById('mc-card-'+r.id));
-    if(presentes.length) mcAutoAtualizar(presentes);
-  }catch(e){}
-}
-
-// ── Exportar planilha (.xlsx) com todas as apólices ──
-function mcEnsureXlsx(){
-  return new Promise((resolve,reject)=>{
-    if(window.XLSX) return resolve();
-    const s=document.createElement('script');
-    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-    s.onload=()=>resolve(); s.onerror=()=>reject(new Error('Falha ao carregar a biblioteca de planilha.'));
-    document.head.appendChild(s);
-  });
-}
-function _mcNum(v){ return (v==null||v==='')?null:Number(v); }
-function _mcRound(v,d){ if(v==null||isNaN(v)) return null; const f=Math.pow(10,d||2); return Math.round(v*f)/f; }
-
-async function mcBaixarPlanilha(){
-  const btn=document.getElementById('mc-btn-baixar');
-  const orig=btn?btn.innerHTML:'';
-  try{
-    await mcEnsureXlsx();
-    const rows=await mcFetch('GET','/monitoramento',{timeout:30000});
-    if(!rows.length){ alert('Não há apólices monitoradas para exportar.'); return; }
-
-    // 1) Força a atualização de TODAS as apólices/talhões antes de exportar
-    if(btn){ btn.disabled=true; }
-    await mcEnsureChart().catch(()=>{});
-    const poliPorCard={}; let feitos=0, i=0; const total=rows.length;
-    const worker=async()=>{
-      while(i<rows.length){
-        const r=rows[i++];
-        try{
-          const d=await mcFetch('GET',`/monitoramento/${r.id}/series?refresh=1`,{timeout:180000});
-          if(d.poligonos){ poliPorCard[r.id]=d.poligonos; mcRenderTalhoes(r.id, d.poligonos); }
-        }catch(e){ /* mantém o que já tinha */ }
-        feitos++;
-        if(btn) btn.textContent=`Atualizando ${feitos}/${total}…`;
-      }
-    };
-    await Promise.all([worker(),worker(),worker()]); // 3 em paralelo
-    if(btn) btn.textContent='Gerando planilha…';
-
-    // 2) Monta as abas — UMA LINHA POR TALHÃO
-    const talhoes=[], ndviRows=[], climaRows=[];
-    rows.forEach(r=>{
-      const local=(r.municipio||'')+(r.uf?'/'+r.uf:'');
-      const polis = poliPorCard[r.id] || r.poligonos || [];
-      polis.forEach((p,idx)=>{
-        const nome=p.nome||('Polígono '+(idx+1));
-        const serieN=(p.ndvi && p.ndvi.serie)?p.ndvi.serie:[];
-        const serieC=Array.isArray(p.clima)?p.clima:[];
-        const vals=serieN.map(x=>x.ndvi).filter(v=>v!=null && !isNaN(v));
-        const nAtual=vals.length?vals[vals.length-1]:null;
-        const nMed=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
-        const nMin=vals.length?Math.min.apply(null,vals):null;
-        const nMax=vals.length?Math.max.apply(null,vals):null;
-        const chuvas=serieC.map(x=>x.chuva).filter(v=>v!=null && !isNaN(v));
-        const chuvaAcc=chuvas.length?chuvas.reduce((a,b)=>a+b,0):null;
-        const temps=serieC.map(x=> x.tmed!=null ? x.tmed : ((x.tmax!=null&&x.tmin!=null)?(x.tmax+x.tmin)/2:null)).filter(v=>v!=null && !isNaN(v));
-        const tMed=temps.length?temps.reduce((a,b)=>a+b,0)/temps.length:null;
-        const ndviObs=(p.ndvi && p.ndvi.disponivel===false)?(p.ndvi.motivo||'indisponível'):'';
-        talhoes.push({
-          'Proponente': r.proponente||'', 'Cultura': r.cultura||'',
-          'Município': r.municipio||'', 'UF': r.uf||'',
-          'Talhão': nome, 'Área (ha)': _mcNum(p.area_ha),
-          'Data de semeadura': r.data_semeadura||'',
-          'Latitude': _mcNum(p.centroid_lat), 'Longitude': _mcNum(p.centroid_lon),
-          'NDVI atual': _mcRound(nAtual,3), 'NDVI médio': _mcRound(nMed,3),
-          'NDVI mín': _mcRound(nMin,3), 'NDVI máx': _mcRound(nMax,3),
-          'Nº leituras NDVI': vals.length, 'NDVI obs': ndviObs,
-          'Chuva acumulada (mm)': _mcRound(chuvaAcc,1), 'Temp. média (°C)': _mcRound(tMed,1),
-          'Última atualização': r.series_atualizado_em||'', 'Observações': r.obs||'', 'ID': r.id||''
-        });
-        serieN.forEach(x=>ndviRows.push({'Proponente':r.proponente||'','Talhão':nome,'Local':local,'Data':x.data,'NDVI':_mcRound(x.ndvi,3)}));
-        serieC.forEach(x=>climaRows.push({'Proponente':r.proponente||'','Talhão':nome,'Local':local,'Data':x.data,'Chuva (mm)':_mcNum(x.chuva),'Temp máx (°C)':_mcNum(x.tmax),'Temp mín (°C)':_mcNum(x.tmin),'Temp média (°C)':_mcNum(x.tmed)}));
-      });
-    });
-
-    const wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(talhoes.length?talhoes:[{'Proponente':''}]), 'Talhões');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ndviRows.length?ndviRows:[{'Proponente':'','Talhão':'','Local':'','Data':'','NDVI':''}]), 'NDVI');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(climaRows.length?climaRows:[{'Proponente':'','Talhão':'','Local':'','Data':'','Chuva (mm)':'','Temp máx (°C)':'','Temp mín (°C)':'','Temp média (°C)':''}]), 'Clima');
-
-    const hoje=new Date().toISOString().slice(0,10);
-    XLSX.writeFile(wb, `Monitoramento_Campo_${hoje}.xlsx`);
-    if(typeof showToast==='function') showToast('Planilha atualizada e gerada!','success');
-  }catch(e){ alert('Erro ao gerar a planilha: '+(e.message||e)); }
-  finally{ if(btn){ btn.disabled=false; btn.innerHTML=orig||'⬇ Baixar planilha (.xlsx)'; } }
-}
-
-async function mcDeletar(id){
-  if(!confirm('Excluir este card de monitoramento?')) return;
-  try{
-    await mcFetch('DELETE','/monitoramento/'+id,{timeout:20000});
-    Object.keys(_mcCharts).forEach(k=>{ if(k.indexOf('|'+id+'|')>=0){ try{_mcCharts[k].destroy();}catch(e){} delete _mcCharts[k]; } });
-    const el=document.getElementById('mc-card-'+id); if(el) el.remove();
-    const wrap=document.getElementById('mc-lista'); if(wrap && !wrap.children.length) mcCarregarLista();
-  }catch(e){ alert('Erro ao excluir: '+e.message); }
-}
-</script>
