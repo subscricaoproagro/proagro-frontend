@@ -2776,14 +2776,29 @@ async function ceEditarDataChegada(jobId, atual) {
 // ── Aprovação de Condição Especial ──
 let _ceAprovJobId = null;
 
-function abrirAprovacaoCE(jobId) {
+async function abrirAprovacaoCE(jobId) {
   _ceAprovJobId = jobId;
-  // Limpa campos
+  // Limpa campos primeiro
   ['aprov-taxa','aprov-nc','aprov-prod-bruta','aprov-replantio','aprov-obs'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
   document.getElementById('aprov-prod-garantida').value = '';
+
+  // Pré-preenche com valores já aprovados anteriormente (se houver)
+  try {
+    const ce = await api('GET', '/jobs/' + jobId + '/condicao-especial');
+    if (ce.taxa_aprovada)            document.getElementById('aprov-taxa').value        = ce.taxa_aprovada;
+    if (ce.nivel_cobertura_aprovado) document.getElementById('aprov-nc').value          = ce.nivel_cobertura_aprovado;
+    if (ce.prod_bruta_aprovada)      document.getElementById('aprov-prod-bruta').value  = ce.prod_bruta_aprovada;
+    if (ce.replantio_aprovado)       document.getElementById('aprov-replantio').value   = ce.replantio_aprovado;
+    if (ce.observacoes)              document.getElementById('aprov-obs').value         = ce.observacoes;
+    if (ce.prod_garantida)           document.getElementById('aprov-prod-garantida').value = ce.prod_garantida;
+  } catch(e) {
+    // Se não conseguir carregar, abre com campos em branco mesmo
+    console.warn('Não foi possível pré-carregar dados da CE:', e.message);
+  }
+
   openModal('modal-aprovacao-ce');
 }
 
