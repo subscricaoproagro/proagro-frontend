@@ -3966,35 +3966,34 @@ async function buscarCodigoIBGEPorMunicipio() {
   if (!municipio) return;
   if (elIBGE.value && elIBGE.value !== '0000000') return;
   const uf = (elUF?.value || '').trim().toUpperCase();
-  // Mapa UF sigla → prefixo numérico do código IBGE
-  const UF_PREFIXO = {AC:'12',AL:'27',AM:'13',AP:'16',BA:'29',CE:'23',DF:'53',
-    ES:'32',GO:'52',MA:'21',MG:'31',MS:'50',MT:'51',PA:'15',PB:'25',
-    PE:'26',PI:'22',PR:'41',RJ:'33',RN:'24',RO:'11',RR:'14',RS:'43',
-    SC:'42',SE:'28',SP:'35',TO:'17'};
+  const normalizarNome = v => String(v || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
   try {
-    const res  = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/municipios?nome=${encodeURIComponent(municipio)}`);
+    const res  = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/municipios');
     const data = await res.json();
-    if (!data?.length) {
-      showToast(`Município "${municipio}" não encontrado. Preencha o código IBGE manualmente.`, 'warning');
+    const alvo = normalizarNome(municipio);
+    const candidatos = (data || []).filter(m => normalizarNome(m.nome) === alvo);
+    if (!candidatos.length) {
+      showToast(`Municipio "${municipio}" nao encontrado. Preencha o codigo IBGE manualmente.`, 'warning');
       return;
     }
     let match = null;
     if (uf) {
-      // 1º: match pela sigla UF na estrutura da API
-      match = data.find(m => m.microrregiao?.mesorregiao?.UF?.sigla === uf);
-      // 2º: match pelo prefixo numérico do código IBGE
+      match = candidatos.find(m => m.microrregiao?.mesorregiao?.UF?.sigla === uf);
       if (!match) {
-        const pref = UF_PREFIXO[uf];
-        if (pref) match = data.find(m => String(m.id).startsWith(pref));
-      }
-      if (!match) {
-        showToast(`Município "${municipio}" não encontrado para UF ${uf}. Preencha o código IBGE manualmente.`, 'warning');
+        showToast(`Municipio "${municipio}" nao encontrado para UF ${uf}. Preencha o codigo IBGE manualmente.`, 'warning');
         return;
       }
-    } else if (data.length === 1) {
-      match = data[0];
+    } else if (candidatos.length === 1) {
+      match = candidatos[0];
     } else {
-      showToast(`"${municipio}" existe em ${data.length} estados. Preencha a UF primeiro.`, 'warning');
+      const ufs = candidatos.map(m => m.microrregiao?.mesorregiao?.UF?.sigla).filter(Boolean).join(', ');
+      showToast(`"${municipio}" existe em ${candidatos.length} UFs (${ufs}). Preencha a UF primeiro.`, 'warning');
       return;
     }
     const codigo = String(match.id);
@@ -4004,7 +4003,7 @@ async function buscarCodigoIBGEPorMunicipio() {
     const prod = buscarProdutividadeIBGE(codigo, cultura);
     if (prod !== null && elProd) { elProd.value = String(prod).replace('.', ','); calcularCE(); }
   } catch(e) {
-    showToast('Erro ao consultar IBGE. Preencha o código manualmente.', 'warning');
+    showToast('Erro ao consultar IBGE. Preencha o c?digo manualmente.', 'warning');
   }
 }
 
