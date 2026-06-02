@@ -3945,14 +3945,24 @@ async function buscarCodigoIBGEPorMunicipio() {
   if (!elMun || !elIBGE) return;
   const municipio = elMun.value.trim();
   if (!municipio) return;
-  if (elIBGE.value && elIBGE.value !== '0000000') return; // já preenchido
+  if (elIBGE.value && elIBGE.value !== '0000000') return;
   const uf = (elUF?.value || '').trim().toUpperCase();
   try {
     const res  = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/municipios?nome=${encodeURIComponent(municipio)}`);
     const data = await res.json();
     if (!data?.length) return;
-    let match = uf ? data.find(m => m.microrregiao?.mesorregiao?.UF?.sigla === uf) : null;
-    if (!match) match = data[0];
+
+    // Com UF: exige match — sem fallback para evitar município errado
+    let match = null;
+    if (uf) {
+      match = data.find(m => m.microrregiao?.mesorregiao?.UF?.sigla === uf);
+      if (!match) return; // UF informada mas não encontrou — não arrisca
+    } else if (data.length === 1) {
+      match = data[0]; // sem UF: só usa se resultado único
+    } else {
+      return; // múltiplos resultados sem UF — ambíguo, não preenche
+    }
+
     const codigo = String(match.id);
     elIBGE.value = codigo;
     if (elUF && !elUF.value) elUF.value = match.microrregiao?.mesorregiao?.UF?.sigla || '';
