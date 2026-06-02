@@ -3947,29 +3947,46 @@ async function buscarCodigoIBGEPorMunicipio() {
   if (!municipio) return;
   if (elIBGE.value && elIBGE.value !== '0000000') return;
   const uf = (elUF?.value || '').trim().toUpperCase();
+  // Mapa UF sigla → prefixo numérico do código IBGE
+  const UF_PREFIXO = {AC:'12',AL:'27',AM:'13',AP:'16',BA:'29',CE:'23',DF:'53',
+    ES:'32',GO:'52',MA:'21',MG:'31',MS:'50',MT:'51',PA:'15',PB:'25',
+    PE:'26',PI:'22',PR:'41',RJ:'33',RN:'24',RO:'11',RR:'14',RS:'43',
+    SC:'42',SE:'28',SP:'35',TO:'17'};
   try {
     const res  = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/municipios?nome=${encodeURIComponent(municipio)}`);
     const data = await res.json();
-    if (!data?.length) return;
-
-    // Com UF: exige match — sem fallback para evitar município errado
+    if (!data?.length) {
+      showToast(`Município "${municipio}" não encontrado. Preencha o código IBGE manualmente.`, 'warning');
+      return;
+    }
     let match = null;
     if (uf) {
+      // 1º: match pela sigla UF na estrutura da API
       match = data.find(m => m.microrregiao?.mesorregiao?.UF?.sigla === uf);
-      if (!match) return; // UF informada mas não encontrou — não arrisca
+      // 2º: match pelo prefixo numérico do código IBGE
+      if (!match) {
+        const pref = UF_PREFIXO[uf];
+        if (pref) match = data.find(m => String(m.id).startsWith(pref));
+      }
+      if (!match) {
+        showToast(`Município "${municipio}" não encontrado para UF ${uf}. Preencha o código IBGE manualmente.`, 'warning');
+        return;
+      }
     } else if (data.length === 1) {
-      match = data[0]; // sem UF: só usa se resultado único
+      match = data[0];
     } else {
-      return; // múltiplos resultados sem UF — ambíguo, não preenche
+      showToast(`"${municipio}" existe em ${data.length} estados. Preencha a UF primeiro.`, 'warning');
+      return;
     }
-
     const codigo = String(match.id);
     elIBGE.value = codigo;
     if (elUF && !elUF.value) elUF.value = match.microrregiao?.mesorregiao?.UF?.sigla || '';
     const cultura = document.getElementById('ce-cultivo')?.value || '';
     const prod = buscarProdutividadeIBGE(codigo, cultura);
     if (prod !== null && elProd) { elProd.value = String(prod).replace('.', ','); calcularCE(); }
-  } catch(e) { /* silencioso */ }
+  } catch(e) {
+    showToast('Erro ao consultar IBGE. Preencha o código manualmente.', 'warning');
+  }
 }
 
 function buscarProdutividadeIBGE(codigoIBGE, cultura) {
