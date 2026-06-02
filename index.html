@@ -2448,6 +2448,14 @@ function preencherCamposCE(sol) {
   if (elStatus) elStatus.textContent = `✅ Campos preenchidos com dados de ${sol.produtor}. Você pode editar antes de salvar.`;
 }
 
+function resetBotaoSalvarCE() {
+  const btnSalvar = document.querySelector('#modal-form-ce .btn-primary');
+  if (btnSalvar) {
+    btnSalvar.disabled = false;
+    btnSalvar.textContent = 'Salvar';
+  }
+}
+
 async function salvarFormCE() {
   // Proteção: _ceJobId não pode ser null
   if (!_ceJobId) {
@@ -2464,7 +2472,7 @@ async function salvarFormCE() {
   }
   // Desabilita botão para evitar duplo clique
   const btnSalvar = document.querySelector('#modal-form-ce .btn-primary');
-  if (btnSalvar) { btnSalvar.disabled = true; btnSalvar.textContent = '⏳ Salvando...'; }
+  if (btnSalvar) { btnSalvar.disabled = true; btnSalvar.textContent = 'Salvando...'; }
 
   const body = {
     broker:                       document.getElementById('ce-broker')?.value || '',
@@ -2498,17 +2506,22 @@ async function salvarFormCE() {
     }
     _ceJobIds.add(_ceJobId); // atualiza Set imediatamente sem precisar recarregar
     closeModal('modal-form-ce');
+    resetBotaoSalvarCE();
     showToast('Condição especial salva com sucesso!', 'success');
     await carregarJobs();
     await carregarCondicoesEspeciais();
   } catch(e) {
     showToast('Erro ao salvar: ' + e.message, 'error');
-    if (btnSalvar) { btnSalvar.disabled = false; btnSalvar.textContent = '💾 Salvar'; }
+    resetBotaoSalvarCE();
   }
 }
 
 async function abrirPreencherCE(jobId) {
   _ceJobId = jobId;
+  resetBotaoSalvarCE();
+  window._ceJobSemDecisao = false;
+  const modalCE = document.getElementById('modal-form-ce');
+  if (modalCE) modalCE.scrollTop = 0;
   // Limpa formulário
   const camposLimpar = ['ce-broker','ce-email-corretora','ce-solicitacao-id','ce-municipio','ce-codigo-ibge','ce-uf','ce-cliente',
     'ce-area-solicitada','ce-cultivo','ce-ajuste','ce-ciclo','ce-modalidade',
@@ -2523,6 +2536,7 @@ async function abrirPreencherCE(jobId) {
   const fs = document.getElementById('ce-fecha-siembra'); if(fs) fs.value = '';
   const fc = document.getElementById('ce-fecha-cosecha'); if(fc) fc.value = '';
   openModal('modal-form-ce');
+  if (modalCE) modalCE.scrollTop = 0;
   // Preenche automaticamente dados do job
   try {
     const jobData = await api('GET', `/jobs/${_ceJobId}`);
@@ -4897,7 +4911,7 @@ async function verRelatorio(jobId) {
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px">
         <button class="btn btn-outline" onclick="closeModal('modal-form-ce')">Cancelar</button>
-        <button class="btn btn-primary" onclick="salvarFormCE()">💾 Salvar</button>
+        <button class="btn btn-primary" onclick="salvarFormCE()">Salvar</button>
       </div>
     </div>
   </div>
