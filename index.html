@@ -231,7 +231,7 @@
       <div style="display:flex;align-items:center;gap:12px;margin:24px 0"><div style="flex:1;height:1px;background:var(--gray200)"></div><span style="font-size:12px;color:var(--gray400)">domínios autorizados</span><div style="flex:1;height:1px;background:var(--gray200)"></div></div>
       <div class="domain-badge">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L12 4V10L7 13L2 10V4L7 1Z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
-        @proagroseguros.com &nbsp;·&nbsp; @proagroinsur.tech
+        @proagroseguros.com &nbsp;·&nbsp; @proagroinsur.tech &nbsp;·&nbsp; @proagroseguros.mx
       </div>
       <div style="margin-top:16px;text-align:center">
 
@@ -853,7 +853,7 @@
 // ══════════════════════════════════════════
 // CONFIGURAÇÃO
 // ══════════════════════════════════════════
-const ALLOWED_DOMAINS = ['proagroseguros.com', 'proagroinsur.tech'];
+const ALLOWED_DOMAINS = ['proagroseguros.com', 'proagroinsur.tech', 'proagroseguros.mx'];
 // URL sempre buscada do Supabase — nunca usa localStorage
 let BACKEND_URL = '';
 let TOKEN = sessionStorage.getItem('pa_token') || '';
@@ -930,7 +930,7 @@ async function handleLogin() {
   errEl.style.display = 'none';
 
   if (!email) { showAuthError('Informe seu e-mail.'); return; }
-  if (!validateDomain(email)) { showAuthError('E-mail não autorizado. Apenas @proagroseguros.com e @proagroinsur.tech.'); return; }
+  if (!validateDomain(email)) { showAuthError('E-mail não autorizado. Apenas @proagroseguros.com, @proagroinsur.tech e @proagroseguros.mx.'); return; }
   if (!password) { showAuthError('Informe sua senha.'); return; }
   if (!BACKEND_URL) { openModal('modal-config'); return; }
 
@@ -1553,11 +1553,25 @@ async function verJob(id) {
 async function baixarJob(id) {
   try {
     const data = await api('GET', `/jobs/${id}/baixar`);
-    data.arquivos.forEach(a => {
-      // URL relativa = arquivo local no backend; URL absoluta = Supabase (legado)
-      const url = a.url.startsWith('http') ? a.url : BACKEND_URL + a.url;
-      window.open(url, '_blank');
-    });
+    for (const a of data.arquivos) {
+      const url = a.url.startsWith('http') && !a.url.startsWith(BACKEND_URL)
+        ? a.url  // Supabase legado — abre direto
+        : (a.url.startsWith('http') ? a.url : BACKEND_URL + a.url);
+      if (a.url.startsWith('http') && !a.url.startsWith(BACKEND_URL)) {
+        window.open(url, '_blank');
+      } else {
+        // URL local do backend — precisa do token
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${TOKEN}`, 'ngrok-skip-browser-warning': 'true' } });
+        if (!res.ok) { const e = await res.json().catch(()=>{}); throw new Error(e?.detail || 'Erro ao baixar arquivo'); }
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const el = document.createElement('a');
+        el.href = blobUrl;
+        el.download = a.nome || 'arquivo';
+        el.click();
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+      }
+    }
     showToast('Downloads iniciados!', 'success');
   } catch(e) { showToast('Erro: '+e.message,'error'); }
 }
@@ -5962,4 +5976,3 @@ async function mcDeletar(id){
   }catch(e){ alert('Erro ao excluir: '+e.message); }
 }
 </script>
-
