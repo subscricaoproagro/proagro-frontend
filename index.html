@@ -2366,6 +2366,7 @@ function preencherCamposCE(sol) {
   if (elSolId) elSolId.value = sol.id || '';
   setVal('ce-municipio',       municipioLimpo);
   setVal('ce-uf',              uf);
+  setTimeout(buscarCodigoIBGEPorMunicipio, 150);
   setVal('ce-cliente',         sol.produtor);
   setVal('ce-area-solicitada', sol.superficie,  true);
   setVal('ce-cultivo',         sol.cultura);
@@ -3936,6 +3937,31 @@ function mapearCultura(cultura) {
   return null;
 }
 
+async function buscarCodigoIBGEPorMunicipio() {
+  const elMun  = document.getElementById('ce-municipio');
+  const elUF   = document.getElementById('ce-uf');
+  const elIBGE = document.getElementById('ce-codigo-ibge');
+  const elProd = document.getElementById('ce-prod-ibge');
+  if (!elMun || !elIBGE) return;
+  const municipio = elMun.value.trim();
+  if (!municipio) return;
+  if (elIBGE.value && elIBGE.value !== '0000000') return; // já preenchido
+  const uf = (elUF?.value || '').trim().toUpperCase();
+  try {
+    const res  = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/municipios?nome=${encodeURIComponent(municipio)}`);
+    const data = await res.json();
+    if (!data?.length) return;
+    let match = uf ? data.find(m => m.microrregiao?.mesorregiao?.UF?.sigla === uf) : null;
+    if (!match) match = data[0];
+    const codigo = String(match.id);
+    elIBGE.value = codigo;
+    if (elUF && !elUF.value) elUF.value = match.microrregiao?.mesorregiao?.UF?.sigla || '';
+    const cultura = document.getElementById('ce-cultivo')?.value || '';
+    const prod = buscarProdutividadeIBGE(codigo, cultura);
+    if (prod !== null && elProd) { elProd.value = String(prod).replace('.', ','); calcularCE(); }
+  } catch(e) { /* silencioso */ }
+}
+
 function buscarProdutividadeIBGE(codigoIBGE, cultura) {
   if (!codigoIBGE || !cultura) return null;
   const chave = mapearCultura(cultura);
@@ -4803,7 +4829,7 @@ async function verRelatorio(jobId) {
           <input class="ce-input" id="ce-email-corretora" placeholder="email@corretor.com" type="email" style="border-color:#fbbf24">
         </div>
         <input type="hidden" id="ce-solicitacao-id">
-        <div><label class="ce-label">Município</label><input class="ce-input" id="ce-municipio" placeholder="Município"></div>
+        <div><label class="ce-label">Município</label><input class="ce-input" id="ce-municipio" placeholder="Município" onblur="buscarCodigoIBGEPorMunicipio()"></div>
         <div><label class="ce-label">Código IBGE</label><input class="ce-input" id="ce-codigo-ibge" placeholder="0000000"></div>
         <div><label class="ce-label">UF</label><input class="ce-input" id="ce-uf" placeholder="UF" maxlength="2" style="text-transform:uppercase"></div>
         <div style="grid-column:1/-1"><label class="ce-label">Cliente</label><input class="ce-input" id="ce-cliente" placeholder="Nome do cliente"></div>
