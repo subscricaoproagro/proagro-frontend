@@ -1455,6 +1455,7 @@ function renderJobsTable(jobs) {
           ${concluido && j.tipo_analise==='condicao_especial' && (!j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '') && !j.decisao_risco && j.decisao === 'aprovado' && !_ceJobIds.has(j.id) ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirPreencherCE('${j.id}')">📋 Preencher Dados CE</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) ? `<span class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;cursor:default">📨 Enviado para AR</span>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="reavaliarCEAnalista('${j.id}')">🔄 Reavaliar</button>` : ''}
+          ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) ? `<button class="btn-sm" style="background:${_cePrioridade.has(j.id)?'#fef2f2;border:1px solid #fca5a5;color:#b91c1c':'#fff7ed;border:1px solid #fed7aa;color:#c2410c'}" onclick="pedirPrioridadeCE('${j.id}')" title="Solicitar avaliação prioritária">${_cePrioridade.has(j.id)?'🔴 Prioritário':'🔔 Pedir Prioridade'}</button>` : ''}
           ${concluido && (j.tipo_analise==='sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '')) && j.decisao === 'aprovado' ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="window.open('https://brasil.proagroinsur.tech','_blank')">🖥️ Acessar Sistema</button>` : ''}
           ${concluido && (j.tipo_analise==='sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '')) && j.decisao === 'aprovado' ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="abrirUploadSistema('${j.id}')">📁 Enviar Arquivos</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="verDecisaoAR('${j.id}')">👁 Ver Decisão AR</button>` : ''}
@@ -1548,6 +1549,24 @@ async function verJob(id) {
       ${j.erro_detalhe?`<div style="margin-top:12px"><div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:6px">DETALHE DO ERRO</div><div class="log-panel" style="max-height:120px;color:#ff9999"><p class="log-line">${j.erro_detalhe}</p></div></div>`:''}`;
     openModal('modal-job');
   } catch(e) { showToast('Erro: '+e.message,'error'); }
+}
+
+
+// ══════════════════════════════════════════
+// PRIORIDADE CE
+// ══════════════════════════════════════════
+let _cePrioridade = new Set(JSON.parse(localStorage.getItem('ce_prioridade') || '[]'));
+
+function pedirPrioridadeCE(jobId) {
+  if (_cePrioridade.has(jobId)) {
+    _cePrioridade.delete(jobId);
+    showToast('Prioridade removida.', 'info');
+  } else {
+    _cePrioridade.add(jobId);
+    showToast('Prioridade solicitada! Esta CE será destacada para o supervisor.', 'success');
+  }
+  localStorage.setItem('ce_prioridade', JSON.stringify([..._cePrioridade]));
+  carregarHistorico();
 }
 
 async function baixarJob(id) {
@@ -2756,11 +2775,19 @@ async function carregarCondicoesEspeciais() {
       tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada para este filtro.</td></tr>';
       return;
     }
+    // Prioridades sinalizadas pelos analistas (via localStorage compartilhado)
+    const prioridades = new Set(JSON.parse(localStorage.getItem('ce_prioridade') || '[]'));
+    listaFiltrada.sort((a, b) => {
+      const pa = prioridades.has(a.job_id) ? 0 : 1;
+      const pb = prioridades.has(b.job_id) ? 0 : 1;
+      return pa - pb;
+    });
     tbody.innerHTML = listaFiltrada.map(ce => {
       const job = ce.job || {};
+      const _isPrioridade = prioridades.has(ce.job_id);
       const dataChegada = ce.data_chegada || ce.criado_em || '';
       const dataChegadaFmt = dataChegada ? new Date(dataChegada).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
-      return `<tr>
+      return `<tr style="${_isPrioridade ? 'background:#fff7ed;border-left:3px solid #f97316;' : ''}">
         <td>${job.cultura_desejada || '—'}</td>
         <td>${ce.municipio||'—'}${ce.uf?'/'+ce.uf:''}</td>
         <td>${ce.broker || '—'}</td>
