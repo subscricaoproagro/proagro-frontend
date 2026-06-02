@@ -1451,7 +1451,7 @@ function renderJobsTable(jobs) {
           ${concluido ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${j.id}')" title="Visualizar relatório completo">📄 Ver</button>` : ''}
           ${concluido ? `<button class="btn-sm btn-green" onclick="baixarJob('${j.id}')">⬇ Baixar</button>` : ''}
 
-          ${concluido && (j.tipo_analise==='condicao_especial' || _histAba==='ce') && !j.decisao && !j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirEdicaoCE('${j.id}')">📋 Preencher CE</button>` : ''}
+          ${concluido && (j.tipo_analise==='condicao_especial' || _histAba==='ce') && !j.decisao && !j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirEdicaoCE('${j.id}', ${JSON.stringify(j.nome_proponente)}, ${JSON.stringify(j.cpf||'')})">📋 Preencher CE</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && (!j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '') && !j.decisao_risco && j.decisao === 'aprovado' && !_ceJobIds.has(j.id) ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirPreencherCE('${j.id}')">📋 Preencher Dados CE</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) ? `<span class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;cursor:default">📨 Enviado para AR</span>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="reavaliarCEAnalista('${j.id}')">🔄 Reavaliar</button>` : ''}
@@ -2900,19 +2900,16 @@ function calcularCE() {
   }
 }
 
-async function abrirEdicaoCE(jobId) {
+async function abrirEdicaoCE(jobId, nomeProponente, cpf) {
   _ceJobId = jobId;
   try {
     let ce = {};
     try {
       ce = await api('GET', '/jobs/' + jobId + '/condicao-especial');
     } catch(err) {
-      // CE ainda não existe (foi deletada ou nunca foi criada) — abre form vazio
       ce = {};
     }
-    // Guarda estado atual da decisão para salvarFormCE saber se precisa aprovar
     window._ceJobSemDecisao = !ce.decisao;
-    // Recarrega o solicitacao_id da CE (evita usar ID stale de sessão anterior)
     const elSolId = document.getElementById('ce-solicitacao-id');
     if (elSolId) elSolId.value = ce.solicitacao_id || '';
     const map = {
@@ -2942,6 +2939,16 @@ async function abrirEdicaoCE(jobId) {
     }
     calcularCE();
     openModal('modal-form-ce');
+
+    // Se o form abriu vazio (sem CE existente) e temos CPF/CNPJ do job,
+    // preenche o campo de busca e dispara a pesquisa automaticamente
+    if (!ce.broker && !ce.cliente && cpf) {
+      const elCpf = document.getElementById('ce-cpf-busca');
+      if (elCpf) {
+        elCpf.value = cpf;
+        await buscarSolicitacaoCE();
+      }
+    }
   } catch(e) {
     showToast('Erro ao carregar dados: ' + e.message, 'error');
   }
