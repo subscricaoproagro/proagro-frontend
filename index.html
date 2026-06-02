@@ -1819,7 +1819,7 @@ async function convidarUsuario() {
   errEl.style.display='none'; resEl.style.display='none';
 
   if(!name||!email){errEl.textContent='Preencha todos os campos.';errEl.style.display='block';return;}
-  if(!validateDomain(email)){errEl.textContent='E-mail deve pertencer aos domínios autorizados.';errEl.style.display='block';return;}
+  if(!validateDomain(email)){errEl.textContent='E-mail não autorizado. Apenas @proagroseguros.com, @proagroinsur.tech e @proagroseguros.mx.';errEl.style.display='block';return;}
 
   try {
     const data = await api('POST', '/usuarios/convidar', {email, name, role, paginas: mcPaginasSelecionadas()});
