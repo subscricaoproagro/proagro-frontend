@@ -2774,7 +2774,7 @@ async function carregarCondicoesEspeciais() {
         <td>${ceTempoResposta(ce)}</td>
         <td>
           <div class="ce-acoes-grid">
-            <button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;font-size:11px;padding:3px 6px" onclick="verRelatorio('${ce.job_id}')">📄 Rel.</button>
+            <button class="btn-sm btn-green" style="font-size:11px;padding:3px 6px" onclick="baixarJob('${ce.job_id}')">⬇ Baixar</button>
             ${renderBtnsCE(ce)}
             <button class="btn-sm btn-danger" onclick="excluirCE('${ce.job_id}')" title="Excluir" style="font-size:11px;padding:3px 6px">🗑</button>
           </div>
