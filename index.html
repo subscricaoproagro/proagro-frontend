@@ -1323,7 +1323,7 @@ async function excluirJobsPorStatus() {
       if (isSistema) return j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco;
       return j.status === 'concluido' && _ceJobIds.has(j.id) && !j.decisao_risco;
     }
-    if (filtro === 'ce_aprovada')    return j.status === 'concluido' && j.decisao_risco === 'aprovado';
+    if (filtro === 'ce_aprovada')    return j.status === 'concluido' && (j.decisao_risco === 'aprovado' || j.decisao_risco === 'aprovado_diferente');
     if (filtro === 'recusada')       return j.status === 'concluido' && j.decisao === 'recusado';
     if (filtro === 'erro')           return j.status === 'erro' || j.status === 'cancelado';
     return j.status === filtro;
@@ -1381,7 +1381,7 @@ async function carregarJobs() {
     setCount('hcount-processando', allJobs.filter(j => j.status === 'processando').length);
     setCount('hcount-aguardando-analise', allJobs.filter(j => j.status === 'concluido' && !j.decisao && !j.decisao_risco).length);
     setCount('hcount-concluido',   allJobs.filter(j => j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco).length);
-    setCount('hcount-ce',          allJobs.filter(j => j.status === 'concluido' && j.decisao_risco === 'aprovado').length);
+    setCount('hcount-ce',          allJobs.filter(j => j.status === 'concluido' && (j.decisao_risco === 'aprovado' || j.decisao_risco === 'aprovado_diferente')).length);
     setCount('hcount-balcao',      allJobs.filter(j => j.status === 'concluido' && j.decisao_risco === 'balcao').length);
     setCount('hcount-recusada',    allJobs.filter(j => j.status === 'concluido' && j.decisao === 'recusado').length);
     setCount('hcount-erro',        allJobs.filter(j => j.status === 'erro' || j.status === 'cancelado').length);
@@ -1412,7 +1412,7 @@ async function carregarJobs() {
         if (isSistema) return j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco;
         return j.status === 'concluido' && _ceJobIds.has(j.id) && !j.decisao_risco;
       }
-      if (filter === 'ce_aprovada')    return j.status === 'concluido' && j.decisao_risco === 'aprovado';
+      if (filter === 'ce_aprovada')    return j.status === 'concluido' && (j.decisao_risco === 'aprovado' || j.decisao_risco === 'aprovado_diferente');
       if (filter === 'balcao')         return j.status === 'concluido' && j.decisao_risco === 'balcao';
       if (filter === 'recusada')       return j.status === 'concluido' && j.decisao === 'recusado';
       if (filter === 'erro')           return j.status === 'erro' || j.status === 'cancelado';
@@ -2663,7 +2663,7 @@ async function verCondicaoEspecial(jobId) {
     document.getElementById('vce-btn-reavaliar').style.display = !job.decisao_risco ? '' : 'none';
     if (job.decisao_risco) {
       const badge = document.getElementById('vce-decisao-badge');
-      const labels = {aprovado:'✅ CE Aprovada', balcao:'🏦 Balcão', recusado:'❌ Recusada'};
+      const labels = {aprovado:'✅ CE Aprovada', aprovado_diferente:'⚠️ CE Aprovada c/ Ressalva', balcao:'🏦 Balcão', recusado:'❌ Recusada'};
       badge.textContent = labels[job.decisao_risco] || job.decisao_risco;
       badge.style.display = '';
     }
@@ -2722,7 +2722,7 @@ async function carregarCondicoesEspeciais() {
 
     // Atualiza contadores
     const nPendente = listaSemSistema.filter(ce => ce.job && !ce.job.decisao_risco).length;
-    const nAprovado = listaSemSistema.filter(ce => ce.job && ce.job.decisao_risco === 'aprovado').length;
+    const nAprovado = listaSemSistema.filter(ce => ce.job && (ce.job.decisao_risco === 'aprovado' || ce.job.decisao_risco === 'aprovado_diferente')).length;
     const nBalcao   = listaSemSistema.filter(ce => ce.job && ce.job.decisao_risco === 'balcao').length;
     const nRecusado = listaSemSistema.filter(ce => ce.job && ce.job.decisao_risco === 'recusado').length;
     const elP = document.getElementById('ce-n-pendente'); if(elP) elP.textContent = nPendente;
@@ -2765,7 +2765,7 @@ async function carregarCondicoesEspeciais() {
     const filtroBroker = (document.getElementById('ce-filter-broker')?.value || '').trim().toLowerCase();
     const listaFiltrada = listaSemSistema.filter(ce => {
       if (filtro === 'pendente' && !(ce.job && !ce.job.decisao_risco)) return false;
-      if (filtro && filtro !== 'pendente' && !(ce.job && ce.job.decisao_risco === filtro)) return false;
+      if (filtro && filtro !== 'pendente' && !(ce.job && (ce.job.decisao_risco === filtro || (filtro === 'aprovado' && ce.job.decisao_risco === 'aprovado_diferente')))) return false;
       if (filtroUF && (ce.uf || '').toUpperCase() !== filtroUF) return false;
       if (filtroBroker && !(ce.broker || '').toLowerCase().includes(filtroBroker)) return false;
       return true;
@@ -2891,6 +2891,8 @@ function calcularProdGarantida() {
 }
 
 async function confirmarAprovacaoCE() {
+  const conformidade = document.getElementById('aprov-conformidade').value;
+  if (!conformidade) { showToast('Selecione a conformidade da aprovação.', 'error'); return; }
   const taxa      = document.getElementById('aprov-taxa').value.trim();
   const nc        = document.getElementById('aprov-nc').value.trim();
   const prodBruta = document.getElementById('aprov-prod-bruta').value.trim();
@@ -2908,13 +2910,18 @@ async function confirmarAprovacaoCE() {
 
   try {
     // Registra decisão do AR e dispara email (sem sobrescrever dados da CE)
+
+    // Remove prioridade ao resolver CE
+    _cePrioridade.delete(_ceAprovJobId);
+    localStorage.setItem('ce_prioridade', JSON.stringify([..._cePrioridade]));
     const res = await api('POST', '/jobs/' + _ceAprovJobId + '/decisao-risco', {
-      decisao: 'aprovado',
-      observacoes: obs,
+      decisao: conformidade === 'diferente' ? 'aprovado_diferente' : 'aprovado',
+      observacoes: (conformidade === 'diferente' ? '[APROVADO DIFERENTE DO SOLICITADO] ' : '') + obs,
       taxa_aprovada: taxa,
       nivel_cobertura_aprovado: nc,
       prod_bruta_aprovada: prodBruta,
-      replantio_aprovado: replantio
+      replantio_aprovado: replantio,
+      aprovacao_conforme: conformidade === 'conforme'
     });
 
     // Upload da planilha se houver
@@ -3041,6 +3048,10 @@ async function confirmarRecusaCE() {
   const btn = document.getElementById('btn-confirmar-recusa-ce');
   btn.disabled = true; btn.innerHTML = '⏳ Recusando…';
   try {
+
+    // Remove prioridade ao resolver CE
+    _cePrioridade.delete(_ceRecusaJobId);
+    localStorage.setItem('ce_prioridade', JSON.stringify([..._cePrioridade]));
     await api('POST', '/jobs/' + _ceRecusaJobId + '/decisao-risco', { decisao: 'recusado', observacoes: motivo });
     closeModal('modal-recusa-ce');
     showToast('Proposta recusada.', 'success');
@@ -3062,6 +3073,10 @@ async function confirmarBalcao() {
   const btn = document.getElementById('btn-confirmar-balcao');
   btn.disabled = true; btn.innerHTML = '⏳ Enviando…';
   try {
+
+    // Remove prioridade ao resolver CE
+    _cePrioridade.delete(_ceBalcaoJobId);
+    localStorage.setItem('ce_prioridade', JSON.stringify([..._cePrioridade]));
     await api('POST', '/jobs/' + _ceBalcaoJobId + '/decisao-risco', { decisao: 'balcao', observacoes: obs });
     closeModal('modal-balcao-ce');
     showToast('🏦 Condição de Balcão enviada! Email disparado.', 'success');
@@ -3085,7 +3100,7 @@ function renderBtnsCE(ce) {
            ' <button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="abrirRecusaCE(\'' + jobId + '\')">❌ Recusar</button>';
   }
   var cor = dr==='aprovado' ? '#166534' : dr==='balcao' ? '#1d4ed8' : '#c0392b';
-  var label = dr==='aprovado' ? '✅ CE Aprovada' : dr==='balcao' ? '🏦 Balcão' : '❌ Recusada';
+  var label = dr==='aprovado' ? '✅ CE Aprovada' : dr==='aprovado_diferente' ? '⚠️ CE Aprovada c/ Ressalva' : dr==='balcao' ? '🏦 Balcão' : '❌ Recusada';
   return btnDados +
          ' <button class="btn-sm btn-outline" onclick="verCondicaoEspecial(\'' + jobId + '\')">👁 Ver</button> ' +
          ' ' + btnEmail +
@@ -3235,7 +3250,7 @@ async function carregarDashboardSupervisor() {
       const job = ce.job || {};
       const dr = job.decisao_risco;
       const badge = dr === 'aprovado'
-        ? '<span style="color:#166534;font-weight:600">✅ CE Aprovada</span>'
+        ? '<span style="color:#166534;font-weight:600">' + (job.decisao_risco === 'aprovado_diferente' ? '⚠️ CE Aprovada c/ Ressalva' : '✅ CE Aprovada') + '</span>'
         : dr === 'balcao'
         ? '<span style="color:#1d4ed8;font-weight:600">🏦 Balcão</span>'
         : dr === 'recusado'
@@ -3279,7 +3294,7 @@ async function abrirDadosCE(jobId) {
     document.getElementById('dce-cultura').textContent    = job.cultura_desejada || '—';
     document.getElementById('dce-analista').textContent   = job.analista_email || '—';
 
-    const drMap = { aprovado: '✅ CE Aprovada', balcao: '🏦 Balcão', recusado: '❌ Recusada' };
+    const drMap = { aprovado: '✅ CE Aprovada', aprovado_diferente: '⚠️ CE Aprovada c/ Ressalva', balcao: '🏦 Balcão', recusado: '❌ Recusada' };
     const drBadge = document.getElementById('dce-status-badge');
     if (job.decisao_risco) {
       drBadge.textContent = drMap[job.decisao_risco] || job.decisao_risco;
@@ -4587,7 +4602,7 @@ function _gerarXlsx(ce, job) {
 
   // Status AR
   rows.push(secRow('STATUS DA ANÁLISE DE RISCO'));
-  const drLabel = { aprovado:'✅ CE Aprovada', balcao:'🏦 Balcão', recusado:'❌ Recusada' };
+  const drLabel = { aprovado:'✅ CE Aprovada', aprovado_diferente:'⚠️ CE Aprovada c/ Ressalva', balcao:'🏦 Balcão', recusado:'❌ Recusada' };
   rows.push(dataRow('Status AR', job.decisao_risco ? (drLabel[job.decisao_risco] || job.decisao_risco) : 'Aguardando', false));
   if (job.decisao_risco_por) rows.push(dataRow('Decisão por', job.decisao_risco_por, true));
 
@@ -5131,6 +5146,15 @@ async function verRelatorio(jobId) {
             <option value="">Selecione</option>
             <option>Sim</option>
             <option>Não</option>
+          </select>
+        </div>
+
+        <div style="grid-column:1/-1">
+          <label class="ce-label">Conformidade da Aprovação <span style="color:#c0392b">*</span></label>
+          <select class="ce-input" id="aprov-conformidade">
+            <option value="">Selecione</option>
+            <option value="conforme">✅ Aprovado conforme solicitado</option>
+            <option value="diferente">⚠️ Aprovado diferente do solicitado</option>
           </select>
         </div>
 
