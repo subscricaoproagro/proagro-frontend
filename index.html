@@ -1569,6 +1569,41 @@ function pedirPrioridadeCE(jobId) {
   carregarHistorico();
 }
 
+
+// ══════════════════════════════════════════
+// PREVIEW EMAIL CE
+// ══════════════════════════════════════════
+let _previewEmailCallback = null;
+
+async function abrirPreviewEmail(payload, jobId, callback) {
+  try {
+    const data = await api('POST', `/jobs/${jobId}/preview-email-ce`, payload);
+    document.getElementById('preview-email-assunto').value = data.assunto;
+    document.getElementById('preview-email-corpo').value   = data.corpo;
+    _previewEmailCallback = callback;
+    openModal('modal-preview-email-ce');
+  } catch(e) {
+    showToast('Erro ao carregar preview: ' + e.message, 'error');
+  }
+}
+
+async function enviarComPreview() {
+  const btn = document.getElementById('btn-enviar-email-preview');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="border-top-color:#fff;width:14px;height:14px"></div> Enviando…';
+  try {
+    const assunto = document.getElementById('preview-email-assunto').value;
+    const corpo   = document.getElementById('preview-email-corpo').value;
+    if (_previewEmailCallback) await _previewEmailCallback(assunto, corpo);
+    closeModal('modal-preview-email-ce');
+  } catch(e) {
+    showToast('Erro: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '📤 Confirmar e Enviar';
+  }
+}
+
 async function baixarJob(id) {
   try {
     const data = await api('GET', `/jobs/${id}/baixar`);
@@ -2894,6 +2929,23 @@ async function confirmarAprovacaoCE() {
   const conformidade = document.getElementById('aprov-conformidade').value;
   if (!conformidade) { showToast('Selecione a conformidade da aprovação.', 'error'); return; }
   const taxa      = document.getElementById('aprov-taxa').value.trim();
+  const nc2       = document.getElementById('aprov-nc').value.trim();
+  const prodBruta2= document.getElementById('aprov-prod-bruta').value.trim();
+  const replantio2= document.getElementById('aprov-replantio').value;
+  const obs2      = document.getElementById('aprov-obs').value.trim();
+  if (!taxa || !nc2 || !prodBruta2 || !replantio2) { showToast('Preencha todos os campos obrigatórios.', 'error'); return; }
+  const payloadPreview = {
+    decisao: conformidade === 'diferente' ? 'aprovado_diferente' : 'aprovado',
+    taxa_aprovada: taxa, nivel_cobertura_aprovado: nc2,
+    prod_bruta_aprovada: prodBruta2, replantio_aprovado: replantio2, observacoes: obs2
+  };
+  await abrirPreviewEmail(payloadPreview, _ceAprovJobId, async (assunto, corpo) => {
+    await _executarAprovacaoCE(assunto, corpo);
+  });
+}
+
+async function _executarAprovacaoCE(assuntoEditado, corpoEditado) {
+  const taxa      = document.getElementById('aprov-taxa').value.trim();
   const nc        = document.getElementById('aprov-nc').value.trim();
   const prodBruta = document.getElementById('aprov-prod-bruta').value.trim();
   const replantio = document.getElementById('aprov-replantio').value.trim();
@@ -2914,9 +2966,12 @@ async function confirmarAprovacaoCE() {
     // Remove prioridade ao resolver CE
     _cePrioridade.delete(_ceAprovJobId);
     localStorage.setItem('ce_prioridade', JSON.stringify([..._cePrioridade]));
+    const conformidade3 = document.getElementById('aprov-conformidade').value;
+    const obs3 = document.getElementById('aprov-obs').value.trim();
     const res = await api('POST', '/jobs/' + _ceAprovJobId + '/decisao-risco', {
-      decisao: conformidade === 'diferente' ? 'aprovado_diferente' : 'aprovado',
-      observacoes: (conformidade === 'diferente' ? '[APROVADO DIFERENTE DO SOLICITADO] ' : '') + obs,
+      decisao: conformidade3 === 'diferente' ? 'aprovado_diferente' : 'aprovado',
+      observacoes: (conformidade3 === 'diferente' ? '[APROVADO DIFERENTE DO SOLICITADO] ' : '') + obs3,
+      email_assunto: assuntoEditado, email_corpo: corpoEditado,
       taxa_aprovada: taxa,
       nivel_cobertura_aprovado: nc,
       prod_bruta_aprovada: prodBruta,
@@ -3045,6 +3100,12 @@ function abrirRecusaCE(jobId) {
 async function confirmarRecusaCE() {
   const motivo = document.getElementById('recusa-ce-motivo').value.trim();
   if (!motivo) { showToast('Informe o motivo da recusa.', 'error'); return; }
+  await abrirPreviewEmail({ decisao: 'recusado', observacoes: motivo }, _ceRecusaJobId, async (assunto, corpo) => {
+    await _executarRecusaCE(motivo, assunto, corpo);
+  });
+}
+
+async function _executarRecusaCE(motivo, assuntoEditado, corpoEditado) {
   const btn = document.getElementById('btn-confirmar-recusa-ce');
   btn.disabled = true; btn.innerHTML = '⏳ Recusando…';
   try {
@@ -3052,7 +3113,7 @@ async function confirmarRecusaCE() {
     // Remove prioridade ao resolver CE
     _cePrioridade.delete(_ceRecusaJobId);
     localStorage.setItem('ce_prioridade', JSON.stringify([..._cePrioridade]));
-    await api('POST', '/jobs/' + _ceRecusaJobId + '/decisao-risco', { decisao: 'recusado', observacoes: motivo });
+    await api('POST', '/jobs/' + _ceRecusaJobId + '/decisao-risco', { decisao: 'recusado', observacoes: motivo, email_assunto: assuntoEditado, email_corpo: corpoEditado });
     closeModal('modal-recusa-ce');
     showToast('Proposta recusada.', 'success');
     await carregarJobs();
@@ -3070,6 +3131,12 @@ function abrirBalcao(jobId) {
 }
 async function confirmarBalcao() {
   const obs = document.getElementById('balcao-obs').value.trim();
+  await abrirPreviewEmail({ decisao: 'balcao', observacoes: obs }, _ceBalcaoJobId, async (assunto, corpo) => {
+    await _executarBalcao(obs, assunto, corpo);
+  });
+}
+
+async function _executarBalcao(obs, assuntoEditado, corpoEditado) {
   const btn = document.getElementById('btn-confirmar-balcao');
   btn.disabled = true; btn.innerHTML = '⏳ Enviando…';
   try {
@@ -3077,7 +3144,7 @@ async function confirmarBalcao() {
     // Remove prioridade ao resolver CE
     _cePrioridade.delete(_ceBalcaoJobId);
     localStorage.setItem('ce_prioridade', JSON.stringify([..._cePrioridade]));
-    await api('POST', '/jobs/' + _ceBalcaoJobId + '/decisao-risco', { decisao: 'balcao', observacoes: obs });
+    await api('POST', '/jobs/' + _ceBalcaoJobId + '/decisao-risco', { decisao: 'balcao', observacoes: obs, email_assunto: assuntoEditado, email_corpo: corpoEditado });
     closeModal('modal-balcao-ce');
     showToast('🏦 Condição de Balcão enviada! Email disparado.', 'success');
     await carregarJobs();
@@ -6027,3 +6094,30 @@ async function mcDeletar(id){
   }catch(e){ alert('Erro ao excluir: '+e.message); }
 }
 </script>
+
+<!-- MODAL PREVIEW EMAIL CE -->
+<div class="modal-overlay" id="modal-preview-email-ce" style="align-items:flex-start;padding:20px;overflow-y:auto;background:rgba(0,0,0,0.5)">
+  <div class="modal-card" style="max-width:600px;width:100%;margin:auto">
+    <div class="modal-header" style="background:#1a3a2a;border-radius:10px 10px 0 0">
+      <div class="modal-title" style="color:#fff">📧 Revisar Email Antes de Enviar</div>
+      <button class="modal-close" style="color:#fff;opacity:.8" onclick="closeModal('modal-preview-email-ce')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <div style="margin-bottom:12px">
+        <label class="ce-label">Assunto</label>
+        <input class="ce-input" id="preview-email-assunto" style="font-size:13px">
+      </div>
+      <div style="margin-bottom:16px">
+        <label class="ce-label">Corpo do Email</label>
+        <textarea class="ce-input" id="preview-email-corpo" rows="18" style="font-family:monospace;font-size:13px;line-height:1.6;resize:vertical"></textarea>
+      </div>
+      <div style="background:#fff8e1;border:1px solid #fbbf24;border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e;margin-bottom:16px">
+        ✏️ Edite o texto acima se necessário. O email será enviado exatamente como está.
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-outline" onclick="closeModal('modal-preview-email-ce')">Cancelar</button>
+        <button class="btn btn-primary" id="btn-enviar-email-preview" onclick="enviarComPreview()">📤 Confirmar e Enviar</button>
+      </div>
+    </div>
+  </div>
+</div>
