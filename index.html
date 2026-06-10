@@ -2940,11 +2940,11 @@ async function confirmarAprovacaoCE() {
     prod_bruta_aprovada: prodBruta2, replantio_aprovado: replantio2, observacoes: obs2
   };
   await abrirPreviewEmail(payloadPreview, _ceAprovJobId, async (assunto, corpo) => {
-    await _executarAprovacaoCE(assunto, corpo);
+    await _executarAprovacaoCE(assunto, corpo, conformidade);
   });
 }
 
-async function _executarAprovacaoCE(assuntoEditado, corpoEditado) {
+async function _executarAprovacaoCE(assuntoEditado, corpoEditado, conformidade) {
   const taxa      = document.getElementById('aprov-taxa').value.trim();
   const nc        = document.getElementById('aprov-nc').value.trim();
   const prodBruta = document.getElementById('aprov-prod-bruta').value.trim();
@@ -2966,17 +2966,16 @@ async function _executarAprovacaoCE(assuntoEditado, corpoEditado) {
     // Remove prioridade ao resolver CE
     _cePrioridade.delete(_ceAprovJobId);
     localStorage.setItem('ce_prioridade', JSON.stringify([..._cePrioridade]));
-    const conformidade3 = document.getElementById('aprov-conformidade').value;
     const obs3 = document.getElementById('aprov-obs').value.trim();
     const res = await api('POST', '/jobs/' + _ceAprovJobId + '/decisao-risco', {
-      decisao: conformidade3 === 'diferente' ? 'aprovado_diferente' : 'aprovado',
-      observacoes: (conformidade3 === 'diferente' ? '[APROVADO DIFERENTE DO SOLICITADO] ' : '') + obs3,
+      decisao: conformidade === 'diferente' ? 'aprovado_diferente' : 'aprovado',
+      observacoes: (conformidade === 'diferente' ? '[APROVADO DIFERENTE DO SOLICITADO] ' : '') + obs3,
       email_assunto: assuntoEditado, email_corpo: corpoEditado,
       taxa_aprovada: taxa,
       nivel_cobertura_aprovado: nc,
       prod_bruta_aprovada: prodBruta,
       replantio_aprovado: replantio,
-      aprovacao_conforme: conformidade === 'conforme'
+      aprovacao_conforme: conformidade === 'conforme',
     });
 
     // Upload da planilha se houver
