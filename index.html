@@ -2997,6 +2997,19 @@ async function _executarAprovacaoCE(assuntoEditado, corpoEditado, conformidade, 
   }
 }
 
+// Reavalia uma CE já decidida — zera a decisão do AR e reabre a janela de aprovação
+async function reavaliarAprovacaoCE(jobId) {
+  if (!confirm('Reavaliar esta condição especial? A decisão atual será desfeita e você poderá ajustar as condições aprovadas.')) return;
+  try {
+    await api('POST', '/jobs/' + jobId + '/zerar-decisao-risco');
+    await carregarJobs();
+    await carregarCondicoesEspeciais();
+    abrirAprovacaoCE(jobId); // reabre o modal-aprovacao-ce já preenchido com os valores anteriores
+  } catch(e) {
+    showToast('Erro ao reavaliar: ' + e.message, 'error');
+  }
+}
+
 function calcularCE() {
   const prodEst  = parseBR(document.getElementById('ce-prod-estimada')?.value);
   const prodIbge = parseBR(document.getElementById('ce-prod-ibge')?.value);
@@ -3172,6 +3185,7 @@ function renderBtnsCE(ce) {
   var label = dr==='aprovado' ? '✅ CE Aprovada' : dr==='aprovado_diferente' ? '⚠️ CE Aprovada c/ Ressalva' : dr==='balcao' ? '🏦 Balcão' : '❌ Recusada';
   return btnDados +
          ' <button class="btn-sm btn-outline" onclick="verCondicaoEspecial(\'' + jobId + '\')">👁 Ver</button> ' +
+         ' <button class="btn-sm" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e" onclick="reavaliarAprovacaoCE(\'' + jobId + '\')">🔄 Reavaliar</button> ' +
          ' ' + btnEmail +
          ' <span style="font-size:12px;font-weight:600;color:' + cor + '">' + label + '</span>';
 }
