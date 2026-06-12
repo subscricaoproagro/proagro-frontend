@@ -628,6 +628,12 @@
             <option value="aprovado">✅ CE Aprovadas</option>
             <option value="balcao">🏦 Balcão</option>
             <option value="recusado">❌ Recusadas</option>
+            <option value="reavaliacao">🔁 Reavaliação solicitada</option>
+            <optgroup label="Status do draft">
+              <option value="draft_aguardando">⏳ Aguardando corretor</option>
+              <option value="draft_confirmado">🔔 Cliente confirmou</option>
+              <option value="draft_ativado">✓ Draft ativado</option>
+            </optgroup>
           </select>
           <input class="form-input" id="ce-filter-uf" placeholder="Filtrar UF…" style="width:90px;padding:8px 10px;font-size:13px" oninput="carregarCondicoesEspeciais()">
           <input class="form-input" id="ce-filter-broker" placeholder="Filtrar Broker…" style="width:140px;padding:8px 10px;font-size:13px" oninput="carregarCondicoesEspeciais()">
@@ -649,8 +655,8 @@
       <div class="card">
         <div class="overflow-x">
           <table class="jobs-table">
-            <thead><tr><th>Cultura</th><th>Local</th><th>Broker</th><th>Cliente</th><th>Status</th><th>Prêmio</th><th>Chegada</th><th>Tempo Resp.</th><th>Ações</th></tr></thead>
-            <tbody id="ce-tbody"><tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+            <thead><tr><th>Cultura</th><th>Local</th><th>Broker</th><th>Cliente</th><th>Status</th><th>Prêmio</th><th>Chegada</th><th>Tempo Resp.</th><th>Status draft</th><th>Ações</th></tr></thead>
+            <tbody id="ce-tbody"><tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -2748,6 +2754,9 @@ async function carregarCondicoesEspeciais() {
     const lista = await api('GET', '/condicoes-especiais');
     // Atualiza Set de job_ids com CE salva
     _ceJobIds = new Set(lista.filter(ce => ce.cliente || ce.municipio).map(ce => ce.job_id));
+    // Cache por job_id (usado para ver detalhes da reavaliação)
+    window._ceCache = {};
+    lista.forEach(ce => { window._ceCache[ce.job_id] = ce; });
     // Filtra: remove tipo 'sistema', propostas != 0, e CEs sem dados preenchidos
     const listaSemSistema = lista.filter(ce => {
       if (!ce.job) return true;
@@ -2802,15 +2811,22 @@ async function carregarCondicoesEspeciais() {
     const filtroUF     = (document.getElementById('ce-filter-uf')?.value || '').trim().toUpperCase();
     const filtroBroker = (document.getElementById('ce-filter-broker')?.value || '').trim().toLowerCase();
     const listaFiltrada = listaSemSistema.filter(ce => {
-      if (filtro === 'pendente' && !(ce.job && !ce.job.decisao_risco)) return false;
-      if (filtro && filtro !== 'pendente' && !(ce.job && (ce.job.decisao_risco === filtro || (filtro === 'aprovado' && ce.job.decisao_risco === 'aprovado_diferente')))) return false;
+      const drc = ce.job ? ce.job.decisao_risco : null;
+      const aprov = drc === 'aprovado' || drc === 'aprovado_diferente';
+      const _statusFiltros = ['draft_aguardando','draft_confirmado','draft_ativado','reavaliacao','pendente'];
+      if (filtro === 'draft_aguardando' && !(aprov && !ce.corretor_aceitou && !ce.draft_ativado)) return false;
+      else if (filtro === 'draft_confirmado' && !(ce.corretor_aceitou && !ce.draft_ativado)) return false;
+      else if (filtro === 'draft_ativado' && !ce.draft_ativado) return false;
+      else if (filtro === 'reavaliacao' && !ce.reavaliacao_solicitada) return false;
+      else if (filtro === 'pendente' && !(ce.job && !ce.job.decisao_risco)) return false;
+      else if (filtro && !_statusFiltros.includes(filtro) && !(ce.job && (drc === filtro || (filtro === 'aprovado' && drc === 'aprovado_diferente')))) return false;
       if (filtroUF && (ce.uf || '').toUpperCase() !== filtroUF) return false;
       if (filtroBroker && !(ce.broker || '').toLowerCase().includes(filtroBroker)) return false;
       return true;
     });
 
     if (!listaFiltrada.length) {
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada para este filtro.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada para este filtro.</td></tr>';
       return;
     }
     // Prioridades sinalizadas pelos analistas (via localStorage compartilhado)
@@ -2824,9 +2840,10 @@ async function carregarCondicoesEspeciais() {
       const job = ce.job || {};
       const _isPrioridade = prioridades.has(ce.job_id);
       const _aguardaDraft = (job.decisao_risco === 'aprovado' || job.decisao_risco === 'aprovado_diferente') && ce.corretor_aceitou && !ce.draft_ativado;
+      const _reavPend = !!ce.reavaliacao_solicitada;
       const dataChegada = ce.data_chegada || ce.criado_em || '';
       const dataChegadaFmt = dataChegada ? new Date(dataChegada).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
-      return `<tr style="${_isPrioridade ? 'background:#fff7ed;border-left:3px solid #f97316;' : (_aguardaDraft ? 'background:#fffbeb;border-left:3px solid #f59e0b;' : '')}">
+      return `<tr style="${_reavPend ? 'background:#f5f3ff;border-left:3px solid #7c3aed;' : (_isPrioridade ? 'background:#fff7ed;border-left:3px solid #f97316;' : (_aguardaDraft ? 'background:#fffbeb;border-left:3px solid #f59e0b;' : ''))}">
         <td>${job.cultura_desejada || '—'}</td>
         <td>${ce.municipio||'—'}${ce.uf?'/'+ce.uf:''}</td>
         <td>${ce.broker || '—'}</td>
@@ -2838,6 +2855,7 @@ async function carregarCondicoesEspeciais() {
           <button title="Editar data de chegada" onclick="ceEditarDataChegada('${ce.job_id}','${dataChegada}')" class="ce-edit-btn">✏️</button>
         </td>
         <td>${ceTempoResposta(ce)}</td>
+        <td>${ceStatusDraft(ce)}</td>
         <td>
           <div class="ce-acoes-grid">
             <button class="btn-sm btn-green" style="font-size:11px;padding:3px 6px" onclick="baixarJob('${ce.job_id}')">⬇ Baixar</button>
@@ -2848,7 +2866,7 @@ async function carregarCondicoesEspeciais() {
       </tr>`;
     }).join('');
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:40px">Erro ao carregar.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--red);padding:40px">Erro ao carregar.</td></tr>';
   }
 }
 
@@ -3196,12 +3214,70 @@ function renderBtnsCE(ce) {
     }
   }
 
+  // Pedido de reavaliação do corretor (badge + ver detalhes)
+  var blocoReav = '';
+  if (ce.reavaliacao_solicitada) {
+    blocoReav = ' <span style="background:#ede9fe;border:1px solid #c4b5fd;color:#5b21b6;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">🔁 Reavaliação solicitada</span>'
+              + ' <button class="btn-sm" style="background:#7c3aed;color:#fff;font-size:11px;padding:3px 8px" onclick="verReavaliacaoCE(\'' + jobId + '\')">👁 Ver pedido</button>';
+  }
+
   return btnDados +
          ' <button class="btn-sm btn-outline" onclick="verCondicaoEspecial(\'' + jobId + '\')">👁 Ver</button> ' +
          ' <button class="btn-sm" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e" onclick="reavaliarAprovacaoCE(\'' + jobId + '\')">🔄 Reavaliar</button> ' +
          ' ' + btnEmail +
          ' <span style="font-size:12px;font-weight:600;color:' + cor + '">' + label + '</span>' +
+         blocoReav +
          blocoDraft;
+}
+
+// Coluna "Status draft": espelha confirmação do corretor + ativação do draft
+function ceStatusDraft(ce) {
+  var dr = (ce.job && ce.job.decisao_risco) ? ce.job.decisao_risco : null;
+  if (dr !== 'aprovado' && dr !== 'aprovado_diferente') return '<span style="color:var(--gray400);font-size:11px">—</span>';
+  if (ce.draft_ativado)   return '<span style="font-size:11px;font-weight:600;color:#166534">✓ Draft ativado</span>';
+  if (ce.corretor_aceitou) return '<span style="font-size:11px;font-weight:600;color:#92400e">🔔 Cliente confirmou</span>';
+  return '<span style="font-size:11px;color:#b45309">Aguardando corretor</span>';
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function verReavaliacaoCE(jobId) {
+  var ce = (window._ceCache || {})[jobId] || {};
+  var taxa = ce.reav_taxa_sugerida || '—';
+  var prod = ce.reav_prod_sugerida || '—';
+  var just = ce.reav_justificativa || '—';
+  var quando = ce.reavaliacao_em ? new Date(ce.reavaliacao_em).toLocaleString('pt-BR') : '';
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
+  ov.onclick = function(e){ if(e.target===ov) document.body.removeChild(ov); };
+  ov.innerHTML =
+    '<div style="background:#fff;border-radius:12px;max-width:480px;width:100%;overflow:hidden;font-family:inherit">'
+    + '<div style="background:#5b21b6;color:#fff;padding:16px 20px;font-weight:700;font-size:15px">🔁 Pedido de reavaliação' + (quando ? ' <span style="font-weight:400;font-size:12px;opacity:.85">· ' + escHtml(quando) + '</span>' : '') + '</div>'
+    + '<div style="padding:20px;font-size:14px;color:#374151;line-height:1.6">'
+    + '<div style="margin-bottom:12px"><strong>Cliente:</strong> ' + escHtml(ce.cliente || '—') + '</div>'
+    + '<div style="margin-bottom:10px"><strong>Taxa sugerida:</strong> ' + escHtml(taxa) + '</div>'
+    + '<div style="margin-bottom:10px"><strong>Produtividade garantida sugerida (kg/ha):</strong> ' + escHtml(prod) + '</div>'
+    + '<div style="margin-bottom:4px"><strong>Justificativa:</strong></div>'
+    + '<div style="white-space:pre-wrap;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px;font-size:13px">' + escHtml(just) + '</div>'
+    + '</div>'
+    + '<div style="padding:14px 20px;border-top:1px solid #eef2f1;display:flex;gap:8px;justify-content:flex-end">'
+    + '<button class="btn-sm btn-outline" id="reav-close">Fechar</button>'
+    + '<button class="btn-sm" style="background:#7c3aed;color:#fff" id="reav-resolv">✓ Marcar como resolvida</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+  ov.querySelector('#reav-close').onclick = function(){ document.body.removeChild(ov); };
+  ov.querySelector('#reav-resolv').onclick = async function(){
+    try {
+      await api('POST', '/condicoes-especiais/' + jobId + '/reavaliacao-resolvida', {});
+      document.body.removeChild(ov);
+      showToast('Reavaliação marcada como resolvida.', 'success');
+      carregarCondicoesEspeciais();
+    } catch(e){ showToast('Erro: ' + e.message, 'error'); }
+  };
 }
 
 async function ativarDraftCE(jobId) {
