@@ -5814,8 +5814,9 @@ async function verRelatorio(jobId) {
   .ce-chegada-cell { font-size:11px; }
   .ce-edit-btn { background:none;border:none;cursor:pointer;font-size:11px;padding:0 2px;opacity:.6 }
   .ce-edit-btn:hover { opacity:1 }
-  .ce-acoes-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:3px; }
-  .ce-acoes-grid .btn-sm { font-size:10.5px; padding:3px 5px; }
+  .ce-acoes-grid { display:flex; flex-wrap:wrap; gap:4px; align-items:center; min-width:230px; }
+  .ce-acoes-grid > * { white-space:nowrap; flex:0 0 auto; }
+  .ce-acoes-grid .btn-sm { font-size:10.5px; padding:3px 8px; }
   .mc-talhao{border:1px solid var(--g100);border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#fcfefd}
   .mc-talhao-head{font-weight:600;font-size:13px;color:var(--g900);margin-bottom:6px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   .mc-talhao-area{font-size:11px;color:var(--gray600,#475569);font-weight:500}
