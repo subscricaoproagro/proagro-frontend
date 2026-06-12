@@ -3724,6 +3724,10 @@ async function confirmarEndossoReducao() {
   }
   const ratio = areaDepois / areaAntes;
   const premioReplantioAntes = parseBR(document.getElementById('end-premio-replantio-antes').value);
+  // Base da devolução/cobrança = mesma usada na tela: ValorPago - PremioProdutorDepois
+  const _valorPagoProd       = parseBR(document.getElementById('end-valor-pago-antes').value);
+  const _premioProdutorDepois = parseBR(document.getElementById('end-premio-produtor-antes').value) * ratio;
+  const _baseEndosso         = Math.abs(_valorPagoProd - _premioProdutorDepois);
   const body = {
     tipo: 'reducao_area',
     idioma: _endossoIdioma,
@@ -3755,9 +3759,9 @@ async function confirmarEndossoReducao() {
     observacoes:             document.getElementById('end-obs').value.trim(),
     // base: reducao=ValorPago-PremioProdDepois; aumento=PremioProdDepois-ValorPago
     operacao:         areaDepois > areaAntes ? 'cobrar' : 'restituir',
-    restit_basica:    Math.abs(parseBR(document.getElementById('end-valor-pago-antes').value) - premioBasicaAntes * ratio) * 0.8,
-    restit_replantio: Math.abs(parseBR(document.getElementById('end-valor-pago-antes').value) - premioBasicaAntes * ratio) * 0.2,
-    restit_total:     Math.abs(parseBR(document.getElementById('end-valor-pago-antes').value) - premioBasicaAntes * ratio)
+    restit_basica:    _baseEndosso * 0.8,
+    restit_replantio: _baseEndosso * 0.2,
+    restit_total:     _baseEndosso
   };
   const btn = document.getElementById('btn-confirmar-endosso');
   btn.disabled = true;
