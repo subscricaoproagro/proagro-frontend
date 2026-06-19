@@ -788,7 +788,9 @@
           </div>
 
           <div class="mc-grid3" style="margin-top:14px">
+            <div class="form-group"><label class="form-label">Nº da proposta</label><input class="form-input" id="mc-id-proposta" placeholder="Opcional"></div>
             <div class="form-group"><label class="form-label">Proponente</label><input class="form-input" id="mc-proponente" placeholder="Nome do segurado"></div>
+            <div class="form-group"><label class="form-label">CPF/CNPJ</label><input class="form-input" id="mc-cpf" placeholder="Opcional"></div>
             <div class="form-group"><label class="form-label">Cultura</label><input class="form-input" id="mc-cultura" placeholder="Ex.: Soja"></div>
             <div class="form-group"><label class="form-label">Data de semeadura</label><input type="date" class="form-input" id="mc-semeadura"></div>
             <div class="form-group"><label class="form-label">Município</label><input class="form-input" id="mc-municipio" placeholder="Município"></div>
@@ -5877,7 +5879,9 @@ async function mcLerPdf(file){
     const form=new FormData(); form.append('arquivo', file);
     const d=await mcFetch('POST','/monitoramento/extrair-pdf',{form, timeout:95000});
     if(d.erro){ st.className='mc-status err'; st.textContent=d.erro; return; }
+    if(d.id_proposta) document.getElementById('mc-id-proposta').value=d.id_proposta;
     if(d.proponente) document.getElementById('mc-proponente').value=d.proponente;
+    if(d.cpf) document.getElementById('mc-cpf').value=d.cpf;
     if(d.cultura) document.getElementById('mc-cultura').value=d.cultura;
     if(d.data_semeadura) document.getElementById('mc-semeadura').value=d.data_semeadura;
     if(d.municipio) document.getElementById('mc-municipio').value=d.municipio;
@@ -5904,6 +5908,8 @@ async function mcCriarCard(){
   try{
     const form=new FormData();
     form.append('proponente', proponente);
+    form.append('id_proposta', document.getElementById('mc-id-proposta').value.trim());
+    form.append('cpf', document.getElementById('mc-cpf').value.trim());
     form.append('cultura', document.getElementById('mc-cultura').value.trim());
     form.append('data_semeadura', document.getElementById('mc-semeadura').value);
     form.append('municipio', document.getElementById('mc-municipio').value.trim());
@@ -5913,7 +5919,7 @@ async function mcCriarCard(){
     form.append('kml', _mcKmlFile);
     const row=await mcFetch('POST','/monitoramento/criar',{form, timeout:60000});
     // limpa o formulário
-    ['mc-proponente','mc-cultura','mc-semeadura','mc-municipio','mc-uf','mc-area','mc-obs'].forEach(id=>document.getElementById(id).value='');
+    ['mc-id-proposta','mc-proponente','mc-cpf','mc-cultura','mc-semeadura','mc-municipio','mc-uf','mc-area','mc-obs'].forEach(id=>document.getElementById(id).value='');
     _mcKmlFile=null;
     document.getElementById('mc-kml-label').textContent='Clique para selecionar o KML';
     document.getElementById('mc-kml-drop').classList.remove('filled');
