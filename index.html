@@ -798,7 +798,7 @@
           <div class="form-group"><label class="form-label">Observações</label><input class="form-input" id="mc-obs" placeholder="Opcional"></div>
 
           <div id="mc-form-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:10px"></div>
-          <button class="btn-sm btn-green" id="mc-btn-criar" onclick="mcCriarCard()">Criar card de monitoramento</button>
+          <button class="btn-sm btn-green" id="mc-btn-criar" onclick="mcCriarCard()">Adicionar e gerar relatório</button>
         </div>
       </div>
 
@@ -5833,12 +5833,8 @@ function abrirMonitoramento(){
   document.querySelectorAll('.topbar-btn').forEach(b=>b.classList.remove('active'));
   const b=document.getElementById('monitoramento-btn'); if(b) b.classList.add('active');
   mcCarregarLista();
-  // Revalida sozinho a cada 30 min enquanto a janela estiver aberta (sem clicar)
+  // (auto-revalidação de NDVI removida — o fluxo agora é geração de relatório sob demanda)
   if(window._mcInterval) clearInterval(window._mcInterval);
-  window._mcInterval = setInterval(()=>{
-    const pg=document.getElementById('page-monitoramento');
-    if(pg && pg.classList.contains('active')) mcRevalidar();
-  }, 30*60*1000);
 }
 
 // fetch dedicado (timeout maior — NDVI pode demorar)
@@ -5924,9 +5920,9 @@ async function mcCriarCard(){
     document.getElementById('mc-pdf-label').textContent='Clique para enviar o PDF e ler os dados automaticamente';
     document.getElementById('mc-pdf-drop').classList.remove('filled');
     document.getElementById('mc-pdf-status').textContent='';
-    if(typeof showToast==='function') showToast('Card criado! Calculando NDVI e clima…','success');
+    if(typeof showToast==='function') showToast('Proposta adicionada! Gerando relatório…','success');
     await mcCarregarLista();
-    // o card novo entra como "desatualizado" e é calculado automaticamente pela mcCarregarLista
+    if(row && row.id) mcGerarRelatorio(row.id);
   }catch(e){ err.textContent='Erro: '+e.message; err.style.display='block'; }
   finally{ btn.disabled=false; btn.textContent=txt; }
 }
@@ -5943,10 +5939,7 @@ async function mcCarregarLista(){
     if(!rows.length){ wrap.innerHTML='<div class="mc-empty">Nenhuma proposta monitorada ainda.</div>'; return; }
     wrap.innerHTML='';
     rows.forEach(r=>wrap.insertAdjacentHTML('beforeend', mcCardHtml(r)));
-    await mcEnsureChart().catch(()=>{});
-    rows.forEach(r=>{ if(_mcTemSerie(r)) mcRenderTalhoes(r.id, r.poligonos); });
-    // Atualização automática em segundo plano — sem o usuário clicar em nada
-    mcAutoAtualizar(rows);
+    rows.forEach(r=>mcRenderRelatorio(r));
   }catch(e){ wrap.innerHTML='<div class="mc-empty">Erro ao carregar: '+e.message+'</div>'; }
 }
 
@@ -5965,14 +5958,83 @@ function mcCardHtml(r){
       <div class="mc-card-title">${_mcEsc(r.proponente)||'Proposta'}</div>
       <div class="mc-card-meta">${meta.join('')||'<span style="color:#94a3b8">Sem metadados</span>'}</div>
     </div>
-    <div class="mc-card-body" id="mc-talhoes-${r.id}">
-      <div class="mc-warn">Carregando talhões…</div>
+    <div class="mc-card-body" id="mc-rel-${r.id}" style="padding:10px 0">
+      <div class="mc-warn">…</div>
     </div>
     <div class="mc-card-foot">
-      <button class="btn-sm btn-outline" onclick="mcAtualizarSerie('${r.id}')" title="A atualização já é automática; use só se quiser forçar agora">↻ Forçar atualização</button>
       <button class="btn-sm btn-outline" style="color:var(--red);border-color:#fecaca" onclick="mcDeletar('${r.id}')">Excluir</button>
     </div>
   </div>`;
+}
+
+// ===== Monitoramento → Relatório PDF (GEE) =====
+var _mcPolls = {};
+
+function mcRenderRelatorio(r){
+  const cont=document.getElementById('mc-rel-'+r.id);
+  if(!cont) return;
+  const st=r.relatorio_status;
+  if(st==='concluido' && r.relatorio_path){
+    cont.innerHTML=`<div style="color:#15803d;font-size:13px;margin-bottom:8px">✓ Relatório pronto</div>`
+      +`<div style="display:flex;gap:8px;flex-wrap:wrap">`
+      +`<button class="btn-sm btn-green" onclick="mcBaixarRelatorio('${r.id}')">⬇ Baixar relatório (PDF)</button>`
+      +`<button class="btn-sm btn-outline" onclick="mcGerarRelatorio('${r.id}')">Gerar novamente</button></div>`;
+  } else if(st==='processando'){
+    cont.innerHTML=`<div style="color:#2563eb;font-size:13px;padding:4px 0">⏳ Gerando relatório… isso pode levar alguns minutos.</div>`;
+    mcPollRelatorio(r.id);
+  } else if(st==='erro'){
+    cont.innerHTML=`<div style="color:#dc2626;font-size:13px;margin-bottom:6px">Falha ao gerar o relatório.</div>`
+      +`<pre style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px;font-size:11px;max-height:140px;overflow:auto;white-space:pre-wrap">${_mcEsc(r.relatorio_log||'')}</pre>`
+      +`<button class="btn-sm btn-green" onclick="mcGerarRelatorio('${r.id}')">Tentar novamente</button>`;
+  } else {
+    cont.innerHTML=`<button class="btn-sm btn-green" onclick="mcGerarRelatorio('${r.id}')">Gerar relatório (PDF)</button>`;
+  }
+}
+
+async function mcGerarRelatorio(id){
+  const cont=document.getElementById('mc-rel-'+id);
+  if(cont) cont.innerHTML=`<div style="color:#2563eb;font-size:13px;padding:4px 0">⏳ Iniciando…</div>`;
+  try{
+    await mcFetch('POST',`/monitoramento/${id}/gerar-relatorio`,{timeout:30000});
+    if(cont) cont.innerHTML=`<div style="color:#2563eb;font-size:13px;padding:4px 0">⏳ Gerando relatório… isso pode levar alguns minutos.</div>`;
+    mcPollRelatorio(id);
+  }catch(e){
+    if(cont) cont.innerHTML=`<div style="color:#dc2626;font-size:13px;margin-bottom:6px">Erro: ${_mcEsc(e.message)}</div>`
+      +`<button class="btn-sm btn-green" onclick="mcGerarRelatorio('${id}')">Tentar novamente</button>`;
+  }
+}
+
+function mcPollRelatorio(id){
+  if(_mcPolls[id]) return;
+  let tries=0;
+  _mcPolls[id]=setInterval(async()=>{
+    tries++;
+    try{
+      const d=await mcFetch('GET',`/monitoramento/${id}/relatorio-status`,{timeout:20000});
+      if(d.status==='concluido'){
+        clearInterval(_mcPolls[id]); delete _mcPolls[id];
+        mcRenderRelatorio({id:id, relatorio_status:'concluido', relatorio_path:true});
+      } else if(d.status==='erro'){
+        clearInterval(_mcPolls[id]); delete _mcPolls[id];
+        mcRenderRelatorio({id:id, relatorio_status:'erro', relatorio_log:d.log});
+      }
+    }catch(e){}
+    if(tries>=60){ clearInterval(_mcPolls[id]); delete _mcPolls[id]; }
+  }, 6000);
+}
+
+async function mcBaixarRelatorio(id){
+  try{
+    const res=await fetch(`${BACKEND_URL}/monitoramento/${id}/relatorio`,{
+      headers:{'Authorization':'Bearer '+TOKEN,'ngrok-skip-browser-warning':'true'}
+    });
+    if(!res.ok){ const e=await res.json().catch(()=>({detail:res.statusText})); throw new Error(e.detail||'Erro'); }
+    const blob=await res.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='relatorio.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+  }catch(e){ if(typeof showToast==='function') showToast('Erro ao baixar: '+e.message,'error'); }
 }
 
 // Monta os blocos de cada talhão (polígono) dentro do card e desenha os gráficos
