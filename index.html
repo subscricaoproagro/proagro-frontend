@@ -1363,6 +1363,7 @@ async function carregarJobs() {
       try {
         const ces = await api('GET', '/condicoes-especiais');
         _ceJobIds = new Set(ces.filter(ce => ce.cliente || ce.municipio).map(ce => ce.job_id));
+        ces.forEach(ce => { if (ce.job_id && ce.email_corretora) _ceEmailByJob[ce.job_id] = ce.email_corretora; });
       } catch(e) {}
     }
     const jobs = await api('GET', '/jobs');
@@ -1711,6 +1712,7 @@ async function carregarStats() {
 
         // Atualiza _ceJobIds com dados frescos
         _ceJobIds = new Set(ces.filter(ce => ce.cliente || ce.municipio).map(ce => ce.job_id));
+        ces.forEach(ce => { if (ce.job_id && ce.email_corretora) _ceEmailByJob[ce.job_id] = ce.email_corretora; });
 
         const agora = new Date();
         const inicioSemana = new Date(agora);
@@ -2075,6 +2077,8 @@ function abrirDecisao(jobId, tipo) {
   const errEl = document.getElementById('modal-decisao-error');
   errEl.style.display = 'none';
   document.getElementById('modal-justificativa').value = '';
+  document.getElementById('modal-corretor-email').value = '';
+  document.getElementById('modal-corretor-wrap').style.display = 'none';
 
   const title = document.getElementById('modal-decisao-title');
   const info = document.getElementById('modal-decisao-info');
@@ -2105,6 +2109,10 @@ function abrirDecisao(jobId, tipo) {
     justWrap.style.display = 'block';
     document.getElementById('modal-justificativa').placeholder = 'Descreva o motivo da recusa...';
     document.getElementById('modal-justificativa-label').textContent = 'Motivo da recusa *';
+    // Campo do corretor: pré-carrega se houver e-mail conhecido (da CE), senão fica em branco para preenchimento manual
+    const corretorWrap = document.getElementById('modal-corretor-wrap');
+    corretorWrap.style.display = 'block';
+    document.getElementById('modal-corretor-email').value = _ceEmailByJob[jobId] || '';
     btnConfirmar.style.background = '#fff5f5';
     btnConfirmar.style.color = 'var(--red)';
     btnConfirmar.style.border = '1px solid #fecaca';
@@ -2187,11 +2195,17 @@ async function confirmarUploadSistema() {
 
 async function confirmarDecisao() {
   const justificativa = document.getElementById('modal-justificativa').value.trim();
+  const emailCorretor = document.getElementById('modal-corretor-email').value.trim();
   const errEl = document.getElementById('modal-decisao-error');
   errEl.style.display = 'none';
 
   if (_decisaoTipo === 'recusado' && !justificativa) {
     errEl.textContent = 'Informe o motivo da recusa.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (_decisaoTipo === 'recusado' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailCorretor)) {
+    errEl.textContent = 'Informe um e-mail de corretor válido.';
     errEl.style.display = 'block';
     return;
   }
@@ -2204,7 +2218,8 @@ async function confirmarDecisao() {
   try {
     await api('POST', '/jobs/' + _decisaoJobId + '/decisao', {
       decisao: _decisaoTipo,
-      justificativa: justificativa
+      justificativa: justificativa,
+      email_corretor: _decisaoTipo === 'recusado' ? emailCorretor : ''
     });
     closeModal('modal-decisao');
     showToast('Proposta ' + (_decisaoTipo === 'aprovado' ? 'aprovada' : 'recusada') + ' com sucesso!', _decisaoTipo === 'aprovado' ? 'success' : 'warning');
@@ -2301,6 +2316,7 @@ function setStatus(itemId, status) {
 // ══════════════════════════════════════════
 let _ceJobId = null;
 let _ceJobIds = new Set(); // job_ids que já têm CE salva
+let _ceEmailByJob = {}; // job_id -> email do corretor (da CE), para pré-carregar no modal de recusa
 
 function abrirTipoAnalise(jobId) {
   _ceJobId = jobId;
@@ -4828,6 +4844,13 @@ function _gerarXlsx(ce, job) {
         <div class="form-group">
           <label class="form-label" id="modal-justificativa-label">Observações</label>
           <textarea class="form-input" id="modal-justificativa" rows="4" placeholder="Observações (opcional)..." style="resize:vertical"></textarea>
+        </div>
+      </div>
+      <div id="modal-corretor-wrap" style="display:none">
+        <div class="form-group">
+          <label class="form-label" id="modal-corretor-label">E-mail do corretor *</label>
+          <input type="email" class="form-input" id="modal-corretor-email" placeholder="corretor@exemplo.com.br" autocomplete="off">
+          <div style="font-size:11px;color:var(--gray400);margin-top:4px">Receberá cópia (Cc) do e-mail de recusa.</div>
         </div>
       </div>
       <div id="modal-decisao-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px"></div>
