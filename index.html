@@ -5209,13 +5209,35 @@ async function abrirModalSobreposicoes(jobId) {
     const legendaHtml = `
       <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:12px;color:#4b5563;margin-bottom:10px;padding:8px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px">
         <span><span style="display:inline-block;width:12px;height:12px;border:2px solid #2563eb;border-radius:2px;vertical-align:middle"></span> Limite do polígono do cliente</span>
+        <span><span style="display:inline-block;width:12px;height:12px;border:2px dashed #6b7280;border-radius:2px;vertical-align:middle"></span> Divisa de município</span>
         <span>🟢 Sem restrição / ativo</span>
         <span>🟡 Atenção / pendente</span>
         <span>🔴 Crítico / cancelado / desmatamento</span>
         <span style="color:#9ca3af">Use o controle no canto superior direito do mapa pra ligar/desligar cada camada</span>
       </div>`;
 
-    body.innerHTML = tabelaHtml + legendaHtml + `<div id="mapa-sobreposicoes" style="height:480px;border-radius:8px;border:1px solid #d1d5db"></div>`;
+    const municipios = dados.municipios || [];
+    let municipiosHtml = '';
+    if (municipios.length) {
+      municipiosHtml = `<div style="border:1px solid #d1d5db;border-radius:6px;overflow:hidden;margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:70px 1fr 120px 90px;background:#4b5563;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">
+          <div style="padding:8px 10px">Polígono</div>
+          <div style="padding:8px 10px">Município</div>
+          <div style="padding:8px 10px">Geocódigo IBGE</div>
+          <div style="padding:8px 10px">%</div>
+        </div>
+        ${municipios.map((m, i) => `
+          <div style="display:grid;grid-template-columns:70px 1fr 120px 90px;background:${i % 2 ? '#fff' : '#f9fafb'};border-top:1px solid #e5e7eb;font-size:12.5px">
+            <div style="padding:8px 10px;font-weight:600">${m.poligono}</div>
+            <div style="padding:8px 10px">🏙️ ${m.municipio}</div>
+            <div style="padding:8px 10px;color:#6b7280">${m.geocodigo || '—'}</div>
+            <div style="padding:8px 10px">${m.percentual.toFixed(2)}%</div>
+          </div>
+        `).join('')}
+      </div>`;
+    }
+
+    body.innerHTML = tabelaHtml + municipiosHtml + legendaHtml + `<div id="mapa-sobreposicoes" style="height:480px;border-radius:8px;border:1px solid #d1d5db"></div>`;
 
     await _carregarLeaflet();
     renderizarMapaSobreposicoes(dados);
@@ -5245,6 +5267,7 @@ function renderizarMapaSobreposicoes(dados) {
 
   const grupoLimites = L.featureGroup(); // usado só pra calcular o fitBounds
   const camadaCliente = L.layerGroup().addTo(map);
+  const camadaMunicipios = L.layerGroup().addTo(map);
   const camadasPorNome = {}; // nome da camada → L.layerGroup
 
   function getGrupoCamada(nome) {
@@ -5259,6 +5282,16 @@ function renderizarMapaSobreposicoes(dados) {
     const layer = L.geoJSON(p.geometria, { style: { color: '#2563eb', weight: 3, fillOpacity: 0.05 } })
       .bindTooltip(`Polígono ${p.id} — ${p.area_ha} ha`, { sticky: true });
     layer.addTo(camadaCliente);
+    grupoLimites.addLayer(layer);
+  });
+
+  // Municípios abrangidos — contorno cinza tracejado, só para confirmação visual
+  (dados.municipios || []).forEach(m => {
+    if (!m.geometria) return;
+    const layer = L.geoJSON(m.geometria, {
+      style: { color: '#6b7280', weight: 2, dashArray: '6,4', fillColor: '#6b7280', fillOpacity: 0.06 }
+    }).bindTooltip(`🏙️ ${m.municipio} — Polígono ${m.poligono} (${m.percentual}%)`, { sticky: true });
+    layer.addTo(camadaMunicipios);
     grupoLimites.addLayer(layer);
   });
 
@@ -5284,7 +5317,7 @@ function renderizarMapaSobreposicoes(dados) {
   });
 
   // Controle de camadas — permite ligar/desligar cada uma individualmente
-  const overlays = { '📍 Polígono do Cliente': camadaCliente };
+  const overlays = { '📍 Polígono do Cliente': camadaCliente, '🏙️ Municípios': camadaMunicipios };
   Object.keys(camadasPorNome).forEach(nome => {
     overlays[`${CAMADA_LABEL[nome] || nome}`] = camadasPorNome[nome];
   });
