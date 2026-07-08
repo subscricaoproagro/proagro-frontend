@@ -1458,6 +1458,7 @@ function renderJobsTable(jobs) {
         <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
           <button class="btn-sm btn-outline" onclick="verJob('${j.id}')">Detalhes</button>
           ${concluido ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${j.id}')" title="Visualizar relatório completo">📄 Ver</button>` : ''}
+          ${concluido ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8" onclick="abrirModalSobreposicoes('${j.id}')" title="Ver sobreposições em mapa (CAR, PRODES, CNFP, INCRA)">🗺️ Sobreposições</button>` : ''}
           ${concluido ? `<button class="btn-sm btn-green" onclick="baixarJob('${j.id}')">⬇ Baixar</button>` : ''}
 
           ${concluido && (j.tipo_analise==='condicao_especial' || _histAba==='ce') && !j.decisao && !j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirEdicaoCE('${j.id}', '${(j.nome_proponente||'').replace(/'/g,"\\'")}', '${(j.cpf||'').replace(/'/g,"\\'")}')">📋 Preencher CE</button>` : ''}
@@ -4888,27 +4889,33 @@ function _gerarXlsx(ce, job) {
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <div id="relatorio-loading" style="display:none;font-size:12px;color:var(--gray400)">⏳ Carregando…</div>
-        <button class="btn-sm btn-outline" id="btn-toggle-sobreposicoes" onclick="toggleSobreposicoes()" style="display:none">🗺️ Ver Sobreposições</button>
         <button class="modal-close" onclick="closeModal('modal-relatorio')">✕</button>
       </div>
     </div>
     <div class="modal-body" id="relatorio-body" style="padding:24px;background:#fff;padding-bottom:100px">
       <div style="text-align:center;padding:40px;color:var(--gray400)">Carregando relatório…</div>
     </div>
-    <div id="sobreposicoes-panel" style="display:none;border-top:2px solid #1e5c2e;background:#f9fafb;padding:20px 24px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div style="font-size:14px;font-weight:700;color:#1e5c2e">🗺️ Sobreposições identificadas — dispensa conferência no QGIS</div>
-        <button class="btn-sm btn-outline" onclick="toggleSobreposicoes()">Fechar ✕</button>
-      </div>
-      <div id="sobreposicoes-conteudo">
-        <div style="text-align:center;padding:24px;color:var(--gray400)">⏳ Carregando sobreposições…</div>
-      </div>
-    </div>
     <!-- Rodapé fixo com decisão -->
     <div id="relatorio-footer" style="display:none;position:sticky;bottom:0;background:#fff;border-top:2px solid #e5e7eb;padding:14px 24px;display:flex;gap:10px;align-items:center;z-index:10">
       <div style="flex:1;font-size:13px;color:var(--gray600)" id="relatorio-decisao-info"></div>
       <button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;padding:10px 20px;font-size:14px" id="btn-relatorio-aprovar" onclick="decisaoRelatorio('aprovado')">✅ Aprovar</button>
       <button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b;padding:10px 20px;font-size:14px" id="btn-relatorio-recusar" onclick="decisaoRelatorio('recusado')">❌ Recusar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Sobreposições (mapa + tabela) — independente do relatório -->
+<div class="modal-overlay" id="modal-sobreposicoes" style="align-items:flex-start;padding:20px;overflow-y:auto">
+  <div class="modal" style="max-width:1040px;margin:auto;width:100%">
+    <div class="modal-header" style="position:sticky;top:0;background:var(--white);z-index:10;border-bottom:2px solid #1d4ed8">
+      <div>
+        <div class="modal-title" style="color:#1d4ed8">🗺️ Sobreposições identificadas</div>
+        <div style="font-size:12px;color:var(--gray400);margin-top:2px" id="sobreposicoes-modal-subtitulo">Dispensa conferência manual no QGIS</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-sobreposicoes')">✕</button>
+    </div>
+    <div class="modal-body" id="sobreposicoes-modal-body" style="padding:20px 24px;background:#fff">
+      <div style="text-align:center;padding:40px;color:var(--gray400)">⏳ Carregando sobreposições…</div>
     </div>
   </div>
 </div>
@@ -4972,13 +4979,6 @@ async function verRelatorio(jobId) {
   document.getElementById('relatorio-subtitulo').textContent = 'Carregando…';
   document.getElementById('relatorio-body').innerHTML =
     '<div style="text-align:center;padding:60px;color:var(--gray400)">⏳ Carregando relatório…</div>';
-
-  // Reseta o painel de sobreposições a cada abertura
-  document.getElementById('sobreposicoes-panel').style.display = 'none';
-  document.getElementById('sobreposicoes-conteudo').innerHTML =
-    '<div style="text-align:center;padding:24px;color:var(--gray400)">⏳ Carregando sobreposições…</div>';
-  _sobreposicoesCarregadas = false;
-  document.getElementById('btn-toggle-sobreposicoes').style.display = '';
 
   let _relatorioJobId = jobId;
 
@@ -5100,10 +5100,16 @@ async function verRelatorio(jobId) {
 
 // ══════════════════════════════════════════
 // SOBREPOSIÇÕES (tabela + mapa) — substitui conferência manual no QGIS
+// Modal independente, acionado direto da lista do histórico.
 // ══════════════════════════════════════════
-let _sobreposicoesCarregadas = false;
 let _mapaSobreposicoesLeaflet = null;
 const SEMAFORO_COR = { '🔴': '#dc2626', '🟡': '#d97706', '🟢': '#16a34a', '⚪': '#6b7280' };
+const CAMADA_LABEL = {
+  'CAR': 'CAR',
+  'CNFP (Floresta Pública)': 'CNFP',
+  'Assentamento INCRA': 'Assentamento INCRA',
+  'PRODES (Desmatamento)': 'PRODES',
+};
 
 function _carregarLeaflet() {
   return new Promise((resolve, reject) => {
@@ -5120,22 +5126,16 @@ function _carregarLeaflet() {
   });
 }
 
-async function toggleSobreposicoes() {
-  const painel = document.getElementById('sobreposicoes-panel');
-  const abrindo = painel.style.display === 'none';
-  painel.style.display = abrindo ? 'block' : 'none';
-  if (abrindo && !_sobreposicoesCarregadas) {
-    await carregarSobreposicoes(_relatorioJobIdGlobal);
-  } else if (abrindo && _mapaSobreposicoesLeaflet) {
-    setTimeout(() => _mapaSobreposicoesLeaflet.invalidateSize(), 50);
-  }
-}
+async function abrirModalSobreposicoes(jobId) {
+  openModal('modal-sobreposicoes');
+  const body = document.getElementById('sobreposicoes-modal-body');
+  body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray400)">⏳ Carregando sobreposições…</div>';
 
-async function carregarSobreposicoes(jobId) {
-  const container = document.getElementById('sobreposicoes-conteudo');
   try {
     const dados = await api('GET', `/jobs/${jobId}/sobreposicoes`);
-    _sobreposicoesCarregadas = true;
+
+    document.getElementById('sobreposicoes-modal-subtitulo').textContent =
+      `${dados.cliente?.nome_proponente || ''} · Proposta ${dados.cliente?.id_proposta || ''} · dispensa conferência manual no QGIS`;
 
     const linhasVetoriais = dados.sobreposicoes || [];
     const linhasRaster = dados.rasters || [];
@@ -5152,7 +5152,7 @@ async function carregarSobreposicoes(jobId) {
         ...linhasRaster.map(o => ({ ...o, percTexto: '—' })),
       ];
       tabelaHtml = `<div style="border:1px solid #d1d5db;border-radius:6px;overflow:hidden;margin-bottom:16px">
-        <div style="display:grid;grid-template-columns:70px 1fr 90px 1.4fr;background:#1e5c2e;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">
+        <div style="display:grid;grid-template-columns:70px 1fr 90px 1.4fr;background:#1d4ed8;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">
           <div style="padding:8px 10px">Polígono</div>
           <div style="padding:8px 10px">Camada</div>
           <div style="padding:8px 10px">%</div>
@@ -5169,19 +5169,27 @@ async function carregarSobreposicoes(jobId) {
       </div>`;
     }
 
-    container.innerHTML = tabelaHtml + `<div id="mapa-sobreposicoes" style="height:420px;border-radius:8px;border:1px solid #d1d5db"></div>`;
+    const legendaHtml = `
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:12px;color:#4b5563;margin-bottom:10px;padding:8px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px">
+        <span><span style="display:inline-block;width:12px;height:12px;border:2px solid #2563eb;border-radius:2px;vertical-align:middle"></span> Limite do polígono do cliente</span>
+        <span>🟢 Sem restrição / ativo</span>
+        <span>🟡 Atenção / pendente</span>
+        <span>🔴 Crítico / cancelado / desmatamento</span>
+        <span style="color:#9ca3af">Use o controle no canto superior direito do mapa pra ligar/desligar cada camada</span>
+      </div>`;
+
+    body.innerHTML = tabelaHtml + legendaHtml + `<div id="mapa-sobreposicoes" style="height:480px;border-radius:8px;border:1px solid #d1d5db"></div>`;
 
     await _carregarLeaflet();
     renderizarMapaSobreposicoes(dados);
 
   } catch(e) {
     if (String(e.message || '').includes('não disponível')) {
-      container.innerHTML = `<div style="padding:14px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;color:var(--gray600);font-size:13px">
-        ℹ️ Mapa de sobreposições ainda não disponível para esta proposta (relatório gerado antes desta funcionalidade, ou é necessário reprocessar).
+      body.innerHTML = `<div style="padding:14px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;color:var(--gray600);font-size:13px">
+        ℹ️ Mapa de sobreposições ainda não disponível para esta proposta (relatório gerado antes desta funcionalidade, ou é necessário reprocessar / rodar o backfill).
       </div>`;
-      _sobreposicoesCarregadas = true;
     } else {
-      container.innerHTML = `<div style="color:var(--red);padding:14px;font-size:13px">❌ Erro ao carregar sobreposições: ${e.message}</div>`;
+      body.innerHTML = `<div style="color:var(--red);padding:14px;font-size:13px">❌ Erro ao carregar sobreposições: ${e.message}</div>`;
     }
   }
 }
@@ -5198,22 +5206,33 @@ function renderizarMapaSobreposicoes(dados) {
     maxZoom: 19
   }).addTo(map);
 
-  const grupoLimites = L.featureGroup().addTo(map);
+  const grupoLimites = L.featureGroup(); // usado só pra calcular o fitBounds
+  const camadaCliente = L.layerGroup().addTo(map);
+  const camadasPorNome = {}; // nome da camada → L.layerGroup
 
-  // Polígonos do cliente — contorno azul
+  function getGrupoCamada(nome) {
+    if (!camadasPorNome[nome]) {
+      camadasPorNome[nome] = L.layerGroup().addTo(map);
+    }
+    return camadasPorNome[nome];
+  }
+
+  // Polígonos do cliente — contorno azul, sempre visível
   (dados.poligonos || []).forEach(p => {
-    L.geoJSON(p.geometria, { style: { color: '#2563eb', weight: 3, fillOpacity: 0.05 } })
-      .bindTooltip(`Polígono ${p.id} — ${p.area_ha} ha`, { sticky: true })
-      .addTo(grupoLimites);
+    const layer = L.geoJSON(p.geometria, { style: { color: '#2563eb', weight: 3, fillOpacity: 0.05 } })
+      .bindTooltip(`Polígono ${p.id} — ${p.area_ha} ha`, { sticky: true });
+    layer.addTo(camadaCliente);
+    grupoLimites.addLayer(layer);
   });
 
-  // Camadas vetoriais com ocorrência — cor conforme semáforo
+  // Camadas vetoriais com ocorrência — agrupadas por camada, cor conforme semáforo
   (dados.sobreposicoes || []).forEach(s => {
     if (!s.geometria) return;
     const cor = SEMAFORO_COR[s.semaforo] || '#dc2626';
-    L.geoJSON(s.geometria, { style: { color: cor, weight: 2, fillColor: cor, fillOpacity: 0.35 } })
-      .bindTooltip(`${s.camada} — Polígono ${s.poligono}${s.percentual != null ? ' (' + s.percentual + '%)' : ''}`, { sticky: true })
-      .addTo(grupoLimites);
+    const layer = L.geoJSON(s.geometria, { style: { color: cor, weight: 2, fillColor: cor, fillOpacity: 0.35 } })
+      .bindTooltip(`${s.camada} — Polígono ${s.poligono}${s.percentual != null ? ' (' + s.percentual + '%)' : ''}`, { sticky: true });
+    layer.addTo(getGrupoCamada(s.camada));
+    grupoLimites.addLayer(layer);
   });
 
   // Camadas raster georreferenciadas (ex.: PRODES) — imagem sobreposta ao mapa
@@ -5221,11 +5240,18 @@ function renderizarMapaSobreposicoes(dados) {
     if (!r.imagem_b64 || !r.bounds) return;
     const [minx, miny, maxx, maxy] = r.bounds;
     const bounds = [[miny, minx], [maxy, maxx]];
-    L.imageOverlay(`data:image/png;base64,${r.imagem_b64}`, bounds, { opacity: 0.85 })
-      .bindTooltip(`${r.camada} — Polígono ${r.poligono}`)
-      .addTo(map);
+    const layer = L.imageOverlay(`data:image/png;base64,${r.imagem_b64}`, bounds, { opacity: 0.85 })
+      .bindTooltip(`${r.camada} — Polígono ${r.poligono}`);
+    layer.addTo(getGrupoCamada(r.camada));
     grupoLimites.addLayer(L.rectangle(bounds, { color: 'transparent', weight: 0, fillOpacity: 0 }));
   });
+
+  // Controle de camadas — permite ligar/desligar cada uma individualmente
+  const overlays = { '📍 Polígono do Cliente': camadaCliente };
+  Object.keys(camadasPorNome).forEach(nome => {
+    overlays[`${CAMADA_LABEL[nome] || nome}`] = camadasPorNome[nome];
+  });
+  L.control.layers(null, overlays, { collapsed: false, position: 'topright' }).addTo(map);
 
   if (grupoLimites.getLayers().length) {
     map.fitBounds(grupoLimites.getBounds(), { padding: [20, 20] });
