@@ -508,6 +508,7 @@
           <div class="section-sub">Todos os jobs executados</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input class="form-input" id="hist-filter-proposta" placeholder="Nº da proposta" style="width:140px;padding:8px 12px" oninput="filtrarHistoricoLocal()">
           <select class="form-input" id="hist-filter" style="width:auto;padding:8px 12px" onchange="carregarJobs()">
             <option value="">Todos</option>
             <option value="aguardando">⏳ Aguardando processamento</option>
@@ -1368,23 +1369,9 @@ async function carregarJobs() {
     }
     const jobs = await api('GET', '/jobs');
     _jobsCache = jobs;
-    const filter = document.getElementById('hist-filter')?.value || '';
-
-    // Filtra por aba (Sistema / CE) para analista e admin
-    let filtered = jobs;
-    const mostrarAbas = document.getElementById('hist-abas')?.style.display !== 'none';
-    if (mostrarAbas) {
-      const isSistema = j => j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '';
-      const isCE      = j => !j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '';
-      if (_histAba === 'sistema') {
-        filtered = jobs.filter(isSistema);
-      } else {
-        filtered = jobs.filter(isCE);
-      }
-    }
+    allJobs = jobs;
 
     // Atualiza contadores
-    allJobs = jobs;
     const setCount = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
     setCount('hcount-aguardando',  allJobs.filter(j => j.status === 'aguardando').length);
     setCount('hcount-processando', allJobs.filter(j => j.status === 'processando').length);
@@ -1411,27 +1398,57 @@ async function carregarJobs() {
       if (elHB) elHB.textContent = `base: ${_concluidos.length} análise${_concluidos.length>1?'s':''}`;
     } else if (elHM) { elHM.textContent='—'; if(elHB) elHB.textContent='sem dados'; }
 
-    // Aplica filtro por status
-    if (filter) filtered = filtered.filter(j => {
-      if (filter === 'aguardando')     return j.status === 'aguardando';
-      if (filter === 'processando')    return j.status === 'processando';
-      if (filter === 'aguardando_analise') return j.status === 'concluido' && !j.decisao && !j.decisao_risco;
-      if (filter === 'concluido_simples') {
-        const isSistema = j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '';
-        if (isSistema) return j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco;
-        return j.status === 'concluido' && _ceJobIds.has(j.id) && !j.decisao_risco;
-      }
-      if (filter === 'ce_aprovada')    return j.status === 'concluido' && (j.decisao_risco === 'aprovado' || j.decisao_risco === 'aprovado_diferente');
-      if (filter === 'balcao')         return j.status === 'concluido' && j.decisao_risco === 'balcao';
-      if (filter === 'recusada')       return j.status === 'concluido' && j.decisao === 'recusado';
-      if (filter === 'erro')           return j.status === 'erro' || j.status === 'cancelado';
-      return j.status === filter;
-    });
-    renderJobsTable(filtered);
+    renderJobsTable(_computarJobsFiltrados());
     renderRecentJobs(jobs.slice(0,4));
   } catch(e) {
     console.warn('Erro ao carregar jobs:', e.message);
   }
+}
+
+// Recalcula os filtros (aba, status, nº da proposta) em cima do cache já
+// carregado — usado pelo campo de busca por proposta, sem bater na API a
+// cada tecla digitada.
+function _computarJobsFiltrados() {
+  const jobs = allJobs || [];
+  const filter = document.getElementById('hist-filter')?.value || '';
+  const filtroProposta = (document.getElementById('hist-filter-proposta')?.value || '').trim().toLowerCase();
+
+  let filtered = jobs;
+  const mostrarAbas = document.getElementById('hist-abas')?.style.display !== 'none';
+  if (mostrarAbas) {
+    const isSistema = j => j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '';
+    const isCE      = j => !j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '';
+    filtered = _histAba === 'sistema' ? jobs.filter(isSistema) : jobs.filter(isCE);
+  }
+
+  if (filter) filtered = filtered.filter(j => {
+    if (filter === 'aguardando')     return j.status === 'aguardando';
+    if (filter === 'processando')    return j.status === 'processando';
+    if (filter === 'aguardando_analise') return j.status === 'concluido' && !j.decisao && !j.decisao_risco;
+    if (filter === 'concluido_simples') {
+      const isSistema = j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '';
+      if (isSistema) return j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco;
+      return j.status === 'concluido' && _ceJobIds.has(j.id) && !j.decisao_risco;
+    }
+    if (filter === 'ce_aprovada')    return j.status === 'concluido' && (j.decisao_risco === 'aprovado' || j.decisao_risco === 'aprovado_diferente');
+    if (filter === 'balcao')         return j.status === 'concluido' && j.decisao_risco === 'balcao';
+    if (filter === 'recusada')       return j.status === 'concluido' && j.decisao === 'recusado';
+    if (filter === 'erro')           return j.status === 'erro' || j.status === 'cancelado';
+    return j.status === filter;
+  });
+
+  if (filtroProposta) {
+    filtered = filtered.filter(j => String(j.id_proposta || '').toLowerCase().includes(filtroProposta));
+  }
+
+  return filtered;
+}
+
+// Chamado a cada tecla digitada no campo "Nº da proposta" — não refaz a
+// chamada à API, só reaplica o filtro em cima do que já está carregado.
+function filtrarHistoricoLocal() {
+  if (!allJobs || !allJobs.length) return;
+  renderJobsTable(_computarJobsFiltrados());
 }
 
 function renderJobsTable(jobs) {
