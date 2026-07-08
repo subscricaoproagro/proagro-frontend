@@ -5109,6 +5109,12 @@ const CAMADA_LABEL = {
   'CNFP (Floresta Pública)': 'CNFP',
   'Assentamento INCRA': 'Assentamento INCRA',
   'PRODES (Desmatamento)': 'PRODES',
+  'Áreas de Quilombolas': 'Quilombolas',
+  'Unidades de Conservação Federais': 'UC Federais',
+  'Embargos ICMBio': 'Embargos ICMBio',
+  'Terras Indígenas': 'Terras Indígenas',
+  'Sítios Arqueológicos': 'Sítios Arqueológicos',
+  'Embargos IBAMA': 'Embargos IBAMA',
 };
 
 function _carregarLeaflet() {
@@ -5158,7 +5164,7 @@ async function abrirModalSobreposicoes(jobId) {
     let tabelaHtml;
     if (!totalOcorrencias) {
       tabelaHtml = `<div style="padding:14px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;color:#166534;font-size:13px;margin-bottom:16px">
-        ✅ Nenhuma ocorrência de sobreposição identificada nas camadas verificadas (CAR, PRODES, CNFP, Assentamento INCRA).
+        ✅ Nenhuma ocorrência de sobreposição identificada nas camadas verificadas (CAR, PRODES, CNFP, Assentamento INCRA, Quilombolas, UC Federais, Terras Indígenas, Sítios Arqueológicos, Embargos IBAMA/ICMBio).
       </div>`;
     } else {
       const linhas = [
