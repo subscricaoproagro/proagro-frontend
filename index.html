@@ -5113,6 +5113,20 @@ const CAMADA_LABEL = {
 
 function _carregarLeaflet() {
   return new Promise((resolve, reject) => {
+    if (!document.getElementById('leaflet-pixelado-style')) {
+      const style = document.createElement('style');
+      style.id = 'leaflet-pixelado-style';
+      // O overlay do PRODES é feito de blocos de pixel (igual no QGIS) — sem
+      // isso o navegador borra a imagem ao escalar, virando uma mancha.
+      style.textContent = `
+        .sobreposicoes-raster-pixelado {
+          image-rendering: pixelated;
+          image-rendering: -moz-crisp-edges;
+          image-rendering: crisp-edges;
+        }
+      `;
+      document.head.appendChild(style);
+    }
     if (window.L) { resolve(); return; }
     const link = document.createElement('link');
     link.rel = 'stylesheet';
@@ -5240,7 +5254,7 @@ function renderizarMapaSobreposicoes(dados) {
     if (!r.imagem_b64 || !r.bounds) return;
     const [minx, miny, maxx, maxy] = r.bounds;
     const bounds = [[miny, minx], [maxy, maxx]];
-    const layer = L.imageOverlay(`data:image/png;base64,${r.imagem_b64}`, bounds, { opacity: 0.85 })
+    const layer = L.imageOverlay(`data:image/png;base64,${r.imagem_b64}`, bounds, { opacity: 0.85, className: 'sobreposicoes-raster-pixelado' })
       .bindTooltip(`${r.camada} — Polígono ${r.poligono}`);
     layer.addTo(getGrupoCamada(r.camada));
     grupoLimites.addLayer(L.rectangle(bounds, { color: 'transparent', weight: 0, fillOpacity: 0 }));
