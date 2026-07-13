@@ -5191,7 +5191,7 @@ async function iniciarCalculoSobreposicoesSobDemanda(jobId) {
   const body = document.getElementById('sobreposicoes-modal-body');
   body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--gray600)">
     🔄 Esta proposta ainda não tem o mapa calculado — calculando agora (CAR, PRODES, CNFP e mais 7 camadas)…<br>
-    <span style="font-size:12px;color:var(--gray400)">Pode levar de 30s a 2 minutos, dependendo da resposta do GeoServer do CAR.</span>
+    <span style="font-size:12px;color:var(--gray400)">Pode levar de 30s a alguns minutos — o sistema espera o tempo que for preciso, não desiste antes da hora.</span>
   </div>`;
   try {
     await api('POST', `/jobs/${jobId}/gerar-sobreposicoes`);
@@ -5207,7 +5207,7 @@ async function iniciarCalculoSobreposicoesSobDemanda(jobId) {
 async function _pollarSobreposicoesSobDemanda(jobId, tentativa) {
   if (_sobreposicoesModalJobIdAtual !== jobId) return; // usuário abriu outra proposta — para de acompanhar esta
   const body = document.getElementById('sobreposicoes-modal-body');
-  const MAX_TENTATIVAS = 40; // ~40 x 4s = ~2min40s
+  const MAX_TENTATIVAS = 225; // ~225 x 4s = ~15min — CAR pode demorar bastante em vários polígonos
   if (tentativa >= MAX_TENTATIVAS) {
     body.innerHTML = `<div style="padding:14px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;color:#92400e;font-size:13px">
       ⏱️ O cálculo está demorando mais que o esperado. Ele continua rodando em segundo plano — feche e abra este painel de novo daqui a pouco pra conferir.
@@ -5249,7 +5249,7 @@ async function _pollarSobreposicoesSobDemanda(jobId, tentativa) {
   const segundos = (tentativa + 1) * 4;
   body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--gray600)">
     🔄 Calculando sobreposições… (${segundos}s)<br>
-    <span style="font-size:12px;color:var(--gray400)">CAR, PRODES, CNFP, Assentamento INCRA e mais 7 camadas — pode levar até 2 minutos.</span>
+    <span style="font-size:12px;color:var(--gray400)">CAR, PRODES, CNFP, Assentamento INCRA e mais 7 camadas — pode demorar alguns minutos se o CAR estiver lento.</span>
   </div>`;
   setTimeout(() => _pollarSobreposicoesSobDemanda(jobId, tentativa + 1), 4000);
 }
