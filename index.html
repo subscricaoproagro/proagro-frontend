@@ -2260,14 +2260,39 @@ function _inserirImagemNoElemento(el, dataUrl) {
   }
 }
 
+// Redimensiona/comprime a imagem antes de virar base64 — prints de tela
+// cheia podem passar de vários MB, e isso trava o envio pelo túnel/proxy
+// (aparece como erro de CORS no navegador, mas na real é o request sendo
+// derrubado por ser grande demais). Limita a 1100px de largura e comprime
+// em JPEG, o que cobre bem o caso de uso (mapas, prints de tela).
+function _comprimirImagem(dataUrl, callback, larguraMax = 1100, qualidade = 0.75) {
+  const img = new Image();
+  img.onload = () => {
+    const escala = Math.min(1, larguraMax / img.width);
+    const w = Math.round(img.width * escala);
+    const h = Math.round(img.height * escala);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    callback(canvas.toDataURL('image/jpeg', qualidade));
+  };
+  img.onerror = () => callback(dataUrl); // se der erro, usa a original mesmo
+  img.src = dataUrl;
+}
+
 function _inserirImagemObservacaoGenerica(inputFile, elId) {
   const file = inputFile.files && inputFile.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = (e) => {
-    const el = document.getElementById(elId);
-    el.focus();
-    _inserirImagemNoElemento(el, e.target.result);
+    _comprimirImagem(e.target.result, (dataUrlComprimido) => {
+      const el = document.getElementById(elId);
+      el.focus();
+      _inserirImagemNoElemento(el, dataUrlComprimido);
+    });
   };
   reader.readAsDataURL(file);
   inputFile.value = '';
@@ -2285,7 +2310,7 @@ function _configurarPasteImagemEm(elId) {
           e.preventDefault();
           const blob = item.getAsFile();
           const reader = new FileReader();
-          reader.onload = (ev) => _inserirImagemNoElemento(el, ev.target.result);
+          reader.onload = (ev) => _comprimirImagem(ev.target.result, (dataUrlComprimido) => _inserirImagemNoElemento(el, dataUrlComprimido));
           reader.readAsDataURL(blob);
           return;
         }
