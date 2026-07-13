@@ -5061,7 +5061,10 @@ function _gerarXlsx(ce, job) {
         <div class="modal-title" style="color:#1d4ed8">🗺️ Sobreposições identificadas</div>
         <div style="font-size:12px;color:var(--gray400);margin-top:2px" id="sobreposicoes-modal-subtitulo">Dispensa conferência manual no QGIS</div>
       </div>
-      <button class="modal-close" onclick="closeModal('modal-sobreposicoes')">✕</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn-sm btn-outline" style="font-size:12px" onclick="recalcularSobreposicoes()">🔄 Recalcular</button>
+        <button class="modal-close" onclick="closeModal('modal-sobreposicoes')">✕</button>
+      </div>
     </div>
     <div class="modal-body" id="sobreposicoes-modal-body" style="padding:20px 24px;background:#fff">
       <div style="text-align:center;padding:40px;color:var(--gray400)">⏳ Carregando sobreposições…</div>
@@ -5296,6 +5299,13 @@ function _carregarLeaflet() {
 }
 
 let _sobreposicoesModalJobIdAtual = null;
+
+async function recalcularSobreposicoes() {
+  const jobId = _sobreposicoesModalJobIdAtual;
+  if (!jobId) return;
+  if (!confirm('Recalcular as sobreposições dessa proposta? Isso substitui o mapa atual pelo resultado de uma nova consulta ao CAR e às demais camadas.')) return;
+  await iniciarCalculoSobreposicoesSobDemanda(jobId);
+}
 
 async function abrirModalSobreposicoes(jobId) {
   _sobreposicoesModalJobIdAtual = jobId;
