@@ -39,6 +39,8 @@
   .form-input{width:100%;padding:12px 16px;border:1.5px solid var(--gray200);border-radius:var(--r-md);font-family:'DM Sans',sans-serif;font-size:15px;color:var(--gray900);background:#fff;transition:border-color .2s,box-shadow .2s;outline:none}
   .form-input:focus{border-color:var(--g500);box-shadow:0 0 0 3px rgba(45,138,85,.12)}
   .form-input::placeholder{color:var(--gray400)}
+  [contenteditable="true"][data-placeholder]:empty::before{content:attr(data-placeholder);color:var(--gray400);pointer-events:none}
+  [contenteditable="true"] img{max-width:100%;border-radius:6px;display:block;margin:6px 0}
   .btn-primary{width:100%;padding:14px;background:var(--g600);color:#fff;border:none;border-radius:var(--r-md);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:8px}
   .btn-primary:hover{background:var(--g700)}
   .btn-primary:disabled{opacity:.6;cursor:not-allowed}
@@ -1177,8 +1179,17 @@ function showPage(page) {
     if (btn) btn.classList.add('active');
   }
   if(page === 'historico') carregarJobs();
-  if(page === 'admin') { carregarUsuarios(); document.getElementById('backend-url-input').value = BACKEND_URL; }
+  if(page === 'admin') {
+    carregarUsuarios();
+    document.getElementById('backend-url-input').value = BACKEND_URL;
+    if (_intervalUsuariosOnline) clearInterval(_intervalUsuariosOnline);
+    _intervalUsuariosOnline = setInterval(carregarUsuarios, 15000); // atualiza "quem está online" a cada 15s
+  } else if (_intervalUsuariosOnline) {
+    clearInterval(_intervalUsuariosOnline);
+    _intervalUsuariosOnline = null;
+  }
 }
+let _intervalUsuariosOnline = null;
 
 // ══════════════════════════════════════════
 // UPLOAD
@@ -1608,6 +1619,18 @@ async function abrirPreviewEmail(payload, jobId, callback) {
     document.getElementById('preview-email-assunto').value = data.assunto;
     document.getElementById('preview-email-corpo').value   = data.corpo;
     document.getElementById('preview-email-destinatario').value = data.email_corretor || '';
+
+    const imagens = data.imagens_observacao_subscritor || [];
+    const wrapImgs = document.getElementById('preview-email-imagens-wrap');
+    const boxImgs = document.getElementById('preview-email-imagens');
+    if (imagens.length) {
+      boxImgs.innerHTML = imagens.map(src => `<img src="${src}" style="max-height:110px;border-radius:6px;border:1px solid var(--gray200)">`).join('');
+      wrapImgs.style.display = 'block';
+    } else {
+      boxImgs.innerHTML = '';
+      wrapImgs.style.display = 'none';
+    }
+
     _previewEmailCallback = callback;
     openModal('modal-preview-email-ce');
   } catch(e) {
@@ -1848,12 +1871,18 @@ async function carregarUsuarios() {
     wrap.innerHTML = users.map(u => {
       const pags = (u.paginas && u.paginas.length) ? u.paginas : (_PG_DEFAULTS[u.role] || []);
       const pagsHtml = pags.map(p => `<span style="font-size:10px;background:var(--g50);border:1px solid var(--g200);border-radius:4px;padding:1px 5px;color:var(--g700)">${_PG[p]?.label||p}</span>`).join(' ');
+      const statusHtml = u.online
+        ? `<span title="Online agora" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#16a34a;font-weight:600"><span style="width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block"></span>Online agora</span>`
+        : `<span title="${u.ultimo_acesso ? 'Última atividade: ' + formatDate(u.ultimo_acesso) : 'Sem atividade registrada nesta sessão do backend'}" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--g400)"><span style="width:8px;height:8px;border-radius:50%;background:var(--g300);display:inline-block"></span>Offline</span>`;
       return `
       <div class="user-row" style="flex-wrap:wrap;gap:8px">
-        <div class="user-row-avatar">${u.name.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase()}</div>
+        <div class="user-row-avatar" style="position:relative">${u.name.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase()}
+          ${u.online ? '<span style="position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;background:#16a34a;border:2px solid #fff"></span>' : ''}
+        </div>
         <div class="user-row-info" style="flex:1;min-width:180px">
           <div class="user-row-name">${u.name} ${u.email===currentUser?.email?'<span style="font-size:11px;color:var(--g600)">(você)</span>':''}</div>
-          <div class="user-row-email">${u.email} · último acesso: ${u.last_login?formatDate(u.last_login):'nunca'}</div>
+          <div class="user-row-email">${u.email} · último login: ${u.last_login?formatDate(u.last_login):'nunca'}</div>
+          <div style="margin-top:3px">${statusHtml}</div>
           <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">${pagsHtml}</div>
         </div>
         <span class="badge ${u.role==='admin'?'badge-warning':'badge-neutral'}">${u.role}</span>
@@ -2094,7 +2123,7 @@ function abrirDecisao(jobId, tipo) {
   _decisaoTipo = tipo;
   const errEl = document.getElementById('modal-decisao-error');
   errEl.style.display = 'none';
-  document.getElementById('modal-justificativa').value = '';
+  document.getElementById('modal-justificativa').innerHTML = '';
   document.getElementById('modal-corretor-email').value = '';
   document.getElementById('modal-corretor-wrap').style.display = 'none';
 
@@ -2115,7 +2144,7 @@ function abrirDecisao(jobId, tipo) {
     title.textContent = '✅ Aprovar Proposta';
     info.textContent = 'Ao aprovar, o relatório será movido para a pasta "Propostas Aprovadas" localmente e no storage.';
     justWrap.style.display = 'block';
-    document.getElementById('modal-justificativa').placeholder = 'Observações (opcional)...';
+    document.getElementById('modal-justificativa').setAttribute('data-placeholder', 'Observações (opcional)...');
     document.getElementById('modal-justificativa-label').textContent = 'Observações (opcional)';
     btnConfirmar.style.background = 'var(--g600)';
     btnConfirmar.style.color = '#fff';
@@ -2125,7 +2154,7 @@ function abrirDecisao(jobId, tipo) {
     title.textContent = '❌ Recusar Proposta';
     info.textContent = 'Ao recusar, informe o motivo. O relatório será movido para "Propostas Recusadas" com um arquivo de justificativa.';
     justWrap.style.display = 'block';
-    document.getElementById('modal-justificativa').placeholder = 'Descreva o motivo da recusa...';
+    document.getElementById('modal-justificativa').setAttribute('data-placeholder', 'Descreva o motivo da recusa...');
     document.getElementById('modal-justificativa-label').textContent = 'Motivo da recusa *';
     // Campo do corretor: pré-carrega se houver e-mail conhecido (da CE), senão fica em branco para preenchimento manual
     const corretorWrap = document.getElementById('modal-corretor-wrap');
@@ -2211,13 +2240,73 @@ async function confirmarUploadSistema() {
   }
 }
 
+// Permite colar (Ctrl+V) ou inserir imagem no campo de Observações do
+// modal de decisão — a imagem entra como <img> embutida (base64) no HTML
+// que depois vai junto no e-mail da Condição Especial.
+function _inserirImagemNoElemento(el, dataUrl) {
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount && el.contains(sel.anchorNode)) {
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(img);
+    range.setStartAfter(img);
+    range.setEndAfter(img);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  } else {
+    el.appendChild(img);
+  }
+}
+
+function _inserirImagemObservacao(inputFile) {
+  const file = inputFile.files && inputFile.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const el = document.getElementById('modal-justificativa');
+    el.focus();
+    _inserirImagemNoElemento(el, e.target.result);
+  };
+  reader.readAsDataURL(file);
+  inputFile.value = '';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const obsEl = document.getElementById('modal-justificativa');
+  if (!obsEl) return;
+  obsEl.addEventListener('paste', (e) => {
+    const items = (e.clipboardData || window.clipboardData)?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type && item.type.startsWith('image/')) {
+        e.preventDefault();
+        const blob = item.getAsFile();
+        const reader = new FileReader();
+        reader.onload = (ev) => _inserirImagemNoElemento(obsEl, ev.target.result);
+        reader.readAsDataURL(blob);
+        return;
+      }
+    }
+    // Sem imagem no clipboard — deixa colar texto puro, sem formatação estranha
+    const texto = (e.clipboardData || window.clipboardData)?.getData('text/plain');
+    if (texto) {
+      e.preventDefault();
+      document.execCommand('insertText', false, texto);
+    }
+  });
+});
+
 async function confirmarDecisao() {
-  const justificativa = document.getElementById('modal-justificativa').value.trim();
+  const justEl = document.getElementById('modal-justificativa');
+  const justificativa = justEl.innerHTML.trim();
+  const justificativaTexto = justEl.textContent.trim();
   const emailCorretor = document.getElementById('modal-corretor-email').value.trim();
   const errEl = document.getElementById('modal-decisao-error');
   errEl.style.display = 'none';
 
-  if (_decisaoTipo === 'recusado' && !justificativa) {
+  if (_decisaoTipo === 'recusado' && !justificativaTexto && !justEl.querySelector('img')) {
     errEl.textContent = 'Informe o motivo da recusa.';
     errEl.style.display = 'block';
     return;
@@ -4861,8 +4950,14 @@ function _gerarXlsx(ce, job) {
       <div id="modal-decisao-info" style="background:var(--gray50);border-radius:var(--r-sm);padding:12px;margin-bottom:16px;font-size:13px;color:var(--gray600)"></div>
       <div id="modal-justificativa-wrap" style="display:none">
         <div class="form-group">
-          <label class="form-label" id="modal-justificativa-label">Observações</label>
-          <textarea class="form-input" id="modal-justificativa" rows="4" placeholder="Observações (opcional)..." style="resize:vertical"></textarea>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+            <label class="form-label" id="modal-justificativa-label" style="margin-bottom:0">Observações</label>
+            <button type="button" class="btn-sm btn-outline" style="font-size:11px;padding:3px 8px" onclick="document.getElementById('modal-justificativa-file').click()">📎 Inserir imagem</button>
+          </div>
+          <input type="file" id="modal-justificativa-file" accept="image/*" style="display:none" onchange="_inserirImagemObservacao(this)">
+          <div id="modal-justificativa" class="form-input" contenteditable="true" data-placeholder="Observações (opcional)..."
+               style="min-height:90px;max-height:260px;overflow-y:auto;resize:vertical;white-space:pre-wrap;line-height:1.5"></div>
+          <div style="font-size:11px;color:var(--gray400);margin-top:4px">Você pode colar uma imagem direto aqui (Ctrl+V) ou usar o botão acima.</div>
         </div>
       </div>
       <div id="modal-corretor-wrap" style="display:none">
@@ -6646,6 +6741,10 @@ async function mcDeletar(id){
         <label class="ce-label">Destinatário Adicional <span style="font-size:11px;color:var(--gray400)">(opcional — email do corretor ou cliente)</span></label>
         <input class="ce-input" id="preview-email-destinatario" placeholder="ex: corretor@email.com, cliente@email.com" style="font-size:13px">
       </div>
+      <div id="preview-email-imagens-wrap" style="display:none;margin-bottom:12px">
+        <label class="ce-label">Imagem anexada pela subscrição <span style="font-size:11px;color:var(--gray400)">(vai junto no e-mail, mesmo que você edite o texto)</span></label>
+        <div id="preview-email-imagens" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      </div>
       <div style="margin-bottom:12px">
         <label class="ce-label">Assunto</label>
         <input class="ce-input" id="preview-email-assunto" style="font-size:13px">
@@ -6655,7 +6754,7 @@ async function mcDeletar(id){
         <textarea class="ce-input" id="preview-email-corpo" rows="18" style="font-family:monospace;font-size:13px;line-height:1.6;resize:vertical"></textarea>
       </div>
       <div style="background:#fff8e1;border:1px solid #fbbf24;border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e;margin-bottom:16px">
-        ✏️ Edite o texto acima se necessário. O email será enviado exatamente como está.
+        ✏️ Edite o texto acima se necessário. A imagem anexada (se houver) é enviada de qualquer forma, mesmo que você mude o texto.
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button class="btn btn-outline" onclick="closeModal('modal-preview-email-ce')">Cancelar</button>
