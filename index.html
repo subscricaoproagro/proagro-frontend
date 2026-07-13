@@ -734,7 +734,7 @@
       </div>
       <div id="admin-tab-usuarios">
         <div class="card">
-          <div class="card-header"><div class="card-title">Usuários cadastrados</div><div style="display:flex;gap:8px"><button class="btn-sm btn-outline" style="color:#c0392b;border-color:#fecaca" onclick="forcarLogoutTodos()">🚪 Forçar logout de todos</button><button class="btn-sm btn-green" onclick="openModal('modal-add-user')">+ Convidar</button></div></div>
+          <div class="card-header"><div class="card-title">Usuários cadastrados</div><button class="btn-sm btn-green" onclick="openModal('modal-add-user')">+ Convidar</button></div>
           <div class="card-body" id="users-list-wrap"><div style="text-align:center;color:var(--gray400);font-size:13px;padding:20px">Carregando…</div></div>
         </div>
       </div>
@@ -1890,7 +1890,6 @@ async function carregarUsuarios() {
         <div style="display:flex;gap:4px">
           ${u.email!==currentUser?.email?`<button class="btn-sm btn-outline" onclick="editarAcesso('${u.id}',${JSON.stringify(pags).replace(/"/g,'&quot;')})">📝 Acesso</button>`:''}
           ${u.email!==currentUser?.email?`<button class="btn-sm btn-outline" onclick="toggleUser('${u.id}',${!u.active})">${u.active?'Desativar':'Ativar'}</button>`:''}
-          ${u.email!==currentUser?.email?`<button class="btn-sm btn-outline" style="color:#c0392b;border-color:#fecaca" onclick="forcarLogoutUsuario('${u.id}','${u.name.replace(/'/g,"\\'")}')">🚪 Forçar logout</button>`:''}
         </div>
       </div>`;
     }).join('');
@@ -1949,24 +1948,6 @@ async function toggleUser(id, active) {
     await api('PATCH', `/usuarios/${id}`, {active});
     carregarUsuarios();
     showToast(active?'Usuário ativado.':'Usuário desativado.', active?'success':'warning');
-  } catch(e) { showToast('Erro: '+e.message,'error'); }
-}
-
-async function forcarLogoutUsuario(id, nome) {
-  if (!confirm(`Forçar logout de ${nome}? A pessoa será deslogada assim que fizer qualquer ação no sistema.`)) return;
-  try {
-    const r = await api('POST', `/usuarios/${id}/forcar-logout`);
-    showToast(r.message || 'Logout forçado.', 'success');
-    carregarUsuarios();
-  } catch(e) { showToast('Erro: '+e.message,'error'); }
-}
-
-async function forcarLogoutTodos() {
-  if (!confirm('Forçar logout de TODOS os usuários (inclusive quem está usando o sistema agora)? Todo mundo vai precisar entrar de novo.')) return;
-  try {
-    const r = await api('POST', '/usuarios/forcar-logout-todos');
-    showToast(r.message || 'Logout forçado para todos.', 'success');
-    carregarUsuarios();
   } catch(e) { showToast('Erro: '+e.message,'error'); }
 }
 
