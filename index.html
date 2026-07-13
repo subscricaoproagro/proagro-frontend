@@ -5164,94 +5164,168 @@ function _carregarLeaflet() {
   });
 }
 
+let _sobreposicoesModalJobIdAtual = null;
+
 async function abrirModalSobreposicoes(jobId) {
+  _sobreposicoesModalJobIdAtual = jobId;
   openModal('modal-sobreposicoes');
   const body = document.getElementById('sobreposicoes-modal-body');
   body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray400)">⏳ Carregando sobreposições…</div>';
 
   try {
     const dados = await api('GET', `/jobs/${jobId}/sobreposicoes`);
-
-    document.getElementById('sobreposicoes-modal-subtitulo').textContent =
-      `${dados.cliente?.nome_proponente || ''} · Proposta ${dados.cliente?.id_proposta || ''} · dispensa conferência manual no QGIS`;
-
-    const linhasVetoriais = dados.sobreposicoes || [];
-    const linhasRaster = dados.rasters || [];
-    const totalOcorrencias = linhasVetoriais.length + linhasRaster.length;
-
-    let tabelaHtml;
-    if (!totalOcorrencias) {
-      tabelaHtml = `<div style="padding:14px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;color:#166534;font-size:13px;margin-bottom:16px">
-        ✅ Nenhuma ocorrência de sobreposição identificada nas camadas verificadas (CAR, PRODES, CNFP, Assentamento INCRA, Quilombolas, UC Federais, Terras Indígenas, Sítios Arqueológicos, Embargos IBAMA/ICMBio).
-      </div>`;
-    } else {
-      const linhas = [
-        ...linhasVetoriais.map(o => ({ ...o, percTexto: o.percentual != null ? o.percentual.toFixed(2) + '%' : '—' })),
-        ...linhasRaster.map(o => ({ ...o, percTexto: '—' })),
-      ];
-      tabelaHtml = `<div style="border:1px solid #d1d5db;border-radius:6px;overflow:hidden;margin-bottom:16px">
-        <div style="display:grid;grid-template-columns:70px 1fr 90px 1.4fr;background:#1d4ed8;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">
-          <div style="padding:8px 10px">Polígono</div>
-          <div style="padding:8px 10px">Camada</div>
-          <div style="padding:8px 10px">%</div>
-          <div style="padding:8px 10px">Detalhe</div>
-        </div>
-        ${linhas.map((o, i) => `
-          <div style="display:grid;grid-template-columns:70px 1fr 90px 1.4fr;background:${i % 2 ? '#fff' : '#f9fafb'};border-top:1px solid #e5e7eb;font-size:12.5px">
-            <div style="padding:8px 10px;font-weight:600">${o.poligono}</div>
-            <div style="padding:8px 10px">${o.semaforo || ''} ${o.camada}</div>
-            <div style="padding:8px 10px">${o.percTexto}</div>
-            <div style="padding:8px 10px;color:#4b5563">${o.detalhe || ''}</div>
-          </div>
-        `).join('')}
-      </div>`;
-    }
-
-    const legendaHtml = `
-      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:12px;color:#4b5563;margin-bottom:10px;padding:8px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px">
-        <span><span style="display:inline-block;width:12px;height:12px;border:2px solid #2563eb;border-radius:2px;vertical-align:middle"></span> Limite do polígono do cliente</span>
-        <span><span style="display:inline-block;width:12px;height:12px;border:2px dashed #6b7280;border-radius:2px;vertical-align:middle"></span> Divisa de município</span>
-        <span>🟢 Sem restrição / ativo</span>
-        <span>🟡 Atenção / pendente</span>
-        <span>🔴 Crítico / cancelado / desmatamento</span>
-        <span style="color:#9ca3af">Use o controle no canto superior direito do mapa pra ligar/desligar cada camada</span>
-      </div>`;
-
-    const municipios = dados.municipios || [];
-    let municipiosHtml = '';
-    if (municipios.length) {
-      municipiosHtml = `<div style="border:1px solid #d1d5db;border-radius:6px;overflow:hidden;margin-bottom:16px">
-        <div style="display:grid;grid-template-columns:70px 1fr 120px 90px;background:#4b5563;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">
-          <div style="padding:8px 10px">Polígono</div>
-          <div style="padding:8px 10px">Município</div>
-          <div style="padding:8px 10px">Geocódigo IBGE</div>
-          <div style="padding:8px 10px">%</div>
-        </div>
-        ${municipios.map((m, i) => `
-          <div style="display:grid;grid-template-columns:70px 1fr 120px 90px;background:${i % 2 ? '#fff' : '#f9fafb'};border-top:1px solid #e5e7eb;font-size:12.5px">
-            <div style="padding:8px 10px;font-weight:600">${m.poligono}</div>
-            <div style="padding:8px 10px">🏙️ ${m.municipio}</div>
-            <div style="padding:8px 10px;color:#6b7280">${m.geocodigo || '—'}</div>
-            <div style="padding:8px 10px">${m.percentual.toFixed(2)}%</div>
-          </div>
-        `).join('')}
-      </div>`;
-    }
-
-    body.innerHTML = tabelaHtml + municipiosHtml + legendaHtml + `<div id="mapa-sobreposicoes" style="height:480px;border-radius:8px;border:1px solid #d1d5db"></div>`;
-
-    await _carregarLeaflet();
-    renderizarMapaSobreposicoes(dados);
-
+    if (_sobreposicoesModalJobIdAtual !== jobId) return;
+    renderizarConteudoSobreposicoes(jobId, dados);
   } catch(e) {
+    if (_sobreposicoesModalJobIdAtual !== jobId) return;
     if (String(e.message || '').includes('não disponível')) {
-      body.innerHTML = `<div style="padding:14px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;color:var(--gray600);font-size:13px">
-        ℹ️ Mapa de sobreposições ainda não disponível para esta proposta (relatório gerado antes desta funcionalidade, ou é necessário reprocessar / rodar o backfill).
-      </div>`;
+      // Ainda não tem mapa calculado — dispara o cálculo sob demanda e acompanha.
+      await iniciarCalculoSobreposicoesSobDemanda(jobId);
     } else {
       body.innerHTML = `<div style="color:var(--red);padding:14px;font-size:13px">❌ Erro ao carregar sobreposições: ${e.message}</div>`;
     }
   }
+}
+
+async function iniciarCalculoSobreposicoesSobDemanda(jobId) {
+  const body = document.getElementById('sobreposicoes-modal-body');
+  body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--gray600)">
+    🔄 Esta proposta ainda não tem o mapa calculado — calculando agora (CAR, PRODES, CNFP e mais 7 camadas)…<br>
+    <span style="font-size:12px;color:var(--gray400)">Pode levar de 30s a 2 minutos, dependendo da resposta do GeoServer do CAR.</span>
+  </div>`;
+  try {
+    await api('POST', `/jobs/${jobId}/gerar-sobreposicoes`);
+  } catch(e) {
+    if (_sobreposicoesModalJobIdAtual !== jobId) return;
+    body.innerHTML = `<div style="color:var(--red);padding:14px;font-size:13px">❌ Não foi possível iniciar o cálculo: ${e.message}</div>`;
+    return;
+  }
+  if (_sobreposicoesModalJobIdAtual !== jobId) return;
+  _pollarSobreposicoesSobDemanda(jobId, 0);
+}
+
+async function _pollarSobreposicoesSobDemanda(jobId, tentativa) {
+  if (_sobreposicoesModalJobIdAtual !== jobId) return; // usuário abriu outra proposta — para de acompanhar esta
+  const body = document.getElementById('sobreposicoes-modal-body');
+  const MAX_TENTATIVAS = 40; // ~40 x 4s = ~2min40s
+  if (tentativa >= MAX_TENTATIVAS) {
+    body.innerHTML = `<div style="padding:14px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;color:#92400e;font-size:13px">
+      ⏱️ O cálculo está demorando mais que o esperado. Ele continua rodando em segundo plano — feche e abra este painel de novo daqui a pouco pra conferir.
+    </div>`;
+    return;
+  }
+
+  let status;
+  try {
+    status = await api('GET', `/jobs/${jobId}/sobreposicoes-status`);
+  } catch(e) {
+    if (_sobreposicoesModalJobIdAtual !== jobId) return;
+    setTimeout(() => _pollarSobreposicoesSobDemanda(jobId, tentativa + 1), 4000);
+    return;
+  }
+  if (_sobreposicoesModalJobIdAtual !== jobId) return;
+
+  if (status.status === 'concluido') {
+    try {
+      const dados = await api('GET', `/jobs/${jobId}/sobreposicoes`);
+      if (_sobreposicoesModalJobIdAtual !== jobId) return;
+      renderizarConteudoSobreposicoes(jobId, dados);
+    } catch(e) {
+      if (_sobreposicoesModalJobIdAtual !== jobId) return;
+      body.innerHTML = `<div style="color:var(--red);padding:14px;font-size:13px">❌ Erro ao carregar o resultado: ${e.message}</div>`;
+    }
+    return;
+  }
+
+  if (status.status === 'erro') {
+    body.innerHTML = `<div style="padding:14px;background:#fff5f5;border:1px solid #fecaca;border-radius:6px;color:#c0392b;font-size:13px">
+      ❌ Erro ao calcular sobreposições: ${status.erro || 'erro desconhecido'}<br><br>
+      <button class="btn-sm btn-outline" onclick="iniciarCalculoSobreposicoesSobDemanda('${jobId}')">🔄 Tentar novamente</button>
+    </div>`;
+    return;
+  }
+
+  // ainda processando — atualiza o texto com o tempo decorrido e continua
+  const segundos = (tentativa + 1) * 4;
+  body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--gray600)">
+    🔄 Calculando sobreposições… (${segundos}s)<br>
+    <span style="font-size:12px;color:var(--gray400)">CAR, PRODES, CNFP, Assentamento INCRA e mais 7 camadas — pode levar até 2 minutos.</span>
+  </div>`;
+  setTimeout(() => _pollarSobreposicoesSobDemanda(jobId, tentativa + 1), 4000);
+}
+
+function renderizarConteudoSobreposicoes(jobId, dados) {
+  const body = document.getElementById('sobreposicoes-modal-body');
+
+  document.getElementById('sobreposicoes-modal-subtitulo').textContent =
+    `${dados.cliente?.nome_proponente || ''} · Proposta ${dados.cliente?.id_proposta || ''} · dispensa conferência manual no QGIS`;
+
+  const linhasVetoriais = dados.sobreposicoes || [];
+  const linhasRaster = dados.rasters || [];
+  const totalOcorrencias = linhasVetoriais.length + linhasRaster.length;
+
+  let tabelaHtml;
+  if (!totalOcorrencias) {
+    tabelaHtml = `<div style="padding:14px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;color:#166534;font-size:13px;margin-bottom:16px">
+      ✅ Nenhuma ocorrência de sobreposição identificada nas camadas verificadas (CAR, PRODES, CNFP, Assentamento INCRA, Quilombolas, UC Federais, Terras Indígenas, Sítios Arqueológicos, Embargos IBAMA/ICMBio).
+    </div>`;
+  } else {
+    const linhas = [
+      ...linhasVetoriais.map(o => ({ ...o, percTexto: o.percentual != null ? o.percentual.toFixed(2) + '%' : '—' })),
+      ...linhasRaster.map(o => ({ ...o, percTexto: '—' })),
+    ];
+    tabelaHtml = `<div style="border:1px solid #d1d5db;border-radius:6px;overflow:hidden;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:70px 1fr 90px 1.4fr;background:#1d4ed8;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">
+        <div style="padding:8px 10px">Polígono</div>
+        <div style="padding:8px 10px">Camada</div>
+        <div style="padding:8px 10px">%</div>
+        <div style="padding:8px 10px">Detalhe</div>
+      </div>
+      ${linhas.map((o, i) => `
+        <div style="display:grid;grid-template-columns:70px 1fr 90px 1.4fr;background:${i % 2 ? '#fff' : '#f9fafb'};border-top:1px solid #e5e7eb;font-size:12.5px">
+          <div style="padding:8px 10px;font-weight:600">${o.poligono}</div>
+          <div style="padding:8px 10px">${o.semaforo || ''} ${o.camada}</div>
+          <div style="padding:8px 10px">${o.percTexto}</div>
+          <div style="padding:8px 10px;color:#4b5563">${o.detalhe || ''}</div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  const legendaHtml = `
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:12px;color:#4b5563;margin-bottom:10px;padding:8px 12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px">
+      <span><span style="display:inline-block;width:12px;height:12px;border:2px solid #2563eb;border-radius:2px;vertical-align:middle"></span> Limite do polígono do cliente</span>
+      <span><span style="display:inline-block;width:12px;height:12px;border:2px dashed #6b7280;border-radius:2px;vertical-align:middle"></span> Divisa de município</span>
+      <span>🟢 Sem restrição / ativo</span>
+      <span>🟡 Atenção / pendente</span>
+      <span>🔴 Crítico / cancelado / desmatamento</span>
+      <span style="color:#9ca3af">Use o controle no canto superior direito do mapa pra ligar/desligar cada camada</span>
+    </div>`;
+
+  const municipios = dados.municipios || [];
+  let municipiosHtml = '';
+  if (municipios.length) {
+    municipiosHtml = `<div style="border:1px solid #d1d5db;border-radius:6px;overflow:hidden;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:70px 1fr 120px 90px;background:#4b5563;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">
+        <div style="padding:8px 10px">Polígono</div>
+        <div style="padding:8px 10px">Município</div>
+        <div style="padding:8px 10px">Geocódigo IBGE</div>
+        <div style="padding:8px 10px">%</div>
+      </div>
+      ${municipios.map((m, i) => `
+        <div style="display:grid;grid-template-columns:70px 1fr 120px 90px;background:${i % 2 ? '#fff' : '#f9fafb'};border-top:1px solid #e5e7eb;font-size:12.5px">
+          <div style="padding:8px 10px;font-weight:600">${m.poligono}</div>
+          <div style="padding:8px 10px">🏙️ ${m.municipio}</div>
+          <div style="padding:8px 10px;color:#6b7280">${m.geocodigo || '—'}</div>
+          <div style="padding:8px 10px">${m.percentual.toFixed(2)}%</div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  body.innerHTML = tabelaHtml + municipiosHtml + legendaHtml + `<div id="mapa-sobreposicoes" style="height:480px;border-radius:8px;border:1px solid #d1d5db"></div>`;
+
+  _carregarLeaflet().then(() => renderizarMapaSobreposicoes(dados));
 }
 
 function renderizarMapaSobreposicoes(dados) {
