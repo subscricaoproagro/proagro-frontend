@@ -734,7 +734,7 @@
       </div>
       <div id="admin-tab-usuarios">
         <div class="card">
-          <div class="card-header"><div class="card-title">Usuários cadastrados</div><button class="btn-sm btn-green" onclick="openModal('modal-add-user')">+ Convidar</button></div>
+          <div class="card-header"><div class="card-title">Usuários cadastrados</div><div style="display:flex;gap:8px"><button class="btn-sm btn-outline" style="color:#c0392b;border-color:#fecaca" onclick="forcarLogoutTodos()">🚪 Forçar logout de todos</button><button class="btn-sm btn-green" onclick="openModal('modal-add-user')">+ Convidar</button></div></div>
           <div class="card-body" id="users-list-wrap"><div style="text-align:center;color:var(--gray400);font-size:13px;padding:20px">Carregando…</div></div>
         </div>
       </div>
@@ -1890,6 +1890,7 @@ async function carregarUsuarios() {
         <div style="display:flex;gap:4px">
           ${u.email!==currentUser?.email?`<button class="btn-sm btn-outline" onclick="editarAcesso('${u.id}',${JSON.stringify(pags).replace(/"/g,'&quot;')})">📝 Acesso</button>`:''}
           ${u.email!==currentUser?.email?`<button class="btn-sm btn-outline" onclick="toggleUser('${u.id}',${!u.active})">${u.active?'Desativar':'Ativar'}</button>`:''}
+          ${u.email!==currentUser?.email?`<button class="btn-sm btn-outline" style="color:#c0392b;border-color:#fecaca" onclick="forcarLogoutUsuario('${u.id}','${u.name.replace(/'/g,"\\'")}')">🚪 Forçar logout</button>`:''}
         </div>
       </div>`;
     }).join('');
@@ -1948,6 +1949,24 @@ async function toggleUser(id, active) {
     await api('PATCH', `/usuarios/${id}`, {active});
     carregarUsuarios();
     showToast(active?'Usuário ativado.':'Usuário desativado.', active?'success':'warning');
+  } catch(e) { showToast('Erro: '+e.message,'error'); }
+}
+
+async function forcarLogoutUsuario(id, nome) {
+  if (!confirm(`Forçar logout de ${nome}? A pessoa será deslogada assim que fizer qualquer ação no sistema.`)) return;
+  try {
+    const r = await api('POST', `/usuarios/${id}/forcar-logout`);
+    showToast(r.message || 'Logout forçado.', 'success');
+    carregarUsuarios();
+  } catch(e) { showToast('Erro: '+e.message,'error'); }
+}
+
+async function forcarLogoutTodos() {
+  if (!confirm('Forçar logout de TODOS os usuários (inclusive quem está usando o sistema agora)? Todo mundo vai precisar entrar de novo.')) return;
+  try {
+    const r = await api('POST', '/usuarios/forcar-logout-todos');
+    showToast(r.message || 'Logout forçado para todos.', 'success');
+    carregarUsuarios();
   } catch(e) { showToast('Erro: '+e.message,'error'); }
 }
 
@@ -2260,12 +2279,12 @@ function _inserirImagemNoElemento(el, dataUrl) {
   }
 }
 
-function _inserirImagemObservacao(inputFile) {
+function _inserirImagemObservacaoGenerica(inputFile, elId) {
   const file = inputFile.files && inputFile.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = (e) => {
-    const el = document.getElementById('modal-justificativa');
+    const el = document.getElementById(elId);
     el.focus();
     _inserirImagemNoElemento(el, e.target.result);
   };
@@ -2273,20 +2292,22 @@ function _inserirImagemObservacao(inputFile) {
   inputFile.value = '';
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const obsEl = document.getElementById('modal-justificativa');
-  if (!obsEl) return;
-  obsEl.addEventListener('paste', (e) => {
+function _configurarPasteImagemEm(elId) {
+  const el = document.getElementById(elId);
+  if (!el || el._pasteImagemConfigurado) return;
+  el._pasteImagemConfigurado = true;
+  el.addEventListener('paste', (e) => {
     const items = (e.clipboardData || window.clipboardData)?.items;
-    if (!items) return;
-    for (const item of items) {
-      if (item.type && item.type.startsWith('image/')) {
-        e.preventDefault();
-        const blob = item.getAsFile();
-        const reader = new FileReader();
-        reader.onload = (ev) => _inserirImagemNoElemento(obsEl, ev.target.result);
-        reader.readAsDataURL(blob);
-        return;
+    if (items) {
+      for (const item of items) {
+        if (item.type && item.type.startsWith('image/')) {
+          e.preventDefault();
+          const blob = item.getAsFile();
+          const reader = new FileReader();
+          reader.onload = (ev) => _inserirImagemNoElemento(el, ev.target.result);
+          reader.readAsDataURL(blob);
+          return;
+        }
       }
     }
     // Sem imagem no clipboard — deixa colar texto puro, sem formatação estranha
@@ -2296,6 +2317,11 @@ document.addEventListener('DOMContentLoaded', () => {
       document.execCommand('insertText', false, texto);
     }
   });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  _configurarPasteImagemEm('modal-justificativa');
+  _configurarPasteImagemEm('ce-obs-subscritor');
 });
 
 async function confirmarDecisao() {
@@ -2697,7 +2723,8 @@ async function salvarFormCE() {
     cuota:                        document.getElementById('ce-cuota')?.value || '',
     replantio:                    document.getElementById('ce-replantio')?.value || '',
     fecha_siembra:                document.getElementById('ce-fecha-siembra')?.value || '',
-    fecha_cosecha:                document.getElementById('ce-fecha-cosecha')?.value || ''
+    fecha_cosecha:                document.getElementById('ce-fecha-cosecha')?.value || '',
+    observacoes_subscritor:       document.getElementById('ce-obs-subscritor')?.innerHTML || ''
   };
   try {
     await api('POST', '/jobs/' + _ceJobId + '/condicao-especial', body);
@@ -2737,6 +2764,7 @@ async function abrirPreencherCE(jobId) {
   const rep = document.getElementById('ce-replantio'); if(rep) rep.value = '';
   const fs = document.getElementById('ce-fecha-siembra'); if(fs) fs.value = '';
   const fc = document.getElementById('ce-fecha-cosecha'); if(fc) fc.value = '';
+  const obsEl = document.getElementById('ce-obs-subscritor'); if(obsEl) obsEl.innerHTML = '';
   openModal('modal-form-ce');
   if (modalCE) modalCE.scrollTop = 0;
   // Preenche automaticamente dados do job
@@ -3234,6 +3262,8 @@ async function abrirEdicaoCE(jobId, nomeProponente, cpf) {
       const el = document.getElementById(id);
       if (el) el.value = val || '';
     }
+    const obsSubEl = document.getElementById('ce-obs-subscritor');
+    if (obsSubEl) obsSubEl.innerHTML = ce.observacoes_subscritor || '';
     calcularCE();
     openModal('modal-form-ce');
 
@@ -4954,7 +4984,7 @@ function _gerarXlsx(ce, job) {
             <label class="form-label" id="modal-justificativa-label" style="margin-bottom:0">Observações</label>
             <button type="button" class="btn-sm btn-outline" style="font-size:11px;padding:3px 8px" onclick="document.getElementById('modal-justificativa-file').click()">📎 Inserir imagem</button>
           </div>
-          <input type="file" id="modal-justificativa-file" accept="image/*" style="display:none" onchange="_inserirImagemObservacao(this)">
+          <input type="file" id="modal-justificativa-file" accept="image/*" style="display:none" onchange="_inserirImagemObservacaoGenerica(this, 'modal-justificativa')">
           <div id="modal-justificativa" class="form-input" contenteditable="true" data-placeholder="Observações (opcional)..."
                style="min-height:90px;max-height:260px;overflow-y:auto;resize:vertical;white-space:pre-wrap;line-height:1.5"></div>
           <div style="font-size:11px;color:var(--gray400);margin-top:4px">Você pode colar uma imagem direto aqui (Ctrl+V) ou usar o botão acima.</div>
@@ -5596,6 +5626,16 @@ function renderizarMapaSobreposicoes(dados) {
         <div></div>
         <div><label class="ce-label">Fecha de Siembra</label><input class="ce-input" type="date" id="ce-fecha-siembra"></div>
         <div><label class="ce-label">Fecha de Cosecha</label><input class="ce-input" type="date" id="ce-fecha-cosecha"></div>
+      </div>
+      <div style="margin-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+          <label class="ce-label" style="margin-bottom:0">Observações da Subscrição <span style="font-size:11px;color:var(--gray400)">(aparece pré-carregada no e-mail que o supervisor vai enviar)</span></label>
+          <button type="button" class="btn-sm btn-outline" style="font-size:11px;padding:3px 8px" onclick="document.getElementById('ce-obs-subscritor-file').click()">📎 Inserir imagem</button>
+        </div>
+        <input type="file" id="ce-obs-subscritor-file" accept="image/*" style="display:none" onchange="_inserirImagemObservacaoGenerica(this, 'ce-obs-subscritor')">
+        <div id="ce-obs-subscritor" class="ce-input" contenteditable="true" data-placeholder="Observações (opcional)..."
+             style="min-height:80px;max-height:220px;overflow-y:auto;white-space:pre-wrap;line-height:1.5"></div>
+        <div style="font-size:11px;color:var(--gray400);margin-top:4px">Você pode colar uma imagem direto aqui (Ctrl+V) ou usar o botão acima.</div>
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px">
         <button class="btn btn-outline" onclick="closeModal('modal-form-ce')">Cancelar</button>
