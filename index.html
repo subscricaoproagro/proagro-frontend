@@ -3394,7 +3394,8 @@ function renderBtnsCE(ce) {
   var blocoReav = '';
   if (ce.reavaliacao_solicitada) {
     blocoReav = ' <span style="background:#ede9fe;border:1px solid #c4b5fd;color:#5b21b6;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">🔁 Reavaliação solicitada</span>'
-              + ' <button class="btn-sm" style="background:#7c3aed;color:#fff;font-size:11px;padding:3px 8px" onclick="verReavaliacaoCE(\'' + jobId + '\')">👁 Ver pedido</button>';
+              + ' <button class="btn-sm" style="background:#7c3aed;color:#fff;font-size:11px;padding:3px 8px" onclick="verReavaliacaoCE(\'' + jobId + '\')">👁 Ver pedido</button>'
+              + ' <button class="btn-sm btn-outline" style="font-size:11px;padding:3px 8px;color:var(--gray400)" onclick="desmarcarReavaliacaoCE(\'' + jobId + '\')" title="Uso interno: limpa o pedido pendente sem negar nem aceitar">🗑 Desmarcar</button>';
   } else if (ce.reavaliacao_negada) {
     blocoReav = ' <span style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">❌ Reavaliação negada</span>'
               + ' <button class="btn-sm btn-outline" style="font-size:11px;padding:3px 8px" onclick="verMotivoNegativaReavaliacao(\'' + jobId + '\')">👁 Ver justificativa</button>'
