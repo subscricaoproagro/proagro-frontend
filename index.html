@@ -640,6 +640,7 @@
           </select>
           <input class="form-input" id="ce-filter-uf" placeholder="Filtrar UF…" style="width:90px;padding:8px 10px;font-size:13px" oninput="carregarCondicoesEspeciais()">
           <input class="form-input" id="ce-filter-broker" placeholder="Filtrar Broker…" style="width:140px;padding:8px 10px;font-size:13px" oninput="carregarCondicoesEspeciais()">
+          <input class="form-input" id="ce-filter-cliente" placeholder="Filtrar Cliente…" style="width:160px;padding:8px 10px;font-size:13px" oninput="carregarCondicoesEspeciais()">
           <button class="btn-sm btn-outline" onclick="carregarCondicoesEspeciais()">↻ Atualizar</button>
         </div>
       </div>
@@ -2985,6 +2986,7 @@ async function carregarCondicoesEspeciais() {
     const filtro       = document.getElementById('ce-filter')?.value || '';
     const filtroUF     = (document.getElementById('ce-filter-uf')?.value || '').trim().toUpperCase();
     const filtroBroker = (document.getElementById('ce-filter-broker')?.value || '').trim().toLowerCase();
+    const filtroCliente = (document.getElementById('ce-filter-cliente')?.value || '').trim().toLowerCase();
     const listaFiltrada = listaSemSistema.filter(ce => {
       const drc = ce.job ? ce.job.decisao_risco : null;
       const aprov = drc === 'aprovado' || drc === 'aprovado_diferente';
@@ -2997,6 +2999,7 @@ async function carregarCondicoesEspeciais() {
       else if (filtro && !_statusFiltros.includes(filtro) && !(ce.job && (drc === filtro || (filtro === 'aprovado' && drc === 'aprovado_diferente')))) return false;
       if (filtroUF && (ce.uf || '').toUpperCase() !== filtroUF) return false;
       if (filtroBroker && !(ce.broker || '').toLowerCase().includes(filtroBroker)) return false;
+      if (filtroCliente && !(ce.cliente || '').toLowerCase().includes(filtroCliente)) return false;
       return true;
     });
 
