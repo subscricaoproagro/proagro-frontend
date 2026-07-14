@@ -3009,11 +3009,28 @@ async function carregarCondicoesEspeciais() {
     }
     // Prioridade sinalizada pelo analista de subscrição — vem do servidor
     // (ce.prioridade), não mais de localStorage, então aparece igual pra
-    // qualquer usuário (inclusive o supervisor).
+    // qualquer usuário (inclusive o supervisor). Dentro de cada grupo de
+    // prioridade, ordena por quem está esperando há mais tempo primeiro.
+    function _ceTempoEsperaMs(ce) {
+      const chegada = ce.data_chegada || ce.criado_em;
+      if (!chegada) return -Infinity;
+      const job = ce.job || {};
+      const inicio = Date.parse(chegada);
+      if (isNaN(inicio)) return -Infinity;
+      const fim = job.decisao_risco && (job.decisao_risco_em || job.concluido_at)
+        ? Date.parse(job.decisao_risco_em || job.concluido_at)
+        : Date.now();
+      return isNaN(fim) ? -Infinity : (fim - inicio);
+    }
     listaFiltrada.sort((a, b) => {
       const pa = a.prioridade ? 0 : 1;
       const pb = b.prioridade ? 0 : 1;
-      return pa - pb;
+      if (pa !== pb) return pa - pb;
+      // Pendentes (ainda sem decisão do AR) sempre antes das já decididas
+      const dpa = (a.job && a.job.decisao_risco) ? 1 : 0;
+      const dpb = (b.job && b.job.decisao_risco) ? 1 : 0;
+      if (dpa !== dpb) return dpa - dpb;
+      return _ceTempoEsperaMs(b) - _ceTempoEsperaMs(a); // maior tempo de espera primeiro
     });
     tbody.innerHTML = listaFiltrada.map(ce => {
       const job = ce.job || {};
