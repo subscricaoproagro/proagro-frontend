@@ -1551,7 +1551,8 @@ function renderRecentJobs(jobs) {
 function renderStatusBadge(j) {
   if (j.status === 'concluido') {
     if (j.decisao === 'recusado') {
-      const motivo = j.justificativa ? `<div style="font-size:11px;color:#c0392b;margin-top:4px;max-width:220px;line-height:1.4">${j.justificativa}</div>` : '';
+      const motivoTexto = j.justificativa ? j.justificativa.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : '';
+      const motivo = motivoTexto ? `<div style="font-size:11px;color:#c0392b;margin-top:4px;max-width:220px;line-height:1.4">${motivoTexto}</div>` : '';
       return `<div><span class="badge" style="background:#fef2f2;color:#c0392b;border:1px solid #fca5a5"><span class="badge-dot" style="background:#c0392b"></span>Recusada</span>${motivo}</div>`;
     }
     const isSistema = j.tipo_analise === 'sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '');
