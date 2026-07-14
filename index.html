@@ -1502,7 +1502,7 @@ function renderJobsTable(jobs) {
           ${concluido && (j.tipo_analise==='sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '')) && j.decisao === 'aprovado' ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="abrirUploadSistema('${j.id}')">📁 Enviar Arquivos</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="verDecisaoAR('${j.id}')">👁 Ver Decisão AR</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="reavaliarCE('${j.id}')">🔄 Reavaliar</button>` : ''}
-          ${concluido && j.decisao === 'recusado' ? `<button class="btn-sm" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c" onclick="reenviarEmailCE('${j.id}')">📧 Reenviar Email</button>` : ''}
+          ${concluido && j.decisao === 'recusado' ? `<button class="btn-sm" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c" onclick="abrirReenvioEditavel('${j.id}','sistema')">📧 Reenviar Email</button>` : ''}
           ${j.status==='processando' ? `<button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="cancelarJob('${j.id}')" title="Interromper análise">⏹ Parar</button>` : ''}
           ${(j.status==='erro' || j.status==='cancelado') ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#2563eb" onclick="reprocessarJob('${j.id}')" title="Tentar novamente">🔄 Reprocessar</button>` : ''}
           <button class="btn-sm btn-danger" onclick="deletarJob('${j.id}')" title="Remover">🗑</button>
@@ -2960,6 +2960,44 @@ async function verCondicaoEspecial(jobId) {
   } catch(e) { showToast('Erro ao carregar condição especial: ' + e.message, 'error'); }
 }
 
+let _reenvioContexto = null; // { jobId, tipo: 'sistema' | 'ce' }
+
+async function abrirReenvioEditavel(jobId, tipo, decisaoAtual) {
+  try {
+    const endpointPreview = tipo === 'ce' ? ('/jobs/' + jobId + '/preview-email-ce') : ('/jobs/' + jobId + '/preview-email-recusa');
+    const payloadPreview = tipo === 'ce' ? { decisao: decisaoAtual || 'recusado' } : {};
+    const data = await api('POST', endpointPreview, payloadPreview);
+    document.getElementById('reenvio-email-assunto').value = data.assunto || '';
+    document.getElementById('reenvio-email-corpo').value = data.corpo || '';
+    document.getElementById('reenvio-email-corretor').value = data.email_corretor || '';
+    _reenvioContexto = { jobId, tipo };
+    openModal('modal-reenvio-editavel');
+  } catch(e) {
+    showToast('Erro ao carregar prévia: ' + e.message, 'error');
+  }
+}
+
+async function confirmarReenvioEditavel() {
+  if (!_reenvioContexto) return;
+  const { jobId, tipo } = _reenvioContexto;
+  const assunto = document.getElementById('reenvio-email-assunto').value.trim();
+  const corpo = document.getElementById('reenvio-email-corpo').value.trim();
+  const email_corretor = document.getElementById('reenvio-email-corretor').value.trim();
+  if (!corpo) { showToast('O corpo do e-mail não pode ficar vazio.', 'error'); return; }
+  if (!confirm('Confirma o envio? A decisão atual será revertida e a proposta volta para nova avaliação.')) return;
+  const endpoint = tipo === 'ce' ? ('/jobs/' + jobId + '/reenviar-email-ce-editado') : ('/jobs/' + jobId + '/reenviar-email-recusa');
+  try {
+    await api('POST', endpoint, { assunto, corpo, email_corretor });
+    closeModal('modal-reenvio-editavel');
+    showToast('E-mail enviado e proposta reaberta para nova avaliação.', 'success');
+    _reenvioContexto = null;
+    carregarJobs();
+    if (typeof carregarCondicoesEspeciais === 'function') carregarCondicoesEspeciais();
+  } catch(e) {
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
+
 async function reenviarEmailCE(jobId) {
   if (!confirm('Reenviar o email de devolutiva para esta condição especial?')) return;
   try {
@@ -3454,7 +3492,7 @@ function renderBtnsCE(ce) {
   var jobId = ce.job_id;
   var dr = (ce.job && ce.job.decisao_risco) ? ce.job.decisao_risco : null;
   var btnDados = '<button class="btn-sm" style="background:#f0f9ff;border:1px solid #bae6fd;color:#0369a1" onclick="abrirDadosCE(\'' + jobId + '\')">📋 Dados CE</button>';
-  var btnEmail = '<button class="btn-sm" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c" onclick="reenviarEmailCE(\'' + jobId + '\')">📧 Reenviar Email</button>';
+  var btnEmail = '<button class="btn-sm" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c" onclick="abrirReenvioEditavel(\'' + jobId + '\',\'ce\',\'' + (dr || '') + '\')">📧 Reenviar Email</button>';
   if (!dr) {
     return btnDados +
            ' <button class="btn-sm btn-primary" onclick="abrirAprovacaoCE(\'' + jobId + '\')">✅ Aprovar CE</button>' +
@@ -6964,6 +7002,36 @@ async function mcDeletar(id){
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button class="btn btn-outline" onclick="closeModal('modal-preview-email-ce')">Cancelar</button>
         <button class="btn btn-primary" id="btn-enviar-email-preview" onclick="enviarComPreview()">📤 Confirmar e Enviar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-reenvio-editavel" style="align-items:flex-start;padding:20px;overflow-y:auto;background:rgba(0,0,0,0.5)">
+  <div class="modal-card" style="max-width:600px;width:100%;margin:auto">
+    <div class="modal-header" style="background:#c2410c;border-radius:10px 10px 0 0">
+      <div class="modal-title" style="color:#fff">📧 Editar e Reenviar</div>
+      <button class="modal-close" style="color:#fff;opacity:.8" onclick="closeModal('modal-reenvio-editavel')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <div style="background:#fff8e1;border:1px solid #fbbf24;border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e;margin-bottom:16px">
+        ⚠️ Ao confirmar, a decisão atual é <strong>revertida</strong> — a proposta volta para nova avaliação, e pode inclusive seguir para Condição Especial se for o caso.
+      </div>
+      <div style="margin-bottom:12px">
+        <label class="ce-label">Destinatário (corretor)</label>
+        <input class="ce-input" id="reenvio-email-corretor" placeholder="ex: corretor@email.com" style="font-size:13px">
+      </div>
+      <div style="margin-bottom:12px">
+        <label class="ce-label">Assunto</label>
+        <input class="ce-input" id="reenvio-email-assunto" style="font-size:13px">
+      </div>
+      <div style="margin-bottom:16px">
+        <label class="ce-label">Corpo do Email</label>
+        <textarea class="ce-input" id="reenvio-email-corpo" rows="14" style="font-size:13px;line-height:1.6;resize:vertical"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-outline" onclick="closeModal('modal-reenvio-editavel')">Cancelar</button>
+        <button class="btn btn-primary" style="background:#c2410c" id="btn-confirmar-reenvio" onclick="confirmarReenvioEditavel()">📤 Enviar e Reabrir Avaliação</button>
       </div>
     </div>
   </div>
