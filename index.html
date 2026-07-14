@@ -1490,6 +1490,7 @@ function renderJobsTable(jobs) {
           <button class="btn-sm btn-outline" onclick="verJob('${j.id}')">Detalhes</button>
           ${concluido ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${j.id}')" title="Visualizar relatório completo">📄 Ver</button>` : ''}
           ${concluido ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8" onclick="abrirModalSobreposicoes('${j.id}')" title="Ver sobreposições em mapa (CAR, PRODES, CNFP, INCRA)">🗺️ Sobreposições</button>` : ''}
+          ${renderBadgeScoreSubscricao(j)}
           ${concluido ? `<button class="btn-sm btn-green" onclick="baixarJob('${j.id}')">⬇ Baixar</button>` : ''}
 
           ${concluido && (j.tipo_analise==='condicao_especial' || _histAba==='ce') && !j.decisao && !j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirEdicaoCE('${j.id}', '${(j.nome_proponente||'').replace(/'/g,"\\'")}', '${(j.cpf||'').replace(/'/g,"\\'")}')">📋 Preencher CE</button>` : ''}
@@ -1549,6 +1550,71 @@ function renderRecentJobs(jobs) {
       </div>
       ${renderStatusBadge(j)}
     </div>`).join('');
+}
+
+function renderBadgeScoreSubscricao(j) {
+  const sc = j.score_subscricao;
+  if (!sc) return '';
+  if (sc.recusa_automatica) {
+    return `<button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="verScoreSubscricao('${j.id}')" title="Ver motivos">🚫 Recusa automática</button>`;
+  }
+  const total = sc.score?.total;
+  if (total == null) return '';
+  const cor = total >= 80 ? '#166534' : (total >= 60 ? '#92400e' : '#c0392b');
+  const fundo = total >= 80 ? '#f0fdf4' : (total >= 60 ? '#fffbeb' : '#fff5f5');
+  const borda = total >= 80 ? '#86efac' : (total >= 60 ? '#fde68a' : '#fecaca');
+  return `<button class="btn-sm" style="background:${fundo};border:1px solid ${borda};color:${cor}" onclick="verScoreSubscricao('${j.id}')" title="Ver detalhamento do score">📊 Score: ${total}</button>`;
+}
+
+function verScoreSubscricao(jobId) {
+  const j = (allJobs || []).find(x => x.id === jobId);
+  const sc = j?.score_subscricao;
+  if (!sc) { showToast('Sem dados de score para esta proposta.', 'info'); return; }
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
+  ov.onclick = (e) => { if (e.target === ov) document.body.removeChild(ov); };
+
+  let corTopo = '#7c3aed', tituloTopo = '📊 Score de Subscrição';
+  if (sc.recusa_automatica) { corTopo = '#c0392b'; tituloTopo = '🚫 Recusa Automática'; }
+
+  let corpo = `<div style="margin-bottom:12px"><strong>Decisão sugerida:</strong> ${escHtml(sc.decisao_sugerida || '—')}</div>`;
+
+  if (!sc.recusa_automatica && sc.score) {
+    const s = sc.score;
+    const pend = s.pendente_implementacao || [];
+    const marca = (nome) => pend.includes(nome) ? ' <span style="color:#9ca3af">*</span>' : '';
+    corpo += `<div style="margin-bottom:10px"><strong>Score total: ${s.total ?? '—'}/100</strong></div>`;
+    corpo += `<table style="width:100%;font-size:12.5px;border-collapse:collapse;margin-bottom:10px">
+      <tr><td style="padding:3px 0">CAR</td><td style="text-align:right">${s.car ?? '—'}/20</td></tr>
+      <tr><td style="padding:3px 0">Textura do solo</td><td style="text-align:right">${s.textura ?? '—'}/15</td></tr>
+      <tr><td style="padding:3px 0">Solo Classe AD</td><td style="text-align:right">${s.solo_ad ?? '—'}/10</td></tr>
+      <tr><td style="padding:3px 0">NDVI${marca('ndvi')}</td><td style="text-align:right">${s.ndvi ?? '—'}/25</td></tr>
+      <tr><td style="padding:3px 0">Frequência de cultivo${marca('frequencia_cultivo')}</td><td style="text-align:right">${s.frequencia_cultivo ?? '—'}/15</td></tr>
+      <tr><td style="padding:3px 0">Indenizações anteriores</td><td style="text-align:right">${s.indenizacoes ?? '—'}/10</td></tr>
+      <tr><td style="padding:3px 0">Clima${marca('clima')}</td><td style="text-align:right">${s.clima ?? '—'}/5</td></tr>
+    </table>`;
+    if (pend.length) {
+      corpo += `<div style="font-size:11px;color:#9ca3af;font-style:italic;margin-bottom:10px">* nota neutra — ainda pendente de implementação (${pend.join(', ')})</div>`;
+    }
+  }
+
+  if ((sc.motivos_recusa || []).length) {
+    corpo += `<div style="margin-bottom:4px"><strong>Motivos:</strong></div>`
+           + sc.motivos_recusa.map(m => `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:8px 10px;font-size:12.5px;margin-bottom:6px">${escHtml(m)}</div>`).join('');
+  }
+  if ((sc.observacoes || []).length) {
+    corpo += `<div style="margin:8px 0 4px"><strong>Observações:</strong></div>`
+           + sc.observacoes.map(o => `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px;font-size:12.5px;margin-bottom:6px">${escHtml(o)}</div>`).join('');
+  }
+
+  ov.innerHTML =
+    `<div style="background:#fff;border-radius:12px;max-width:520px;width:100%;max-height:85vh;overflow-y:auto;font-family:inherit">`
+    + `<div style="background:${corTopo};color:#fff;padding:16px 20px;font-weight:700;font-size:15px">${tituloTopo}</div>`
+    + `<div style="padding:20px;font-size:13.5px;color:#374151;line-height:1.5">${corpo}</div>`
+    + `<div style="padding:14px 20px;border-top:1px solid #eef2f1;display:flex;justify-content:flex-end">`
+    + `<button class="btn-sm btn-outline" id="score-close">Fechar</button></div></div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('#score-close').onclick = () => document.body.removeChild(ov);
 }
 
 function renderStatusBadge(j) {
