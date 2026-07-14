@@ -3395,6 +3395,10 @@ function renderBtnsCE(ce) {
   if (ce.reavaliacao_solicitada) {
     blocoReav = ' <span style="background:#ede9fe;border:1px solid #c4b5fd;color:#5b21b6;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">🔁 Reavaliação solicitada</span>'
               + ' <button class="btn-sm" style="background:#7c3aed;color:#fff;font-size:11px;padding:3px 8px" onclick="verReavaliacaoCE(\'' + jobId + '\')">👁 Ver pedido</button>';
+  } else if (ce.reavaliacao_negada) {
+    blocoReav = ' <span style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">❌ Reavaliação negada</span>'
+              + ' <button class="btn-sm btn-outline" style="font-size:11px;padding:3px 8px" onclick="verMotivoNegativaReavaliacao(\'' + jobId + '\')">👁 Ver justificativa</button>'
+              + ' <button class="btn-sm btn-outline" style="font-size:11px;padding:3px 8px;color:var(--gray400)" onclick="desmarcarReavaliacaoCE(\'' + jobId + '\')" title="Uso interno: limpa essa marcação">🗑 Desmarcar</button>';
   }
 
   return btnDados +
@@ -3437,12 +3441,15 @@ function verReavaliacaoCE(jobId) {
     + '<div style="margin-bottom:12px"><strong>Cliente:</strong> ' + escHtml(ce.cliente || '—') + '</div>'
     + '<div style="margin-bottom:10px"><strong>Taxa sugerida:</strong> ' + escHtml(taxa) + '</div>'
     + '<div style="margin-bottom:10px"><strong>Produtividade garantida sugerida (kg/ha):</strong> ' + escHtml(prod) + '</div>'
-    + '<div style="margin-bottom:4px"><strong>Justificativa:</strong></div>'
-    + '<div style="white-space:pre-wrap;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px;font-size:13px">' + escHtml(just) + '</div>'
+    + '<div style="margin-bottom:4px"><strong>Justificativa do corretor:</strong></div>'
+    + '<div style="white-space:pre-wrap;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px;font-size:13px;margin-bottom:14px">' + escHtml(just) + '</div>'
+    + '<div style="margin-bottom:4px"><strong>Se for negar, justifique aqui:</strong></div>'
+    + '<textarea id="reav-motivo-negativa" rows="3" class="form-input" placeholder="Motivo pelo qual a reavaliação não será aceita..." style="font-size:13px;resize:vertical"></textarea>'
     + '</div>'
-    + '<div style="padding:14px 20px;border-top:1px solid #eef2f1;display:flex;gap:8px;justify-content:flex-end">'
+    + '<div style="padding:14px 20px;border-top:1px solid #eef2f1;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">'
     + '<button class="btn-sm btn-outline" id="reav-close">Fechar</button>'
-    + '<button class="btn-sm" style="background:#7c3aed;color:#fff" id="reav-resolv">✓ Marcar como resolvida</button>'
+    + '<button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" id="reav-negar">❌ Negar reavaliação</button>'
+    + '<button class="btn-sm" style="background:#7c3aed;color:#fff" id="reav-resolv">✓ Aceitar e ir reavaliar</button>'
     + '</div></div>';
   document.body.appendChild(ov);
   ov.querySelector('#reav-close').onclick = function(){ document.body.removeChild(ov); };
@@ -3450,10 +3457,53 @@ function verReavaliacaoCE(jobId) {
     try {
       await api('POST', '/condicoes-especiais/' + jobId + '/reavaliacao-resolvida', {});
       document.body.removeChild(ov);
-      showToast('Reavaliação marcada como resolvida.', 'success');
+      showToast('Reavaliação marcada como resolvida — ajuste os termos com o botão Reavaliar.', 'success');
       carregarCondicoesEspeciais();
     } catch(e){ showToast('Erro: ' + e.message, 'error'); }
   };
+  ov.querySelector('#reav-negar').onclick = async function(){
+    var motivo = document.getElementById('reav-motivo-negativa').value.trim();
+    if (!motivo) { showToast('Escreva a justificativa da negativa antes de confirmar.', 'error'); return; }
+    if (!confirm('Confirmar que a reavaliação será negada, mantendo a decisão original?')) return;
+    try {
+      await api('POST', '/condicoes-especiais/' + jobId + '/reavaliacao-negar', { motivo: motivo });
+      document.body.removeChild(ov);
+      showToast('Reavaliação negada — decisão original mantida.', 'success');
+      carregarCondicoesEspeciais();
+    } catch(e){ showToast('Erro: ' + e.message, 'error'); }
+  };
+}
+
+async function desmarcarReavaliacaoCE(jobId) {
+  if (!confirm('Desmarcar a negativa de reavaliação desta CE? Isso é só uso interno, pra corrigir um clique errado — não avisa ninguém.')) return;
+  try {
+    await api('POST', '/condicoes-especiais/' + jobId + '/reavaliacao-desmarcar');
+    showToast('Marcação removida.', 'success');
+    carregarCondicoesEspeciais();
+  } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+function verMotivoNegativaReavaliacao(jobId) {
+  var ce = (window._ceCache || {})[jobId] || {};
+  var motivo = ce.reavaliacao_resposta_motivo || '—';
+  var por = ce.reavaliacao_resposta_por || '—';
+  var quando = ce.reavaliacao_resposta_em ? new Date(ce.reavaliacao_resposta_em).toLocaleString('pt-BR') : '';
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
+  ov.onclick = function(e){ if(e.target===ov) document.body.removeChild(ov); };
+  ov.innerHTML =
+    '<div style="background:#fff;border-radius:12px;max-width:460px;width:100%;overflow:hidden;font-family:inherit">'
+    + '<div style="background:#c0392b;color:#fff;padding:16px 20px;font-weight:700;font-size:15px">❌ Reavaliação negada</div>'
+    + '<div style="padding:20px;font-size:14px;color:#374151;line-height:1.6">'
+    + '<div style="margin-bottom:10px"><strong>Negada por:</strong> ' + escHtml(por) + (quando ? ' · ' + escHtml(quando) : '') + '</div>'
+    + '<div style="margin-bottom:4px"><strong>Justificativa do supervisor:</strong></div>'
+    + '<div style="white-space:pre-wrap;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px;font-size:13px">' + escHtml(motivo) + '</div>'
+    + '</div>'
+    + '<div style="padding:14px 20px;border-top:1px solid #eef2f1;display:flex;justify-content:flex-end">'
+    + '<button class="btn-sm btn-outline" id="reavneg-close">Fechar</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+  ov.querySelector('#reavneg-close').onclick = function(){ document.body.removeChild(ov); };
 }
 
 async function ativarDraftCE(jobId) {
