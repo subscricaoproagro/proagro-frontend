@@ -648,6 +648,7 @@
         <div id="ce-count-aprovado" onclick="document.getElementById('ce-filter').value='aprovado';carregarCondicoesEspeciais()" style="cursor:pointer;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#166534">✅ Aprovadas: <span id="ce-n-aprovado">—</span></div>
         <div id="ce-count-balcao" onclick="document.getElementById('ce-filter').value='balcao';carregarCondicoesEspeciais()" style="cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#1d4ed8">🏦 Balcão: <span id="ce-n-balcao">—</span></div>
         <div id="ce-count-recusado" onclick="document.getElementById('ce-filter').value='recusado';carregarCondicoesEspeciais()" style="cursor:pointer;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#c0392b">❌ Recusadas: <span id="ce-n-recusado">—</span></div>
+        <div id="ce-count-draft" onclick="document.getElementById('ce-filter').value='draft_confirmado';carregarCondicoesEspeciais()" style="cursor:pointer;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#b45309">📝 Drafts para ativar: <span id="ce-n-draft">—</span></div>
         <!-- Card de média de tempo de resposta -->
         <div style="margin-left:auto;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:8px 20px;display:flex;flex-direction:column;align-items:center;min-width:160px">
           <div style="font-size:10px;font-weight:600;color:#6d28d9;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">⏱ Média de Resposta</div>
@@ -1370,14 +1371,14 @@ async function excluirJobsPorStatus() {
 
 async function carregarJobs() {
   try {
-    // Garante que _ceJobIds está atualizado antes de renderizar os botões
-    if (_ceJobIds.size === 0) {
-      try {
-        const ces = await api('GET', '/condicoes-especiais');
-        _ceJobIds = new Set(ces.filter(ce => ce.cliente || ce.municipio).map(ce => ce.job_id));
-        ces.forEach(ce => { if (ce.job_id && ce.email_corretora) _ceEmailByJob[ce.job_id] = ce.email_corretora; });
-      } catch(e) {}
-    }
+    // Sempre busca de novo (prioridade pode mudar a qualquer momento, por
+    // qualquer usuário) — diferente de _ceJobIds, que raramente muda.
+    try {
+      const ces = await api('GET', '/condicoes-especiais');
+      _ceJobIds = new Set(ces.filter(ce => ce.cliente || ce.municipio).map(ce => ce.job_id));
+      _cePrioridade = new Set(ces.filter(ce => ce.prioridade).map(ce => ce.job_id));
+      ces.forEach(ce => { if (ce.job_id && ce.email_corretora) _ceEmailByJob[ce.job_id] = ce.email_corretora; });
+    } catch(e) {}
     const jobs = await api('GET', '/jobs');
     _jobsCache = jobs;
     allJobs = jobs;
@@ -1592,20 +1593,26 @@ async function verJob(id) {
 
 
 // ══════════════════════════════════════════
-// PRIORIDADE CE
+// PRIORIDADE CE — guardada no servidor (condicoes_especiais.prioridade),
+// não em localStorage, pra aparecer igual pra qualquer usuário (analista
+// de subscrição e supervisor).
 // ══════════════════════════════════════════
-let _cePrioridade = new Set(JSON.parse(localStorage.getItem('ce_prioridade') || '[]'));
+let _cePrioridade = new Set();
 
-function pedirPrioridadeCE(jobId) {
-  if (_cePrioridade.has(jobId)) {
-    _cePrioridade.delete(jobId);
-    showToast('Prioridade removida.', 'info');
-  } else {
-    _cePrioridade.add(jobId);
-    showToast('Prioridade solicitada! Esta CE será destacada para o supervisor.', 'success');
+async function pedirPrioridadeCE(jobId) {
+  try {
+    const r = await api('POST', `/condicoes-especiais/${jobId}/prioridade`);
+    if (r.prioridade) {
+      _cePrioridade.add(jobId);
+      showToast('Prioridade solicitada! Esta CE será destacada para o supervisor.', 'success');
+    } else {
+      _cePrioridade.delete(jobId);
+      showToast('Prioridade removida.', 'info');
+    }
+    carregarJobs();
+  } catch(e) {
+    showToast('Erro ao atualizar prioridade: ' + e.message, 'error');
   }
-  localStorage.setItem('ce_prioridade', JSON.stringify([..._cePrioridade]));
-  carregarHistorico();
 }
 
 
@@ -2932,10 +2939,15 @@ async function carregarCondicoesEspeciais() {
     const nAprovado = listaSemSistema.filter(ce => ce.job && (ce.job.decisao_risco === 'aprovado' || ce.job.decisao_risco === 'aprovado_diferente')).length;
     const nBalcao   = listaSemSistema.filter(ce => ce.job && ce.job.decisao_risco === 'balcao').length;
     const nRecusado = listaSemSistema.filter(ce => ce.job && ce.job.decisao_risco === 'recusado').length;
+    // "Cliente confirmou, mas o draft ainda não foi ativado" — mesma regra
+    // do filtro "draft_confirmado" já existente. Some da lista assim que o
+    // draft é ativado (não fica pendurado depois de resolvido).
+    const nDraft = listaSemSistema.filter(ce => ce.corretor_aceitou && !ce.draft_ativado).length;
     const elP = document.getElementById('ce-n-pendente'); if(elP) elP.textContent = nPendente;
     const elA = document.getElementById('ce-n-aprovado'); if(elA) elA.textContent = nAprovado;
     const elB = document.getElementById('ce-n-balcao');   if(elB) elB.textContent = nBalcao;
     const elR = document.getElementById('ce-n-recusado'); if(elR) elR.textContent = nRecusado;
+    const elD = document.getElementById('ce-n-draft');    if(elD) elD.textContent = nDraft;
 
     // Média de tempo de resposta (apenas CEs concluídas com timestamps válidos)
     const concluidas = listaSemSistema.filter(ce => {
@@ -2989,16 +3001,17 @@ async function carregarCondicoesEspeciais() {
       tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada para este filtro.</td></tr>';
       return;
     }
-    // Prioridades sinalizadas pelos analistas (via localStorage compartilhado)
-    const prioridades = new Set(JSON.parse(localStorage.getItem('ce_prioridade') || '[]'));
+    // Prioridade sinalizada pelo analista de subscrição — vem do servidor
+    // (ce.prioridade), não mais de localStorage, então aparece igual pra
+    // qualquer usuário (inclusive o supervisor).
     listaFiltrada.sort((a, b) => {
-      const pa = prioridades.has(a.job_id) ? 0 : 1;
-      const pb = prioridades.has(b.job_id) ? 0 : 1;
+      const pa = a.prioridade ? 0 : 1;
+      const pb = b.prioridade ? 0 : 1;
       return pa - pb;
     });
     tbody.innerHTML = listaFiltrada.map(ce => {
       const job = ce.job || {};
-      const _isPrioridade = prioridades.has(ce.job_id);
+      const _isPrioridade = !!ce.prioridade;
       const _aguardaDraft = (job.decisao_risco === 'aprovado' || job.decisao_risco === 'aprovado_diferente') && ce.corretor_aceitou && !ce.draft_ativado;
       const _reavPend = !!ce.reavaliacao_solicitada;
       const dataChegada = ce.data_chegada || ce.criado_em || '';
@@ -3148,7 +3161,6 @@ async function _executarAprovacaoCE(assuntoEditado, corpoEditado, conformidade, 
 
     // Remove prioridade ao resolver CE
     _cePrioridade.delete(_ceAprovJobId);
-    localStorage.setItem('ce_prioridade', JSON.stringify([..._cePrioridade]));
     const obs3 = document.getElementById('aprov-obs').value.trim();
     const res = await api('POST', '/jobs/' + _ceAprovJobId + '/decisao-risco', {
       decisao: conformidade === 'diferente' ? 'aprovado_diferente' : 'aprovado',
@@ -3309,7 +3321,6 @@ async function _executarRecusaCE(motivo, assuntoEditado, corpoEditado, destinata
 
     // Remove prioridade ao resolver CE
     _cePrioridade.delete(_ceRecusaJobId);
-    localStorage.setItem('ce_prioridade', JSON.stringify([..._cePrioridade]));
     await api('POST', '/jobs/' + _ceRecusaJobId + '/decisao-risco', { decisao: 'recusado', observacoes: motivo, email_assunto: assuntoEditado, email_corpo: corpoEditado, destinatarios_adicionais: destinatarios });
     closeModal('modal-recusa-ce');
     showToast('Proposta recusada.', 'success');
@@ -3340,7 +3351,6 @@ async function _executarBalcao(obs, assuntoEditado, corpoEditado, destinatarios=
 
     // Remove prioridade ao resolver CE
     _cePrioridade.delete(_ceBalcaoJobId);
-    localStorage.setItem('ce_prioridade', JSON.stringify([..._cePrioridade]));
     await api('POST', '/jobs/' + _ceBalcaoJobId + '/decisao-risco', { decisao: 'balcao', observacoes: obs, email_assunto: assuntoEditado, email_corpo: corpoEditado, destinatarios_adicionais: destinatarios });
     closeModal('modal-balcao-ce');
     showToast('🏦 Condição de Balcão enviada! Email disparado.', 'success');
