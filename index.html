@@ -1467,6 +1467,7 @@ async function carregarJobs() {
     atualizarBotaoCarregarMaisJobs();
   } catch(e) {
     console.warn('Erro ao carregar jobs:', e.message);
+    showToast('Erro ao carregar/buscar propostas: ' + e.message, 'error');
   }
 }
 
