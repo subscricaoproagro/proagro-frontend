@@ -511,6 +511,7 @@
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <input class="form-input" id="hist-filter-proposta" placeholder="Nº da proposta" style="width:140px;padding:8px 12px" oninput="buscarPropostaComDebounce()">
+          <input class="form-input" id="hist-filter-cliente" placeholder="Nome do Cliente" style="width:160px;padding:8px 12px" oninput="buscarPropostaComDebounce()">
           <select class="form-input" id="hist-filter" style="width:auto;padding:8px 12px" onchange="carregarJobs()">
             <option value="">Todos</option>
             <option value="aguardando">⏳ Aguardando processamento</option>
@@ -1384,7 +1385,9 @@ let _todosJobsCarregados = false;
 async function carregarJobs() {
   try {
     const filtroAtivo = document.getElementById('hist-filter')?.value || '';
-    const buscaAtiva  = (document.getElementById('hist-filter-proposta')?.value || '').trim();
+    const buscaProposta = (document.getElementById('hist-filter-proposta')?.value || '').trim();
+    const buscaCliente  = (document.getElementById('hist-filter-cliente')?.value || '').trim();
+    const buscaAtiva = buscaCliente || buscaProposta; // manda pro servidor o termo mais específico disponível
 
     // Sem filtro/busca: carrega só a primeira página (rápido). Com filtro de
     // status: precisa ver tudo que bate, não só a página carregada. Com busca
@@ -1507,6 +1510,7 @@ function _computarJobsFiltrados() {
   const jobs = allJobs || [];
   const filter = document.getElementById('hist-filter')?.value || '';
   const filtroProposta = (document.getElementById('hist-filter-proposta')?.value || '').trim().toLowerCase();
+  const filtroCliente  = (document.getElementById('hist-filter-cliente')?.value || '').trim().toLowerCase();
 
   let filtered = jobs;
   const mostrarAbas = document.getElementById('hist-abas')?.style.display !== 'none';
@@ -1537,6 +1541,10 @@ function _computarJobsFiltrados() {
       String(j.id_proposta || '').toLowerCase().includes(filtroProposta) ||
       String(j.nome_proponente || '').toLowerCase().includes(filtroProposta)
     );
+  }
+
+  if (filtroCliente) {
+    filtered = filtered.filter(j => String(j.nome_proponente || '').toLowerCase().includes(filtroCliente));
   }
 
   return filtered;
