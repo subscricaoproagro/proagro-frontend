@@ -377,7 +377,7 @@
           <div class="card-header"><div class="card-title">Status do sistema</div></div>
           <div class="card-body" id="system-status">
             <div style="display:flex;flex-direction:column;gap:14px">
-              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;color:var(--gray600)">🔌 Backend (Railway)</span><span id="status-backend" class="badge badge-neutral">Verificando…</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;color:var(--gray600)">🔌 Backend</span><span id="status-backend" class="badge badge-neutral">Verificando…</span></div>
               <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;color:var(--gray600)">🗄️ Supabase</span><span id="status-supa" class="badge badge-neutral">Verificando…</span></div>
               <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;color:var(--gray600)">⚙️ Worker local</span><span id="status-worker" class="badge badge-neutral">Verificando…</span></div>
               <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:14px;color:var(--gray600)">🛰️ Google Earth Engine</span><span class="badge badge-success"><span class="badge-dot"></span>Online</span></div>
@@ -510,7 +510,7 @@
           <div class="section-sub">Todos os jobs executados</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <input class="form-input" id="hist-filter-proposta" placeholder="Nº da proposta" style="width:140px;padding:8px 12px" oninput="filtrarHistoricoLocal()">
+          <input class="form-input" id="hist-filter-proposta" placeholder="Nº da proposta" style="width:140px;padding:8px 12px" oninput="buscarPropostaComDebounce()">
           <select class="form-input" id="hist-filter" style="width:auto;padding:8px 12px" onchange="carregarJobs()">
             <option value="">Todos</option>
             <option value="aguardando">⏳ Aguardando processamento</option>
@@ -561,6 +561,10 @@
             <thead><tr><th>Proposta</th><th>Proponente</th><th>Cultura</th><th>Analista</th><th>Iniciado</th><th>Status</th><th>Tempo Aval.</th><th>Ações</th></tr></thead>
             <tbody id="jobs-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
           </table>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:16px">
+          <button id="btn-carregar-mais-jobs" class="btn-sm btn-outline" style="display:none" onclick="carregarMaisJobsHistorico()">⬇️ Carregar mais</button>
+          <span id="info-carregar-mais-jobs" style="font-size:12px;color:var(--gray400)"></span>
         </div>
       </div>
     </div>
@@ -972,7 +976,7 @@ function showAuthError(msg) {
   el.style.display = 'block';
 }
 
-function enterApp() {
+async function enterApp() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'block';
 
@@ -1042,8 +1046,8 @@ function enterApp() {
     mcAplicarPaginas(currentUser.paginas);
   }
 
+  if (currentUser.role !== 'supervisor') await carregarJobs();
   carregarStats();
-  if (currentUser.role !== 'supervisor') carregarJobs();
   verificarBackend();
 
   // Redirecionar para o dashboard correto
@@ -1132,7 +1136,8 @@ async function verificarBackend() {
   try {
     const workerEl = document.getElementById('status-worker');
     if (workerEl) {
-      const jobs = await api('GET', '/jobs');
+      const jobsResp = await api('GET', '/jobs?limit=10&offset=0');
+      const jobs = jobsResp.jobs || [];
       const agora = Date.now();
       const workerAtivo = jobs && jobs.some(j => {
         if (!j.updated_at && !j.concluido_at) return false;
@@ -1371,33 +1376,75 @@ async function excluirJobsPorStatus() {
   await carregarJobs();
 }
 
+let _jobsOffset = 0;
+const _JOBS_POR_PAGINA = 200;
+let _jobsTotalServidor = 0;
+let _todosJobsCarregados = false;
+
 async function carregarJobs() {
   try {
-    // Sempre busca de novo (prioridade pode mudar a qualquer momento, por
-    // qualquer usuário) — diferente de _ceJobIds, que raramente muda.
-    try {
-      const ces = await api('GET', '/condicoes-especiais');
+    const filtroAtivo = document.getElementById('hist-filter')?.value || '';
+    const buscaAtiva  = (document.getElementById('hist-filter-proposta')?.value || '').trim();
+
+    // Sem filtro/busca: carrega só a primeira página (rápido). Com filtro de
+    // status: precisa ver tudo que bate, não só a página carregada. Com busca
+    // por nº de proposta: usa a busca dedicada no servidor (acha em todo o
+    // histórico, não só no que já foi carregado).
+    let jobsPromise, modoCompleto;
+    if (buscaAtiva) {
+      jobsPromise = api('GET', '/jobs?busca=' + encodeURIComponent(buscaAtiva));
+      modoCompleto = true;
+    } else if (filtroAtivo) {
+      jobsPromise = api('GET', '/jobs');
+      modoCompleto = true;
+    } else {
+      jobsPromise = api('GET', `/jobs?limit=${_JOBS_POR_PAGINA}&offset=0`);
+      modoCompleto = false;
+    }
+
+    // Roda tudo em paralelo (são independentes) — antes eram sequenciais,
+    // dobrando à toa o tempo de carregamento do Histórico/Dashboard.
+    const [cesResult, resumo, jobsResp] = await Promise.all([
+      api('GET', '/condicoes-especiais').catch(() => null),
+      api('GET', '/jobs/resumo').catch(() => null),
+      jobsPromise,
+    ]);
+    if (cesResult) {
+      const ces = cesResult;
       _ceJobIds = new Set(ces.filter(ce => ce.cliente || ce.municipio).map(ce => ce.job_id));
       _cePrioridade = new Set(ces.filter(ce => ce.prioridade).map(ce => ce.job_id));
       ces.forEach(ce => { if (ce.job_id && ce.email_corretora) _ceEmailByJob[ce.job_id] = ce.email_corretora; });
-    } catch(e) {}
-    const jobs = await api('GET', '/jobs');
-    _jobsCache = jobs;
-    allJobs = jobs;
+    }
 
-    // Atualiza contadores
+    if (modoCompleto) {
+      allJobs = Array.isArray(jobsResp) ? jobsResp : (jobsResp.jobs || []);
+      _todosJobsCarregados = true;
+      _jobsOffset = allJobs.length;
+      _jobsTotalServidor = allJobs.length;
+    } else {
+      allJobs = jobsResp.jobs || [];
+      _todosJobsCarregados = false;
+      _jobsOffset = allJobs.length;
+      _jobsTotalServidor = jobsResp.total ?? allJobs.length;
+    }
+    _jobsCache = allJobs;
+
+    // Contadores usam o /jobs/resumo (sempre o histórico INTEIRO, leve) — não
+    // o allJobs, que agora pode ser só uma página. Se o resumo falhar por
+    // algum motivo, cai pra allJobs (menos preciso, mas não quebra a tela).
+    const dadosContagem = resumo || allJobs;
     const setCount = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
-    setCount('hcount-aguardando',  allJobs.filter(j => j.status === 'aguardando').length);
-    setCount('hcount-processando', allJobs.filter(j => j.status === 'processando').length);
-    setCount('hcount-aguardando-analise', allJobs.filter(j => j.status === 'concluido' && !j.decisao && !j.decisao_risco).length);
-    setCount('hcount-concluido',   allJobs.filter(j => j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco).length);
-    setCount('hcount-ce',          allJobs.filter(j => j.status === 'concluido' && (j.decisao_risco === 'aprovado' || j.decisao_risco === 'aprovado_diferente')).length);
-    setCount('hcount-balcao',      allJobs.filter(j => j.status === 'concluido' && j.decisao_risco === 'balcao').length);
-    setCount('hcount-recusada',    allJobs.filter(j => j.status === 'concluido' && j.decisao === 'recusado').length);
-    setCount('hcount-erro',        allJobs.filter(j => j.status === 'erro' || j.status === 'cancelado').length);
+    setCount('hcount-aguardando',  dadosContagem.filter(j => j.status === 'aguardando').length);
+    setCount('hcount-processando', dadosContagem.filter(j => j.status === 'processando').length);
+    setCount('hcount-aguardando-analise', dadosContagem.filter(j => j.status === 'concluido' && !j.decisao && !j.decisao_risco).length);
+    setCount('hcount-concluido',   dadosContagem.filter(j => j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco).length);
+    setCount('hcount-ce',          dadosContagem.filter(j => j.status === 'concluido' && (j.decisao_risco === 'aprovado' || j.decisao_risco === 'aprovado_diferente')).length);
+    setCount('hcount-balcao',      dadosContagem.filter(j => j.status === 'concluido' && j.decisao_risco === 'balcao').length);
+    setCount('hcount-recusada',    dadosContagem.filter(j => j.status === 'concluido' && j.decisao === 'recusado').length);
+    setCount('hcount-erro',        dadosContagem.filter(j => j.status === 'erro' || j.status === 'cancelado').length);
 
     // Média de tempo de avaliação — sistema + CE juntos (somente onde analista decidiu)
-    const _concluidos = allJobs.filter(j => j.concluido_at && j.created_at && !!(j.decisao || j.decisao_risco));
+    const _concluidos = dadosContagem.filter(j => j.concluido_at && j.created_at && !!(j.decisao || j.decisao_risco));
     const elHM = document.getElementById('hist-media-tempo');
     const elHB = document.getElementById('hist-media-base');
     if (elHM && _concluidos.length) {
@@ -1413,10 +1460,44 @@ async function carregarJobs() {
     } else if (elHM) { elHM.textContent='—'; if(elHB) elHB.textContent='sem dados'; }
 
     renderJobsTable(_computarJobsFiltrados());
-    renderRecentJobs(jobs.slice(0,4));
+    renderRecentJobs(allJobs.slice(0,4));
+    atualizarBotaoCarregarMaisJobs();
   } catch(e) {
     console.warn('Erro ao carregar jobs:', e.message);
   }
+}
+
+function atualizarBotaoCarregarMaisJobs() {
+  const btn = document.getElementById('btn-carregar-mais-jobs');
+  if (!btn) return;
+  const mostrar = !_todosJobsCarregados && allJobs.length < _jobsTotalServidor;
+  btn.style.display = mostrar ? '' : 'none';
+  const info = document.getElementById('info-carregar-mais-jobs');
+  if (info) info.textContent = mostrar ? `Mostrando ${allJobs.length} de ${_jobsTotalServidor}` : '';
+}
+
+async function carregarMaisJobsHistorico() {
+  const btn = document.getElementById('btn-carregar-mais-jobs');
+  if (btn) { btn.disabled = true; btn.textContent = 'Carregando…'; }
+  try {
+    const resp = await api('GET', `/jobs?limit=${_JOBS_POR_PAGINA}&offset=${_jobsOffset}`);
+    allJobs = allJobs.concat(resp.jobs || []);
+    _jobsCache = allJobs;
+    _jobsOffset = allJobs.length;
+    _jobsTotalServidor = resp.total ?? _jobsTotalServidor;
+    renderJobsTable(_computarJobsFiltrados());
+    atualizarBotaoCarregarMaisJobs();
+  } catch(e) {
+    showToast('Erro ao carregar mais: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⬇️ Carregar mais'; }
+  }
+}
+
+let _debounceBuscaPropostaTimer = null;
+function buscarPropostaComDebounce() {
+  clearTimeout(_debounceBuscaPropostaTimer);
+  _debounceBuscaPropostaTimer = setTimeout(() => carregarJobs(), 400);
 }
 
 // Recalcula os filtros (aba, status, nº da proposta) em cima do cache já
@@ -1452,7 +1533,10 @@ function _computarJobsFiltrados() {
   });
 
   if (filtroProposta) {
-    filtered = filtered.filter(j => String(j.id_proposta || '').toLowerCase().includes(filtroProposta));
+    filtered = filtered.filter(j =>
+      String(j.id_proposta || '').toLowerCase().includes(filtroProposta) ||
+      String(j.nome_proponente || '').toLowerCase().includes(filtroProposta)
+    );
   }
 
   return filtered;
@@ -1822,8 +1906,11 @@ async function carregarStats() {
       const dashCards = document.getElementById('dash-status-cards');
       if (dashCards) dashCards.style.display = '';
       try {
+        // /jobs/resumo sempre traz o histórico INTEIRO (leve, poucos campos) —
+        // diferente de allJobs, que agora pode ser só uma página (paginação
+        // do Histórico). Preciso do total certo aqui pros cards baterem.
         const [jobs, ces] = await Promise.all([
-          api('GET', '/jobs'),
+          api('GET', '/jobs/resumo'),
           api('GET', '/condicoes-especiais').catch(() => [])
         ]);
 
