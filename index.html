@@ -3104,6 +3104,52 @@ async function reenviarEmailCE(jobId) {
   }
 }
 
+// Reenvio SIMPLES: mostra o e-mail já aprovado/decidido (somente leitura,
+// sem campos editáveis) e reenvia exatamente como está — não reverte a
+// decisão nem reabre a avaliação. Para editar o conteúdo antes de reenviar,
+// use o botão "Editar Condição" em vez deste.
+async function abrirReenvioSimplesCE(jobId, decisaoAtual) {
+  try {
+    const data = await api('POST', '/jobs/' + jobId + '/preview-email-ce', { decisao: decisaoAtual || '' });
+    var ov = document.createElement('div');
+    ov.id = 'ov-reenvio-simples';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
+    ov.onclick = function(e){ if(e.target===ov) document.body.removeChild(ov); };
+    ov.innerHTML =
+      '<div style="background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;font-family:inherit">'
+      + '<div style="background:#0369a1;color:#fff;padding:16px 20px;font-weight:700;font-size:15px">📨 Reenviar Email (sem editar)</div>'
+      + '<div style="padding:20px;overflow-y:auto;font-size:14px;color:#374151;line-height:1.6">'
+      + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Assunto</div>'
+      + '<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;margin-bottom:16px">' + escHtml(data.assunto || '') + '</div>'
+      + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Corpo do e-mail</div>'
+      + '<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;white-space:pre-wrap">' + escHtml(data.corpo || '') + '</div>'
+      + (data.email_corretor ? '<div style="margin-top:12px;font-size:12px;color:#6b7280">Destinatário (corretor): <strong>' + escHtml(data.email_corretor) + '</strong></div>' : '')
+      + '</div>'
+      + '<div style="padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px">'
+      + '<button class="btn-sm btn-outline" onclick="document.body.removeChild(document.getElementById(\'ov-reenvio-simples\'))">Cancelar</button>'
+      + '<button class="btn-sm btn-primary" id="btn-confirmar-reenvio-simples" onclick="confirmarReenvioSimplesCE(\'' + jobId + '\')">📨 Enviar agora</button>'
+      + '</div>'
+      + '</div>';
+    document.body.appendChild(ov);
+  } catch(e) {
+    showToast('Erro ao carregar prévia: ' + e.message, 'error');
+  }
+}
+
+async function confirmarReenvioSimplesCE(jobId) {
+  const btn = document.getElementById('btn-confirmar-reenvio-simples');
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Enviando…'; }
+  try {
+    await api('POST', '/jobs/' + jobId + '/reenviar-email-ce');
+    var ov = document.getElementById('ov-reenvio-simples');
+    if (ov) document.body.removeChild(ov);
+    showToast('✅ Email reenviado com sucesso!', 'success');
+  } catch(e) {
+    showToast('Erro ao reenviar email: ' + e.message, 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '📨 Enviar agora'; }
+  }
+}
+
 async function excluirCE(jobId) {
   if (!confirm('Excluir esta condição especial? O job permanecerá no Histórico.')) return;
   try {
@@ -3588,7 +3634,8 @@ function renderBtnsCE(ce) {
   var jobId = ce.job_id;
   var dr = (ce.job && ce.job.decisao_risco) ? ce.job.decisao_risco : null;
   var btnDados = '<button class="btn-sm" style="background:#f0f9ff;border:1px solid #bae6fd;color:#0369a1" onclick="abrirDadosCE(\'' + jobId + '\')">📋 Dados CE</button>';
-  var btnEmail = '<button class="btn-sm" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c" onclick="abrirReenvioEditavel(\'' + jobId + '\',\'ce\',\'' + (dr || '') + '\')">📧 Reenviar Email</button>';
+  var btnEmail = '<button class="btn-sm" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c" onclick="abrirReenvioEditavel(\'' + jobId + '\',\'ce\',\'' + (dr || '') + '\')">✏️ Editar Condição</button>';
+  var btnReenviarSimples = '<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#0369a1" onclick="abrirReenvioSimplesCE(\'' + jobId + '\',\'' + (dr || '') + '\')">📨 Reenviar Email</button>';
   if (!dr) {
     return btnDados +
            ' <button class="btn-sm btn-primary" onclick="abrirAprovacaoCE(\'' + jobId + '\')">✅ Aprovar CE</button>' +
@@ -3619,11 +3666,19 @@ function renderBtnsCE(ce) {
     blocoReav = ' <span style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">❌ Reavaliação negada</span>'
               + ' <button class="btn-sm btn-outline" style="font-size:11px;padding:3px 8px" onclick="verMotivoNegativaReavaliacao(\'' + jobId + '\')">👁 Ver justificativa</button>'
               + ' <button class="btn-sm btn-outline" style="font-size:11px;padding:3px 8px;color:var(--gray400)" onclick="desmarcarReavaliacaoCE(\'' + jobId + '\')" title="Uso interno: limpa essa marcação">🗑 Desmarcar</button>';
+  } else if (ce.reav_taxa_sugerida || ce.reav_prod_sugerida || ce.reav_justificativa) {
+    // Pedido já foi resolvido (aceito para reavaliar), mas o conteúdo original
+    // sugerido pelo cliente continua salvo no banco — nunca deve sumir da
+    // tela, só porque o status mudou. Mostra um botão discreto pra consultar.
+    blocoReav = ' <span style="background:#f3f4f6;border:1px solid #d1d5db;color:#374151;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">✓ Reavaliação já tratada</span>'
+              + ' <button class="btn-sm btn-outline" style="font-size:11px;padding:3px 8px" onclick="verReavaliacaoCEHistorico(\'' + jobId + '\')">👁 Ver pedido original</button>';
   }
+
 
   return btnDados +
          ' <button class="btn-sm btn-outline" onclick="verCondicaoEspecial(\'' + jobId + '\')">👁 Ver</button> ' +
          ' <button class="btn-sm" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e" onclick="reavaliarAprovacaoCE(\'' + jobId + '\')">🔄 Reavaliar</button> ' +
+         ' ' + btnReenviarSimples +
          ' ' + btnEmail +
          ' <span style="font-size:12px;font-weight:600;color:' + cor + '">' + label + '</span>' +
          blocoReav +
@@ -3643,6 +3698,36 @@ function escHtml(s) {
   return String(s == null ? '' : s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// Versão somente-leitura: mostra o pedido original de reavaliação (taxa,
+// produtividade e justificativa sugeridas pelo cliente) mesmo depois de já
+// ter sido tratado — sem os botões de "Aceitar"/"Negar", que só fazem
+// sentido enquanto o pedido ainda está pendente.
+function verReavaliacaoCEHistorico(jobId) {
+  var ce = (window._ceCache || {})[jobId] || {};
+  var taxa = ce.reav_taxa_sugerida || '—';
+  var prod = ce.reav_prod_sugerida || '—';
+  var just = ce.reav_justificativa || '—';
+  var quando = ce.reavaliacao_em ? new Date(ce.reavaliacao_em).toLocaleString('pt-BR') : '';
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
+  ov.onclick = function(e){ if(e.target===ov) document.body.removeChild(ov); };
+  ov.innerHTML =
+    '<div style="background:#fff;border-radius:12px;max-width:480px;width:100%;overflow:hidden;font-family:inherit">'
+    + '<div style="background:#374151;color:#fff;padding:16px 20px;font-weight:700;font-size:15px">🔁 Pedido de reavaliação (já tratado)' + (quando ? ' <span style="font-weight:400;font-size:12px;opacity:.85">· ' + escHtml(quando) + '</span>' : '') + '</div>'
+    + '<div style="padding:20px;font-size:14px;color:#374151;line-height:1.6">'
+    + '<div style="margin-bottom:12px"><strong>Cliente:</strong> ' + escHtml(ce.cliente || '—') + '</div>'
+    + '<div style="margin-bottom:10px"><strong>Taxa sugerida:</strong> ' + escHtml(taxa) + '</div>'
+    + '<div style="margin-bottom:10px"><strong>Produtividade garantida sugerida (kg/ha):</strong> ' + escHtml(prod) + '</div>'
+    + '<div style="margin-bottom:4px"><strong>Justificativa do corretor:</strong></div>'
+    + '<div style="white-space:pre-wrap;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px;font-size:13px">' + escHtml(just) + '</div>'
+    + '</div>'
+    + '<div style="padding:14px 20px;border-top:1px solid #eef2f1;display:flex;justify-content:flex-end">'
+    + '<button class="btn-sm btn-outline" id="reav-hist-close">Fechar</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+  ov.querySelector('#reav-hist-close').onclick = function(){ document.body.removeChild(ov); };
 }
 
 function verReavaliacaoCE(jobId) {
