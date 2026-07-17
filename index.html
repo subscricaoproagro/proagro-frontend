@@ -3110,7 +3110,21 @@ async function reenviarEmailCE(jobId) {
 // use o botão "Editar Condição" em vez deste.
 async function abrirReenvioSimplesCE(jobId, decisaoAtual) {
   try {
-    const data = await api('POST', '/jobs/' + jobId + '/preview-email-ce', { decisao: decisaoAtual || '' });
+    // Importante: a rota de preview lê taxa/cobertura/produtividade/replantio
+    // do corpo da requisição (pensada originalmente pro fluxo de EDIÇÃO,
+    // antes da decisão existir) — não do banco. Como aqui a CE já foi
+    // decidida, buscamos os valores já salvos no cache e mandamos junto,
+    // senão a prévia vem toda com "—".
+    var ce = (window._ceCache || {})[jobId] || {};
+    const payload = {
+      decisao: decisaoAtual || '',
+      observacoes: ce.observacoes || '',
+      taxa_aprovada: ce.taxa_aprovada || '',
+      nivel_cobertura_aprovado: ce.nivel_cobertura_aprovado || '',
+      prod_bruta_aprovada: ce.prod_bruta_aprovada || '',
+      replantio_aprovado: ce.replantio_aprovado || ''
+    };
+    const data = await api('POST', '/jobs/' + jobId + '/preview-email-ce', payload);
     var ov = document.createElement('div');
     ov.id = 'ov-reenvio-simples';
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
@@ -3123,7 +3137,10 @@ async function abrirReenvioSimplesCE(jobId, decisaoAtual) {
       + '<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;margin-bottom:16px">' + escHtml(data.assunto || '') + '</div>'
       + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Corpo do e-mail</div>'
       + '<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;white-space:pre-wrap">' + escHtml(data.corpo || '') + '</div>'
-      + (data.email_corretor ? '<div style="margin-top:12px;font-size:12px;color:#6b7280">Destinatário (corretor): <strong>' + escHtml(data.email_corretor) + '</strong></div>' : '')
+      + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin:16px 0 4px">E-mail do corretor (destinatário)</div>'
+      + '<input type="email" id="reenvio-simples-email-corretor" class="form-input" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px" value="' + escHtml(data.email_corretor || '') + '" placeholder="email@corretor.com.br">'
+      + '<div style="font-size:11px;color:#6b7280;margin-top:4px">Pré-carregado com o e-mail cadastrado. Pode editar antes de enviar.</div>'
+      + '<div style="margin-top:14px;font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px">ℹ️ Esta prévia mostra só o texto. O e-mail enviado de verdade também inclui os botões de ação ("Aceito a condição…", "Pedir reavaliação…") — eles não aparecem aqui, mas vão junto no envio.</div>'
       + '</div>'
       + '<div style="padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px">'
       + '<button class="btn-sm btn-outline" onclick="document.body.removeChild(document.getElementById(\'ov-reenvio-simples\'))">Cancelar</button>'
@@ -3140,7 +3157,9 @@ async function confirmarReenvioSimplesCE(jobId) {
   const btn = document.getElementById('btn-confirmar-reenvio-simples');
   if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Enviando…'; }
   try {
-    await api('POST', '/jobs/' + jobId + '/reenviar-email-ce');
+    var campoEmail = document.getElementById('reenvio-simples-email-corretor');
+    var emailCorretor = campoEmail ? campoEmail.value.trim() : '';
+    await api('POST', '/jobs/' + jobId + '/reenviar-email-ce', { email_corretor: emailCorretor });
     var ov = document.getElementById('ov-reenvio-simples');
     if (ov) document.body.removeChild(ov);
     showToast('✅ Email reenviado com sucesso!', 'success');
