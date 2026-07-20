@@ -1050,7 +1050,11 @@ async function enterApp() {
 
   // Permissões por página (override preciso — elimina ambiguidade de role)
   // Aplica DEPOIS dos blocos de role para garantir precisão
-  if (currentUser.paginas && currentUser.paginas.length) {
+  // Admin sempre tem acesso a TUDO que existe em _PG, mesmo que o array salvo
+  // no banco seja antigo e não inclua uma página adicionada depois (ex: Extrator).
+  if (currentUser.role === 'admin') {
+    mcAplicarPaginas(Object.keys(_PG));
+  } else if (currentUser.paginas && currentUser.paginas.length) {
     mcAplicarPaginas(currentUser.paginas);
   }
 
@@ -2003,6 +2007,7 @@ const _PG = {
   'assistente':    { label: 'Assistente IA',          btn: 'assistente-btn'    },
   'admin':         { label: 'Administração',           btn: 'admin-btn'         },
   'monitoramento': { label: 'Monitoramento de Campo', btn: 'monitoramento-btn' },
+  'extrator':      { label: 'Extrator de Propostas',  btn: 'extrator-btn'      },
 };
 const _PG_DEFAULTS = {
   admin:      Object.keys(_PG),
