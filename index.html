@@ -261,6 +261,7 @@
       <button class="topbar-btn" id="admin-btn" onclick="showPage('admin')" style="display:none">Admin</button>
       <button class="topbar-btn" id="monitoramento-btn" onclick="abrirMonitoramento()" style="display:none">Monitoramento de Campo</button>
       <button class="topbar-btn" id="extrator-btn" onclick="abrirExtratorPropostas()" style="display:none">📄 Extrator de Propostas</button>
+      <button class="topbar-btn" id="datas-zarc-btn" onclick="showPage('datas-zarc')" style="display:none">🗓️ Datas Zarc</button>
     </nav>
     <div class="topbar-right">
       <div class="env-chip">PRODUÇÃO</div>
@@ -822,6 +823,85 @@
       </div>
     </div>
 
+    <!-- ══════════════ DATAS ZARC ══════════════ -->
+    <div id="page-datas-zarc" class="page-section">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Datas Zarc</div>
+          <div class="section-sub">Gere a planilha de <em>fechas siembra</em> a partir do arquivo ZARC (decêndios 1–36 → janelas de semeadura início/fim)</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:20px;align-items:start">
+
+        <!-- Coluna esquerda: instruções -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">Como funciona</div></div>
+          <div class="card-body" style="font-size:13px;color:var(--gray600);line-height:1.7">
+            <div style="display:flex;gap:10px;margin-bottom:12px">
+              <span style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--g600);color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">1</span>
+              <div><strong style="color:var(--gray900)">Envie o ZARC (.xlsx)</strong><br>Colunas esperadas: <code>Safra, Cultura, UF, Geocodigo, Município, Grupo, Solo</code> + decêndios <code>1…36</code>.</div>
+            </div>
+            <div style="display:flex;gap:10px;margin-bottom:12px">
+              <span style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--g600);color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">2</span>
+              <div><strong style="color:var(--gray900)">Escolha a safra</strong><br>O sistema lê as safras disponíveis no arquivo. Selecione uma ou processe todas.</div>
+            </div>
+            <div style="display:flex;gap:10px">
+              <span style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--g600);color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">3</span>
+              <div><strong style="color:var(--gray900)">Gere e baixe</strong><br>Sai a planilha com <code>início/final</code> de até 4 janelas por linha, datas em <code>DD/MM/AAAA</code>.</div>
+            </div>
+            <div style="margin-top:16px;padding:10px 12px;background:var(--g50);border:1px solid var(--g100);border-radius:var(--r-sm);font-size:12px;color:var(--g700)">
+              Riscos considerados p/ formar janela: <strong>20, 30, 40</strong> · início de safra: <strong>setembro</strong> · janelas com folga ≤ 3 dias são fundidas.
+            </div>
+          </div>
+        </div>
+
+        <!-- Coluna direita: fluxo -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">Gerar planilha de datas</div></div>
+          <div class="card-body">
+
+            <div class="upload-zone" id="dz-upload-zone" onclick="document.getElementById('dz-file-input').click()"
+                 ondragover="event.preventDefault();this.classList.add('drag-over')"
+                 ondragleave="this.classList.remove('drag-over')"
+                 ondrop="event.preventDefault();this.classList.remove('drag-over');dzSelecionarArquivo(event.dataTransfer.files)">
+              <div class="upload-icon">📊</div>
+              <div class="upload-title" id="dz-upload-title">Clique ou arraste o arquivo ZARC</div>
+              <div class="upload-sub">Formato .xlsx · com colunas de decêndios 1…36</div>
+              <input type="file" id="dz-file-input" style="display:none" accept=".xlsx,.xls" onchange="dzSelecionarArquivo(this.files)">
+            </div>
+
+            <button class="btn-sm btn-green" id="dz-btn-analisar" style="width:100%;padding:12px;justify-content:center;margin-top:14px;border-radius:var(--r-md)" onclick="dzAnalisar()" disabled>
+              Analisar arquivo
+            </button>
+
+            <!-- Painel pós-análise -->
+            <div id="dz-painel" style="display:none;margin-top:18px;padding-top:18px;border-top:1px solid var(--gray100)">
+              <div id="dz-info" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Safra a gerar</label>
+                  <select class="form-input" id="dz-safra"></select>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Manejo</label>
+                  <select class="form-input" id="dz-manejo"></select>
+                </div>
+              </div>
+
+              <button class="btn-sm btn-green" id="dz-btn-gerar" style="width:100%;padding:14px;justify-content:center;font-size:15px;border-radius:var(--r-md)" onclick="dzGerar()">
+                ⬇ Gerar e baixar planilha
+              </button>
+            </div>
+
+            <div id="dz-status" style="display:none;margin-top:16px;font-size:13px;padding:12px 14px;border-radius:var(--r-sm)"></div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1058,6 +1138,13 @@ async function enterApp() {
     mcAplicarPaginas(currentUser.paginas);
   }
 
+  // Datas Zarc — acesso para Analista e Admin (aditivo, após permissões).
+  // Reexibe o botão mesmo que o array de páginas salvo no banco seja antigo.
+  if (currentUser.role === 'analista' || currentUser.role === 'admin') {
+    const _dzBtn = document.getElementById('datas-zarc-btn');
+    if (_dzBtn) _dzBtn.style.display = '';
+  }
+
   if (currentUser.role !== 'supervisor') await carregarJobs();
   carregarStats();
   verificarBackend();
@@ -1186,7 +1273,8 @@ function showPage(page) {
     'solicitacoes':        'solicitacoes-btn',
     'condicao-especial':   'ce-btn',
     'endosso':             'endosso-btn',
-    'admin':               'admin-btn'
+    'admin':               'admin-btn',
+    'datas-zarc':          'datas-zarc-btn'
   };
   // Remove active de todos primeiro, depois aplica só no correto
   Object.values(pageToBtn).forEach(id => {
@@ -2008,10 +2096,11 @@ const _PG = {
   'admin':         { label: 'Administração',           btn: 'admin-btn'         },
   'monitoramento': { label: 'Monitoramento de Campo', btn: 'monitoramento-btn' },
   'extrator':      { label: 'Extrator de Propostas',  btn: 'extrator-btn'      },
+  'datas-zarc':    { label: 'Datas Zarc',             btn: 'datas-zarc-btn'    },
 };
 const _PG_DEFAULTS = {
   admin:      Object.keys(_PG),
-  analista:   ['nova-analise','historico','solicitacoes','endosso'],
+  analista:   ['nova-analise','historico','solicitacoes','endosso','datas-zarc'],
   supervisor: ['ce'],
   campo:      ['monitoramento'],
 };
@@ -7271,6 +7360,150 @@ function abrirExtratorPropostas() {
   } catch (e) {
     console.error(e);
     showToast('Erro ao abrir o Extrator de Propostas: ' + e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════
+// DATAS ZARC — gerar planilha de fechas siembra
+// ══════════════════════════════════════════
+let _dzFile = null;
+let _dzToken = null;
+
+function dzStatus(msg, tipo) {
+  const el = document.getElementById('dz-status');
+  if (!el) return;
+  const cores = {
+    info:    'background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8',
+    ok:      'background:#f0fdf4;border:1px solid #86efac;color:#166534',
+    erro:    'background:#fff5f5;border:1px solid #fecaca;color:#c0392b',
+    load:    'background:#fefce8;border:1px solid #fde68a;color:#92400e'
+  };
+  el.style.cssText = 'display:block;margin-top:16px;font-size:13px;padding:12px 14px;border-radius:var(--r-sm);' + (cores[tipo] || cores.info);
+  el.innerHTML = msg;
+}
+
+function dzSelecionarArquivo(files) {
+  const f = files && files[0];
+  if (!f) return;
+  if (!/\.(xlsx|xls)$/i.test(f.name)) {
+    showToast('Envie um arquivo .xlsx ou .xls.', 'error');
+    return;
+  }
+  _dzFile = f;
+  _dzToken = null;
+  document.getElementById('dz-upload-title').textContent = f.name + '  (' + (f.size / 1048576).toFixed(1) + ' MB)';
+  document.getElementById('dz-btn-analisar').disabled = false;
+  document.getElementById('dz-painel').style.display = 'none';
+  document.getElementById('dz-status').style.display = 'none';
+}
+
+async function dzAnalisar() {
+  if (!_dzFile) { showToast('Selecione o arquivo ZARC primeiro.', 'error'); return; }
+  if (!BACKEND_URL) { await buscarUrlSupabase(); }
+  const btn = document.getElementById('dz-btn-analisar');
+  btn.disabled = true;
+  dzStatus('⏳ Enviando e lendo o arquivo… (arquivos grandes podem levar alguns segundos)', 'load');
+  try {
+    const form = new FormData();
+    form.append('file', _dzFile);
+    const res = await fetch(`${BACKEND_URL}/datas-zarc/analisar`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${TOKEN}`, 'ngrok-skip-browser-warning': 'true' },
+      body: form
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Erro ao analisar.');
+    }
+    const data = await res.json();
+    _dzToken = data.token;
+
+    // Info badges
+    const badges = [];
+    if (data.culturas && data.culturas.length) badges.push(`<span class="badge badge-info">Cultura: ${data.culturas.join(', ')}</span>`);
+    badges.push(`<span class="badge badge-neutral">${data.total_linhas.toLocaleString('pt-BR')} linhas</span>`);
+    badges.push(data.tem_geocodigo
+      ? `<span class="badge badge-success">✓ Geocódigo detectado</span>`
+      : `<span class="badge badge-warning">Sem coluna de código IBGE</span>`);
+    document.getElementById('dz-info').innerHTML = badges.join('');
+
+    // Dropdown de safras
+    const sel = document.getElementById('dz-safra');
+    sel.innerHTML = `<option value="__todas__">Todas as safras (${data.safras.length})</option>`
+      + data.safras.map(s => `<option value="${s.replace(/"/g, '&quot;')}">${s}</option>`).join('');
+    // Pré-seleciona a safra mais recente (última da lista ordenada)
+    if (data.safras.length) sel.value = data.safras[data.safras.length - 1];
+
+    // Dropdown de manejo (padrão: Sequeiro)
+    const selM = document.getElementById('dz-manejo');
+    const manejos = data.manejos || [];
+    if (manejos.length) {
+      selM.innerHTML = `<option value="__todos__">Todos os manejos</option>`
+        + manejos.map(m => `<option value="${m.replace(/"/g, '&quot;')}">${m === '-' ? '— (não especificado)' : m}</option>`).join('');
+      selM.value = manejos.includes('Sequeiro') ? 'Sequeiro' : manejos[0];
+      selM.closest('.form-group').style.display = '';
+    } else {
+      // Arquivo sem coluna "Outros manejos": esconde o seletor
+      selM.innerHTML = `<option value="__todos__">—</option>`;
+      selM.closest('.form-group').style.display = 'none';
+    }
+
+    document.getElementById('dz-painel').style.display = 'block';
+    dzStatus('✓ Arquivo pronto. Escolha a safra e gere a planilha.', 'ok');
+  } catch (e) {
+    console.error(e);
+    dzStatus('❌ ' + e.message, 'erro');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function dzGerar() {
+  if (!_dzToken) { showToast('Analise o arquivo antes de gerar.', 'error'); return; }
+  if (!BACKEND_URL) { await buscarUrlSupabase(); }
+  const btn = document.getElementById('dz-btn-gerar');
+  const safra = document.getElementById('dz-safra').value;
+  const manejo = document.getElementById('dz-manejo').value;
+  const label = safra === '__todas__' ? 'todas as safras' : safra;
+  const labelM = (manejo && manejo !== '__todos__') ? ` · manejo ${manejo}` : '';
+  btn.disabled = true;
+  const _txt = btn.textContent;
+  btn.textContent = '⏳ Gerando…';
+  dzStatus(`⏳ Processando ${label}${labelM}. Bases grandes podem levar de alguns segundos a 1–2 minutos…`, 'load');
+  try {
+    const form = new FormData();
+    form.append('token', _dzToken);
+    form.append('safra', safra);
+    form.append('manejo', manejo);
+    const res = await fetch(`${BACKEND_URL}/datas-zarc/gerar`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${TOKEN}`, 'ngrok-skip-browser-warning': 'true' },
+      body: form
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Erro ao gerar.');
+    }
+    // Nome do arquivo a partir do Content-Disposition
+    let filename = 'Fechas_Siembra.xlsx';
+    const cd = res.headers.get('Content-Disposition') || '';
+    const m = cd.match(/filename="?([^"]+)"?/);
+    if (m) filename = m[1];
+    const totalLinhas = res.headers.get('X-Total-Linhas');
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+
+    dzStatus(`✓ Planilha gerada: <strong>${filename}</strong>${totalLinhas ? ` — ${Number(totalLinhas).toLocaleString('pt-BR')} linhas` : ''}.`, 'ok');
+  } catch (e) {
+    console.error(e);
+    dzStatus('❌ ' + e.message, 'erro');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = _txt;
   }
 }
 </script>
