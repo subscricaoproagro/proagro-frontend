@@ -7382,6 +7382,7 @@ function abrirExtratorPropostas() {
 // ══════════════════════════════════════════
 let _dzFile = null;
 let _dzToken = null;
+let _dzItens = [];
 
 function dzStatus(msg, tipo) {
   const el = document.getElementById('dz-status');
@@ -7561,6 +7562,7 @@ async function dzCarregarLista(destacarId) {
 }
 
 function dzRenderLista(itens, destacarId) {
+  _dzItens = itens || [];
   const cont = document.getElementById('dz-lista');
   if (!itens.length) {
     cont.innerHTML = `<div class="mc-empty">Nenhuma planilha gerada ainda. Clique em <strong>Gerar / Atualizar planilha</strong>.</div>`;
@@ -7594,15 +7596,15 @@ function dzMesNome(m) {
 
 async function dzBaixar(id) {
   if (!BACKEND_URL) { await buscarUrlSupabase(); }
+  // Nome correto vem da própria lista (o header Content-Disposition é bloqueado
+  // pelo CORS entre domínios, então não dá pra ler pelo fetch).
+  const item = _dzItens.find(x => x.id === id);
+  const filename = (item && item.filename) ? item.filename : 'Fechas_Siembra.xlsx';
   try {
     const res = await fetch(`${BACKEND_URL}/datas-zarc/baixar/${id}`, {
       headers: { 'Authorization': `Bearer ${TOKEN}`, 'ngrok-skip-browser-warning': 'true' }
     });
     if (!res.ok) throw new Error('Falha ao baixar.');
-    let filename = 'Fechas_Siembra.xlsx';
-    const cd = res.headers.get('Content-Disposition') || '';
-    const m = cd.match(/filename="?([^"]+)"?/);
-    if (m) filename = m[1];
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
