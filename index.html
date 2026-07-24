@@ -903,6 +903,10 @@
                     <select class="form-input" id="dz-manejo"></select>
                   </div>
                 </div>
+                <div class="form-group" id="dz-nivel-wrap" style="margin-bottom:14px;display:none">
+                  <label class="form-label">Nível de Manejo <span style="color:var(--gray400);font-weight:400">(pode marcar mais de um)</span></label>
+                  <div id="dz-niveis" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:4px"></div>
+                </div>
                 <label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:16px;cursor:pointer;font-size:13px;color:var(--gray700)">
                   <input type="checkbox" id="dz-agrupar" checked style="margin-top:2px">
                   <span>Agrupar por município + grupo + solo <span style="color:var(--gray400)">(une os cenários de risco 20/30/40 numa única janela — recomendado)</span></span>
@@ -7467,6 +7471,22 @@ async function dzAnalisar() {
       selM.closest('.form-group').style.display = 'none';
     }
 
+    // Checkboxes de Nível de Manejo (múltipla escolha, todos marcados por padrão)
+    const wrap = document.getElementById('dz-nivel-wrap');
+    const contNiv = document.getElementById('dz-niveis');
+    const niveis = data.niveis || [];
+    if (data.tem_nivel && niveis.length) {
+      contNiv.innerHTML = niveis.map(nv => `
+        <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+          <input type="checkbox" class="dz-niv-chk" value="${nv.replace(/"/g,'&quot;')}" checked>
+          ${nv === '-' ? '— (n/d)' : 'Nível ' + nv}
+        </label>`).join('');
+      wrap.style.display = '';
+    } else {
+      contNiv.innerHTML = '';
+      wrap.style.display = 'none';
+    }
+
     document.getElementById('dz-painel').style.display = 'block';
     dzStatus('✓ Arquivo pronto. Escolha a safra e gere a planilha.', 'ok');
   } catch (e) {
@@ -7483,6 +7503,16 @@ async function dzGerar() {
   const btn = document.getElementById('dz-btn-gerar');
   const safra = document.getElementById('dz-safra').value;
   const manejo = document.getElementById('dz-manejo').value;
+
+  // Níveis de manejo marcados (múltipla escolha)
+  const chks = Array.from(document.querySelectorAll('.dz-niv-chk'));
+  let nivel = '';
+  if (chks.length) {
+    const marcados = chks.filter(c => c.checked).map(c => c.value);
+    if (marcados.length === 0) { showToast('Marque ao menos um nível de manejo.', 'error'); return; }
+    nivel = (marcados.length === chks.length) ? '__todos__' : marcados.join(',');
+  }
+
   const label = safra === '__todas__' ? 'todas as safras' : safra;
   const labelM = (manejo && manejo !== '__todos__') ? ` · manejo ${manejo}` : '';
   btn.disabled = true;
@@ -7495,6 +7525,7 @@ async function dzGerar() {
     form.append('safra', safra);
     form.append('manejo', manejo);
     form.append('agrupar', document.getElementById('dz-agrupar').checked ? 'true' : 'false');
+    form.append('nivel', nivel);
     const res = await fetch(`${BACKEND_URL}/datas-zarc/gerar`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${TOKEN}`, 'ngrok-skip-browser-warning': 'true' },
@@ -7582,7 +7613,7 @@ function dzRenderLista(itens, destacarId) {
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;color:var(--gray900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.filename}</div>
           <div style="font-size:12px;color:var(--gray600);margin-top:2px">
-            Safra <strong>${safra}</strong> · ${it.cultura} · ${it.manejo}
+            Safra <strong>${safra}</strong> · ${it.cultura} · ${it.manejo}${it.nivel ? ' · nível ' + it.nivel : ''}
             · ${Number(it.total_linhas).toLocaleString('pt-BR')} linhas
             · início ${dzMesNome(it.mes_inicio)}
           </div>
