@@ -903,6 +903,10 @@
                     <select class="form-input" id="dz-manejo"></select>
                   </div>
                 </div>
+                <label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:16px;cursor:pointer;font-size:13px;color:var(--gray700)">
+                  <input type="checkbox" id="dz-agrupar" checked style="margin-top:2px">
+                  <span>Agrupar por município + grupo + solo <span style="color:var(--gray400)">(une os cenários de risco 20/30/40 numa única janela — recomendado)</span></span>
+                </label>
                 <button class="btn-sm btn-green" id="dz-btn-gerar" style="width:100%;padding:14px;justify-content:center;font-size:15px;border-radius:var(--r-md)" onclick="dzGerar()">
                   Gerar planilha
                 </button>
@@ -7490,6 +7494,7 @@ async function dzGerar() {
     form.append('token', _dzToken);
     form.append('safra', safra);
     form.append('manejo', manejo);
+    form.append('agrupar', document.getElementById('dz-agrupar').checked ? 'true' : 'false');
     const res = await fetch(`${BACKEND_URL}/datas-zarc/gerar`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${TOKEN}`, 'ngrok-skip-browser-warning': 'true' },
