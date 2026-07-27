@@ -261,6 +261,7 @@
       <button class="topbar-btn" id="admin-btn" onclick="showPage('admin')" style="display:none">Admin</button>
       <button class="topbar-btn" id="monitoramento-btn" onclick="abrirMonitoramento()" style="display:none">Monitoramento de Campo</button>
       <button class="topbar-btn" id="extrator-btn" onclick="abrirExtratorPropostas()" style="display:none">📄 Extrator de Propostas</button>
+      <button class="topbar-btn" id="esg-btn" onclick="showPage('esg')" style="display:none">🌱 Atualização ESG</button>
       <button class="topbar-btn" id="datas-zarc-btn" onclick="showPage('datas-zarc');dzInit()" style="display:none">🗓️ Datas Zarc</button>
     </nav>
     <div class="topbar-right">
@@ -927,6 +928,21 @@
   </div>
 </div>
 
+<div id="page-esg" class="page-section">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Atualização ESG</div>
+      <div class="section-sub">Bases de dados usadas nas análises socioambientais — verifique e atualize a fonte quando vencida</div>
+    </div>
+  </div>
+
+  <div id="esg-banner" style="display:none;background:#fff5f5;border:1px solid #fecaca;border-radius:var(--r-md);padding:14px 18px;margin-bottom:18px;font-size:14px;font-weight:600;color:var(--red)"></div>
+
+  <div id="esg-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px">
+    <div class="mc-empty">Carregando…</div>
+  </div>
+</div>
+
 <!-- MODAIS -->
 <div class="modal-overlay" id="modal-config">
   <div class="modal">
@@ -987,6 +1003,104 @@ let pollingInterval = null;
 // ══════════════════════════════════════════
 // API HELPER
 // ══════════════════════════════════════════
+// ══════════════════════════════════════════
+// ATUALIZAÇÃO ESG
+// ══════════════════════════════════════════
+const ESG_PERIODICIDADE_LABEL = {
+  diaria: 'Diária', mensal: 'Mensal', quadrimestral: 'Quadrimestral',
+  semestral: 'Semestral', anual: 'Anual', sem_cadencia: 'Sem cadência fixa'
+};
+
+async function carregarEsgStatus() {
+  const grid = document.getElementById('esg-grid');
+  grid.innerHTML = '<div class="mc-empty">Carregando…</div>';
+  try {
+    const data = await api('GET', '/esg/bases-status');
+    esgRenderCards(data.bases, data.total_vencidas);
+  } catch (e) {
+    grid.innerHTML = `<div style="color:var(--red);padding:20px">Erro ao carregar bases: ${e.message}</div>`;
+  }
+}
+
+function esgFormatarData(iso) {
+  if (!iso) return 'Nunca atualizada';
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR');
+}
+
+function esgRenderCards(bases, totalVencidas) {
+  const banner = document.getElementById('esg-banner');
+  if (totalVencidas > 0) {
+    banner.style.display = 'block';
+    banner.textContent = `⚠ ${totalVencidas} base${totalVencidas > 1 ? 's' : ''} desatualizada${totalVencidas > 1 ? 's' : ''} — atualize antes de prosseguir com novas análises.`;
+  } else {
+    banner.style.display = 'none';
+  }
+
+  const grid = document.getElementById('esg-grid');
+  grid.innerHTML = bases.map(b => {
+    const vencida = b.vencida;
+    const semCadencia = b.periodicidade === 'sem_cadencia';
+    const corBorda = vencida ? '#fecaca' : (semCadencia ? 'var(--gray200)' : 'var(--g100)');
+    const badgeTxt = vencida ? 'VENCIDA' : (semCadencia ? 'SEM PRAZO' : 'EM DIA');
+    const badgeBg = vencida ? '#fff5f5' : (semCadencia ? 'var(--gray50)' : 'var(--g50)');
+    const badgeCor = vencida ? 'var(--red)' : (semCadencia ? 'var(--gray600)' : 'var(--g700)');
+    const isMulti = b.tipo_arquivo === 'csv_multi';
+    const inputMultiple = b.tipo_arquivo === 'shapefile' ? 'multiple' : '';
+    const accept = b.tipo_arquivo === 'shapefile' ? '.shp,.shx,.dbf,.prj,.cpg'
+                 : b.tipo_arquivo === 'raster' ? '.tif'
+                 : '.xlsx';
+
+    return `
+    <div class="card" style="border-color:${corBorda}">
+      <div class="card-header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div class="card-title" style="font-size:14px">${b.nome}</div>
+        <span style="flex-shrink:0;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:${badgeBg};color:${badgeCor}">${badgeTxt}</span>
+      </div>
+      <div class="card-body" style="font-size:13px;color:var(--gray600);line-height:1.6">
+        <div style="margin-bottom:8px">
+          <strong style="color:var(--gray900)">Periodicidade:</strong> ${ESG_PERIODICIDADE_LABEL[b.periodicidade] || b.periodicidade}<br>
+          <strong style="color:var(--gray900)">Última atualização:</strong> ${esgFormatarData(b.data_ultima_atualizacao)}
+          ${b.dias_desde_atualizacao != null ? ` (${b.dias_desde_atualizacao} dia${b.dias_desde_atualizacao != 1 ? 's' : ''} atrás)` : ''}
+        </div>
+
+        ${b.url_fonte ? `<div style="margin-bottom:8px"><a href="${b.url_fonte}" target="_blank" rel="noopener" style="color:var(--g700);font-weight:600;text-decoration:none">🔗 Baixar fonte oficial</a></div>` : ''}
+        ${b.instrucoes ? `<div style="margin-bottom:10px;padding:8px 10px;background:var(--gray50);border-radius:var(--r-sm);font-size:12px">${b.instrucoes}</div>` : ''}
+
+        ${isMulti ? `
+          <div style="font-size:12px;color:var(--gray400);font-style:italic">Estrutura em múltiplos arquivos — atualização feita manualmente na pasta do servidor.</div>
+        ` : `
+          <input type="file" id="esg-file-${b.base_key}" ${inputMultiple} accept="${accept}" style="font-size:12px;margin-bottom:8px;width:100%">
+          <button class="btn-sm btn-green" style="width:100%;justify-content:center;padding:8px" onclick="esgEnviarArquivo('${b.base_key}')">Enviar atualização</button>
+          <div id="esg-status-${b.base_key}" style="display:none;margin-top:8px;font-size:12px"></div>
+        `}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function esgEnviarArquivo(baseKey) {
+  const input = document.getElementById(`esg-file-${baseKey}`);
+  const statusEl = document.getElementById(`esg-status-${baseKey}`);
+  if (!input || !input.files || input.files.length === 0) {
+    if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = 'var(--red)'; statusEl.textContent = 'Selecione ao menos 1 arquivo.'; }
+    return;
+  }
+  const formData = new FormData();
+  Array.from(input.files).forEach(f => formData.append('arquivos', f));
+
+  if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = 'var(--gray600)'; statusEl.textContent = 'Enviando…'; }
+  try {
+    const resp = await api('POST', `/esg/bases-status/${baseKey}/upload`, formData, true);
+    if (statusEl) { statusEl.style.color = 'var(--g700)'; statusEl.textContent = '✅ ' + resp.message; }
+    showToast(resp.message, 'success');
+    setTimeout(carregarEsgStatus, 1200);
+  } catch (e) {
+    if (statusEl) { statusEl.style.color = 'var(--red)'; statusEl.textContent = '❌ ' + e.message; }
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
+
 async function api(method, path, body = null, isForm = false, _tentativa = 1) {
   // Se a URL for do Railway (desativado), força buscar do Supabase
   if (!BACKEND_URL || BACKEND_URL.includes('railway.app')) {
@@ -1097,6 +1211,7 @@ async function enterApp() {
     document.getElementById('nova-analise-btn').style.display = '';
     document.getElementById('historico-btn').style.display = '';
     document.getElementById('solicitacoes-btn').style.display = '';
+    document.getElementById('esg-btn').style.display = '';
     // Admin vê abas Sistema/CE e cards de stats igual ao analista
     const elAbas = document.getElementById('hist-abas');
     if (elAbas) elAbas.style.display = 'flex';
@@ -1119,6 +1234,7 @@ async function enterApp() {
   }
   if (currentUser.role === 'supervisor') {
     document.getElementById('ce-btn').style.display = '';
+    document.getElementById('esg-btn').style.display = '';
     document.getElementById('dashboard-sv-btn').style.display = 'none';
     document.getElementById('dashboard-btn').style.display = 'none';
     const pgDash = document.getElementById('page-dashboard'); if(pgDash) pgDash.style.display = 'none';
@@ -1282,6 +1398,7 @@ function showPage(page) {
   if (page === 'solicitacoes') carregarSolicitacoes();
   if (page === 'endosso') carregarEndossos();
   if (page === 'dashboard-supervisor') carregarDashboardSupervisor();
+  if (page === 'esg') carregarEsgStatus();
   document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.topbar-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
@@ -2119,11 +2236,12 @@ const _PG = {
   'monitoramento': { label: 'Monitoramento de Campo', btn: 'monitoramento-btn' },
   'extrator':      { label: 'Extrator de Propostas',  btn: 'extrator-btn'      },
   'datas-zarc':    { label: 'Datas Zarc',             btn: 'datas-zarc-btn'    },
+  'esg':           { label: 'Atualização ESG',        btn: 'esg-btn'           },
 };
 const _PG_DEFAULTS = {
   admin:      Object.keys(_PG),
   analista:   ['nova-analise','historico','solicitacoes','endosso','datas-zarc'],
-  supervisor: ['ce'],
+  supervisor: ['ce', 'esg'],
   campo:      ['monitoramento'],
 };
 
