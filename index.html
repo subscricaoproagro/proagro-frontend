@@ -297,7 +297,7 @@
       <button class="topbar-btn" id="extrator-btn" onclick="abrirExtratorPropostas()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></span><span class="sidebar-label">Extrator de Propostas</span></button>
       <button class="topbar-btn" id="esg-btn" onclick="showPage('esg')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg></span><span class="sidebar-label">Atualização ESG</span><span id="esg-sino-alerta" class="esg-sino-alerta" style="display:none" title="Existem bases desatualizadas"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2Zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2Z"/></svg></span></button>
       <button class="topbar-btn" id="datas-zarc-btn" onclick="showPage('datas-zarc');dzInit()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span><span class="sidebar-label">Datas Zarc</span></button>
-      <button class="topbar-btn" id="gestao-propostas-btn" onclick="showPage('gestao-propostas')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="9" width="3" height="8"/><rect x="12" y="5" width="3" height="12"/><rect x="17" y="12" width="3" height="5"/></svg></span><span class="sidebar-label">Gestão de Propostas</span></button>
+      <button class="topbar-btn" id="gestao-propostas-btn" onclick="showPage('gestao-propostas')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="9" width="3" height="8"/><rect x="12" y="5" width="3" height="12"/><rect x="17" y="12" width="3" height="5"/></svg></span><span class="sidebar-label">Gestão de Propostas</span><span id="gp-sino-alerta" class="esg-sino-alerta" style="display:none" title="Novas propostas detectadas automaticamente"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2Zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2Z"/></svg></span></button>
       <button class="topbar-btn" id="rem-btn" onclick="showPage('relatorio-esg-mensal');remInit()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg></span><span class="sidebar-label">Relatório Mensal ESG</span></button>
     </nav>
   </aside>
@@ -870,7 +870,9 @@
     <div id="page-gestao-propostas" class="page-section">
       <h2 style="font-family:'Syne',sans-serif;margin-bottom:8px">Gestão de Propostas</h2>
       <p style="color:var(--gray400);margin-bottom:24px">Extrai todas as propostas da API e gera o Excel completo (40 colunas).</p>
-      <button class="btn" id="gp-btn-gerar" onclick="gpGerar()">Gerar Excel de todas as propostas</button>
+      <div id="gp-auto-banner" style="display:none;margin-bottom:20px;padding:14px 18px;border-radius:10px;border:1px solid var(--g200);background:var(--g50);color:var(--g700);font-size:14px;max-width:640px"></div>
+      <button class="btn" id="gp-btn-gerar" onclick="gpGerar(false)">Gerar Excel de todas as propostas</button>
+      <button class="btn btn-secondary" onclick="gpGerar(true)" title="Ignora o cache e rebusca o detalhe de todas as propostas (mais lento)">Regenerar tudo do zero</button>
       <div id="gp-progress" style="display:none;margin-top:24px;max-width:520px">
         <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--gray600);margin-bottom:6px">
           <span id="gp-status-txt">Iniciando…</span><span id="gp-count"></span>
@@ -882,6 +884,11 @@
       <div id="gp-done" style="display:none;margin-top:24px">
         <button class="btn" onclick="gpDownload()">⬇ Baixar Excel</button>
         <button class="btn btn-secondary" onclick="gpSyncOneDrive()" id="gp-btn-onedrive">🔄 Sincronizar OneDrive</button>
+      </div>
+
+      <h3 style="font-family:'Syne',sans-serif;margin-top:40px;margin-bottom:12px;font-size:18px">Versões geradas</h3>
+      <div id="gp-historico-lista" style="max-width:720px">
+        <div class="mc-empty">Carregando…</div>
       </div>
     </div>
 
@@ -1343,7 +1350,7 @@ async function remApagarArquivo(nomeArquivo) {
 let _gpJobId = null;
 let _gpPoll  = null;
 
-async function gpGerar() {
+async function gpGerar(forcar) {
   const btn = document.getElementById('gp-btn-gerar');
   btn.disabled = true;
   document.getElementById('gp-done').style.display = 'none';
@@ -1352,7 +1359,8 @@ async function gpGerar() {
   document.getElementById('gp-status-txt').textContent = 'Iniciando…';
   document.getElementById('gp-count').textContent = '';
   try {
-    const res = await fetch(`${BACKEND_URL}/gestao-propostas/gerar`, {
+    const qs = forcar ? '?forcar=true' : '';
+    const res = await fetch(`${BACKEND_URL}/gestao-propostas/gerar${qs}`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${TOKEN}` }
     });
@@ -1376,9 +1384,14 @@ async function gpCheck() {
     });
     if (!res.ok) return;
     const s = await res.json();
-    const pct = s.total ? Math.round((s.done / s.total) * 100) : 0;
+    const pct = s.total ? Math.round((s.done / s.total) * 100) : (s.status === 'concluido' ? 100 : 0);
     document.getElementById('gp-bar').style.width = pct + '%';
-    document.getElementById('gp-count').textContent = s.total ? `${s.done}/${s.total}` : '';
+    // s.total = quantas precisam ser buscadas na API (novas/atualizadas);
+    // s.total_propostas = quantas propostas existem no total (a maioria reaproveitada do cache).
+    const contexto = s.total_propostas
+      ? ` (${s.novas||0} nova(s), ${s.atualizadas||0} atualizada(s) de ${s.total_propostas} no total)`
+      : '';
+    document.getElementById('gp-count').textContent = (s.total ? `${s.done}/${s.total}` : '') + contexto;
     document.getElementById('gp-status-txt').textContent =
       s.status === 'processando' ? 'Processando propostas…' :
       s.status === 'concluido'   ? 'Concluído' :
@@ -1388,6 +1401,7 @@ async function gpCheck() {
       document.getElementById('gp-btn-gerar').disabled = false;
       document.getElementById('gp-done').style.display = 'block';
       showToast('Excel pronto para download.', 'success');
+      carregarGpHistorico();
     } else if (s.status === 'erro') {
       clearInterval(_gpPoll); _gpPoll = null;
       document.getElementById('gp-btn-gerar').disabled = false;
@@ -1431,6 +1445,118 @@ async function gpSyncOneDrive() {
     btn.textContent = textoOriginal;
   }
 }
+
+// Monitor automático — verifica a cada 5min (no front) se o backend sinalizou
+// proposta nova (o backend em si checa a matriz a cada 8h, independente de login).
+async function atualizarSinoGestaoPropostas() {
+  const sino = document.getElementById('gp-sino-alerta');
+  if (!sino) return;
+  try {
+    const data = await api('GET', '/gestao-propostas/notificacoes');
+    sino.style.display = data.notificacao_pendente ? 'flex' : 'none';
+  } catch (e) {
+    // silencioso -- nao interrompe o carregamento da tela por causa do sininho
+  }
+}
+
+async function gpAoAbrirPagina() {
+  const banner = document.getElementById('gp-auto-banner');
+  carregarGpHistorico();
+  if (!banner) return;
+  try {
+    const data = await api('GET', '/gestao-propostas/notificacoes');
+    let msg = '';
+    if (data.notificacao_pendente) {
+      msg += `🔔 ${data.novas_propostas} nova(s) proposta(s) detectada(s) automaticamente. `;
+    }
+    if (data.ultimo_job_id) {
+      if (data.ultimo_sync_status === 'ok') {
+        msg += 'Excel atualizado e sincronizado no OneDrive automaticamente.';
+      } else if (data.ultimo_sync_status === 'erro') {
+        msg += `⚠️ Excel atualizado, mas falhou ao sincronizar no OneDrive (${data.ultimo_erro || 'erro desconhecido'}).`;
+      }
+    }
+    if (msg) {
+      banner.textContent = msg;
+      banner.style.display = 'block';
+    } else {
+      banner.style.display = 'none';
+    }
+    if (data.notificacao_pendente) {
+      await api('POST', '/gestao-propostas/notificacoes/marcar-lida');
+      atualizarSinoGestaoPropostas();
+    }
+  } catch (e) {
+    // silencioso -- nao interrompe o carregamento da pagina por causa do banner
+  }
+}
+
+function gpFormatarTamanho(bytes) {
+  if (!bytes) return '';
+  const kb = bytes / 1024;
+  return kb < 1024 ? `${kb.toFixed(1)} KB` : `${(kb/1024).toFixed(1)} MB`;
+}
+
+function gpFormatarData(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+const GP_TIPO_LABEL = { manual: 'Manual', manual_forcado: 'Manual (regenerado)', automatico: 'Automático' };
+
+async function carregarGpHistorico() {
+  const wrap = document.getElementById('gp-historico-lista');
+  if (!wrap) return;
+  try {
+    const data = await api('GET', '/gestao-propostas/historico');
+    const itens = data.itens || [];
+    if (!itens.length) {
+      wrap.innerHTML = '<div class="mc-empty">Nenhuma versão gerada ainda.</div>';
+      return;
+    }
+    wrap.innerHTML = itens.map(it => `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid var(--gray200);border-radius:10px;margin-bottom:8px;background:#fff">
+        <div style="min-width:0">
+          <div style="font-size:14px;font-weight:500;color:var(--gray900)">${it.arquivo}</div>
+          <div style="font-size:12px;color:var(--gray400);margin-top:2px">
+            ${gpFormatarData(it.data_geracao)} · ${gpFormatarTamanho(it.tamanho_bytes)} · ${GP_TIPO_LABEL[it.tipo] || it.tipo}
+            ${it.novas || it.atualizadas ? ` · ${it.novas||0} nova(s), ${it.atualizadas||0} atualizada(s)` : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <button class="btn-sm" onclick="gpHistoricoBaixar('${it.arquivo}')">Baixar</button>
+          <button class="btn-sm" style="color:var(--red);border-color:#fecaca" onclick="gpHistoricoDeletar('${it.arquivo}')">🗑</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    wrap.innerHTML = '<div class="mc-empty">Erro ao carregar histórico.</div>';
+  }
+}
+
+async function gpHistoricoBaixar(arquivo) {
+  try {
+    const res = await fetch(`${BACKEND_URL}/gestao-propostas/historico/download/${encodeURIComponent(arquivo)}`, {
+      headers: { 'Authorization': `Bearer ${TOKEN}` }
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail||'Erro'); }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = arquivo; a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function gpHistoricoDeletar(arquivo) {
+  if (!confirm(`Excluir "${arquivo}"? Essa ação não pode ser desfeita.`)) return;
+  try {
+    await api('DELETE', `/gestao-propostas/historico/${encodeURIComponent(arquivo)}`);
+    showToast('Versão excluída.', 'success');
+    carregarGpHistorico();
+  } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
 
 async function remBaixarArquivo(nomeArquivo) {
   try {
@@ -1658,6 +1784,8 @@ async function enterApp() {
   verificarBackend();
   atualizarSinoEsg();
   setInterval(atualizarSinoEsg, 300000); // reverifica a cada 5 minutos
+  atualizarSinoGestaoPropostas();
+  setInterval(atualizarSinoGestaoPropostas, 300000); // reverifica a cada 5 minutos
 
   // Redirecionar para o dashboard correto
   if (currentUser.role === 'supervisor') {
@@ -1770,6 +1898,7 @@ function showPage(page) {
   const contentArea = document.querySelector('.content-area');
   if (contentArea) contentArea.scrollTop = 0;
   if (page === 'condicao-especial') carregarCondicoesEspeciais();
+  if (page === 'gestao-propostas') gpAoAbrirPagina();
   if (page === 'solicitacoes') carregarSolicitacoes();
   if (page === 'endosso') carregarEndossos();
   if (page === 'dashboard-supervisor') carregarDashboardSupervisor();
