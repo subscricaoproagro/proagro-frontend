@@ -1437,6 +1437,9 @@ async function verificarBackend() {
 // NAVEGAÇÃO
 // ══════════════════════════════════════════
 function showPage(page) {
+  window.scrollTo(0, 0);
+  const contentArea = document.querySelector('.content-area');
+  if (contentArea) contentArea.scrollTop = 0;
   if (page === 'condicao-especial') carregarCondicoesEspeciais();
   if (page === 'solicitacoes') carregarSolicitacoes();
   if (page === 'endosso') carregarEndossos();
