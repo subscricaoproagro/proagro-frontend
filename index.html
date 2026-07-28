@@ -68,6 +68,17 @@
   .sidebar-icon{flex-shrink:0;width:18px;display:flex;align-items:center;justify-content:center}
   .sidebar-label{overflow:hidden;text-overflow:ellipsis}
   .sidebar.collapsed .sidebar-label{display:none}
+  .esg-sino-alerta{flex-shrink:0;margin-left:auto;color:var(--red);display:flex;align-items:center;justify-content:center;transform-origin:top center;animation:esg-sino-balancar 2.4s ease-in-out infinite}
+  .sidebar.collapsed .esg-sino-alerta{position:absolute;top:4px;right:4px;margin-left:0}
+  @keyframes esg-sino-balancar{
+    0%, 100% { transform: rotate(0deg); }
+    4%  { transform: rotate(18deg); }
+    8%  { transform: rotate(-14deg); }
+    12% { transform: rotate(10deg); }
+    16% { transform: rotate(-6deg); }
+    20% { transform: rotate(3deg); }
+    24%, 100% { transform: rotate(0deg); }
+  }
   .main-wrap{flex:1;display:flex;flex-direction:column;min-width:0}
   .topheader{background:#fff;border-bottom:1px solid var(--gray100);padding:0 28px;display:flex;align-items:center;justify-content:flex-end;height:56px;position:sticky;top:0;z-index:90;gap:14px}
 
@@ -284,7 +295,7 @@
       <button class="topbar-btn" id="admin-btn" onclick="showPage('admin')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></span><span class="sidebar-label">Admin</span></button>
       <button class="topbar-btn" id="monitoramento-btn" onclick="abrirMonitoramento()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span><span class="sidebar-label">Monitoramento de Campo</span></button>
       <button class="topbar-btn" id="extrator-btn" onclick="abrirExtratorPropostas()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></span><span class="sidebar-label">Extrator de Propostas</span></button>
-      <button class="topbar-btn" id="esg-btn" onclick="showPage('esg')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg></span><span class="sidebar-label">Atualização ESG</span></button>
+      <button class="topbar-btn" id="esg-btn" onclick="showPage('esg')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg></span><span class="sidebar-label">Atualização ESG</span><span id="esg-sino-alerta" class="esg-sino-alerta" style="display:none" title="Existem bases desatualizadas"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2Zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2Z"/></svg></span></button>
       <button class="topbar-btn" id="datas-zarc-btn" onclick="showPage('datas-zarc');dzInit()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span><span class="sidebar-label">Datas Zarc</span></button>
     </nav>
   </aside>
@@ -1040,6 +1051,17 @@ const ESG_PERIODICIDADE_LABEL = {
   semestral: 'Semestral', anual: 'Anual', sem_cadencia: 'Sem cadência fixa'
 };
 
+async function atualizarSinoEsg() {
+  const sino = document.getElementById('esg-sino-alerta');
+  if (!sino) return;
+  try {
+    const data = await api('GET', '/esg/bases-status');
+    sino.style.display = (data.total_vencidas > 0) ? 'flex' : 'none';
+  } catch (e) {
+    // silencioso -- nao interrompe o carregamento da tela por causa do sininho
+  }
+}
+
 async function carregarEsgStatus() {
   const grid = document.getElementById('esg-grid');
   grid.innerHTML = '<div class="mc-empty">Carregando…</div>';
@@ -1058,6 +1080,9 @@ function esgFormatarData(iso) {
 }
 
 function esgRenderCards(bases, totalVencidas) {
+  const sino = document.getElementById('esg-sino-alerta');
+  if (sino) sino.style.display = (totalVencidas > 0) ? 'flex' : 'none';
+
   const banner = document.getElementById('esg-banner');
   if (totalVencidas > 0) {
     banner.style.display = 'block';
@@ -1329,6 +1354,8 @@ async function enterApp() {
   if (currentUser.role !== 'supervisor') await carregarJobs();
   carregarStats();
   verificarBackend();
+  atualizarSinoEsg();
+  setInterval(atualizarSinoEsg, 300000); // reverifica a cada 5 minutos
 
   // Redirecionar para o dashboard correto
   if (currentUser.role === 'supervisor') {
