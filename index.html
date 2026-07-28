@@ -1289,11 +1289,27 @@ async function remCarregarHistorico() {
       const data_fmt = new Date(a.data_criacao).toLocaleString('pt-BR');
       return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray100)">
         <span>${a.nome} <span style="color:var(--gray400)">(${data_fmt}, ${a.tamanho_kb} KB)</span></span>
-        <button class="btn-sm" onclick="remBaixarArquivo('${a.nome}')">Baixar</button>
+        <span style="display:flex;gap:6px">
+          <button class="btn-sm" onclick="remBaixarArquivo('${a.nome}')">Baixar</button>
+          <button class="btn-sm" title="Apagar" onclick="remApagarArquivo('${a.nome}')" style="color:var(--red);border-color:#fecaca">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </span>
       </div>`;
     }).join('');
   } catch (e) {
     el.innerHTML = '<span style="color:var(--red)">Erro ao carregar histórico.</span>';
+  }
+}
+
+async function remApagarArquivo(nomeArquivo) {
+  if (!confirm(`Apagar o relatório "${nomeArquivo}"? Essa ação não pode ser desfeita.`)) return;
+  try {
+    await api('DELETE', `/relatorio-esg-mensal/${encodeURIComponent(nomeArquivo)}`);
+    showToast('Relatório apagado.', 'success');
+    remCarregarHistorico();
+  } catch (e) {
+    showToast('Erro ao apagar: ' + e.message, 'error');
   }
 }
 
