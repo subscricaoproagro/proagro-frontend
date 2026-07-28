@@ -1593,14 +1593,23 @@ async function remBaixarArquivo(nomeArquivo) {
 // uma auditoria por página, então vale conferir manualmente as telas que
 // o CEO vai de fato acessar antes de liberar em produção.
 // ══════════════════════════════════════════
-const CEO_VERBOS_PERMITIDOS = /baixar|download|ver\b|visualizar|abrir|exportar|sincronizar/i;
+const CEO_VERBOS_PERMITIDOS = /baixar|download|detalhe/i;
 
 function ceoAplicarSomenteLeitura(raiz) {
-  raiz.querySelectorAll('button, .btn, .btn-sm, .topbar-btn').forEach(el => {
+  raiz.querySelectorAll('button, .btn, .btn-sm, .topbar-btn, a[onclick]').forEach(el => {
     if (el.classList.contains('topbar-btn')) return; // navegação nunca é bloqueada
+    if (el.classList.contains('modal-close')) return; // fechar modal sempre funciona
+    if (el.classList.contains('sidebar-toggle')) return; // recolher/expandir menu é so UI
+    const onclickAttr = el.getAttribute('onclick') || '';
+    if (el.classList.contains('btn-logout') || onclickAttr.includes('handleLogout')) return; // sair sempre funciona
+    if (onclickAttr.includes('closeModal(')) return; // fechar modal (versões sem a classe modal-close)
     if (el.dataset.ceoProcessado) return;
     el.dataset.ceoProcessado = '1';
-    const texto = ((el.textContent || '') + ' ' + (el.title || '')).trim();
+    if (!el.hasAttribute('onclick')) return; // selos de status sem ação real -- não mexe
+    // checa o texto visível E o nome da função chamada (onclick) -- o texto sozinho
+    // não é confiável (ex: botão "⬇ Excel" chama baixarEndosso(), sem a palavra
+    // "baixar" no texto; "🖨 Imprimir / PDF" chama downloadDadosCE()).
+    const texto = ((el.textContent || '') + ' ' + (el.title || '') + ' ' + onclickAttr).trim();
     if (CEO_VERBOS_PERMITIDOS.test(texto)) return;
     el.disabled = true;
     el.style.opacity = '0.4';
