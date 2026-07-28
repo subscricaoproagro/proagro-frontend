@@ -868,27 +868,40 @@
 
     <!-- ══════════════ DATAS ZARC ══════════════ -->
     <div id="page-gestao-propostas" class="page-section">
-      <h2 style="font-family:'Syne',sans-serif;margin-bottom:8px">Gestão de Propostas</h2>
-      <p style="color:var(--gray400);margin-bottom:24px">Extrai todas as propostas da API e gera o Excel completo (40 colunas).</p>
-      <div id="gp-auto-banner" style="display:none;margin-bottom:20px;padding:14px 18px;border-radius:10px;border:1px solid var(--g200);background:var(--g50);color:var(--g700);font-size:14px;max-width:640px"></div>
-      <button class="btn" id="gp-btn-gerar" onclick="gpGerar(false)">Gerar Excel de todas as propostas</button>
-      <button class="btn btn-secondary" onclick="gpGerar(true)" title="Ignora o cache e rebusca o detalhe de todas as propostas (mais lento)">Regenerar tudo do zero</button>
-      <div id="gp-progress" style="display:none;margin-top:24px;max-width:520px">
-        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--gray600);margin-bottom:6px">
-          <span id="gp-status-txt">Iniciando…</span><span id="gp-count"></span>
+      <div class="section-header">
+        <div>
+          <div class="section-title">Gestão de Propostas</div>
+          <div class="section-sub">Extrai todas as propostas da API da matriz e gera o Excel completo (40 colunas)</div>
         </div>
-        <div style="height:10px;background:var(--gray100);border-radius:6px;overflow:hidden">
-          <div id="gp-bar" style="height:100%;width:0;background:var(--g500);transition:width .4s"></div>
-        </div>
-      </div>
-      <div id="gp-done" style="display:none;margin-top:24px">
-        <button class="btn" onclick="gpDownload()">⬇ Baixar Excel</button>
-        <button class="btn btn-secondary" onclick="gpSyncOneDrive()" id="gp-btn-onedrive">🔄 Sincronizar OneDrive</button>
       </div>
 
-      <h3 style="font-family:'Syne',sans-serif;margin-top:40px;margin-bottom:12px;font-size:18px">Versões geradas</h3>
-      <div id="gp-historico-lista" style="max-width:720px">
-        <div class="mc-empty">Carregando…</div>
+      <div id="gp-auto-banner" style="display:none;background:var(--g50);border:1px solid var(--g100);border-radius:var(--r-md);padding:12px 16px;margin-bottom:18px;font-size:13px;color:var(--g700)"></div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><div class="card-title" style="font-size:14px">1. Gerar Excel</div></div>
+        <div class="card-body">
+          <button class="btn-sm btn-green" id="gp-btn-gerar" onclick="gpGerar(false)" style="padding:10px 20px">Gerar Excel de todas as propostas</button>
+          <button class="btn-sm" onclick="gpGerar(true)" title="Ignora o cache e rebusca o detalhe de todas as propostas (mais lento)">Regenerar tudo do zero</button>
+          <div id="gp-progress" style="display:none;margin-top:16px">
+            <div style="background:var(--gray100);border-radius:999px;height:10px;overflow:hidden">
+              <div id="gp-bar" style="background:var(--g600);height:100%;width:0%;transition:width .4s"></div>
+            </div>
+            <div style="font-size:13px;color:var(--gray600);margin-top:8px">
+              <span id="gp-status-txt"></span> <span id="gp-count"></span>
+            </div>
+          </div>
+          <div id="gp-done" style="display:none;margin-top:16px">
+            <button class="btn-sm btn-green" onclick="gpDownload()">⬇ Baixar Excel</button>
+            <button class="btn-sm" onclick="gpSyncOneDrive()" id="gp-btn-onedrive">🔄 Sincronizar OneDrive</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title" style="font-size:14px">2. Versões geradas</div></div>
+        <div class="card-body">
+          <div id="gp-historico-lista" style="font-size:13px">Carregando…</div>
+        </div>
       </div>
     </div>
 
@@ -1512,24 +1525,19 @@ async function carregarGpHistorico() {
     const data = await api('GET', '/gestao-propostas/historico');
     const itens = data.itens || [];
     if (!itens.length) {
-      wrap.innerHTML = '<div class="mc-empty">Nenhuma versão gerada ainda.</div>';
+      wrap.innerHTML = '<span style="color:var(--gray400)">Nenhuma versão gerada ainda.</span>';
       return;
     }
-    wrap.innerHTML = itens.map(it => `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid var(--gray200);border-radius:10px;margin-bottom:8px;background:#fff">
-        <div style="min-width:0">
-          <div style="font-size:14px;font-weight:500;color:var(--gray900)">${it.arquivo}</div>
-          <div style="font-size:12px;color:var(--gray400);margin-top:2px">
-            ${gpFormatarData(it.data_geracao)} · ${gpFormatarTamanho(it.tamanho_bytes)} · ${GP_TIPO_LABEL[it.tipo] || it.tipo}
-            ${it.novas || it.atualizadas ? ` · ${it.novas||0} nova(s), ${it.atualizadas||0} atualizada(s)` : ''}
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;flex-shrink:0">
+    wrap.innerHTML = itens.map(it => {
+      const detalhe = it.novas || it.atualizadas ? `, ${it.novas||0} nova(s), ${it.atualizadas||0} atualizada(s)` : '';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray100)">
+        <span>${it.arquivo} <span style="color:var(--gray400)">(${gpFormatarData(it.data_geracao)}, ${gpFormatarTamanho(it.tamanho_bytes)}, ${GP_TIPO_LABEL[it.tipo] || it.tipo}${detalhe})</span></span>
+        <span style="display:flex;gap:6px">
           <button class="btn-sm" onclick="gpHistoricoBaixar('${it.arquivo}')">Baixar</button>
-          <button class="btn-sm" style="color:var(--red);border-color:#fecaca" onclick="gpHistoricoDeletar('${it.arquivo}')">🗑</button>
-        </div>
-      </div>
-    `).join('');
+          <button class="btn-sm" title="Apagar" onclick="gpHistoricoDeletar('${it.arquivo}')" style="color:var(--red);border-color:#fecaca">🗑</button>
+        </span>
+      </div>`;
+    }).join('');
   } catch (e) {
     wrap.innerHTML = '<div class="mc-empty">Erro ao carregar histórico.</div>';
   }
