@@ -881,6 +881,7 @@
       </div>
       <div id="gp-done" style="display:none;margin-top:24px">
         <button class="btn" onclick="gpDownload()">⬇ Baixar Excel</button>
+        <button class="btn btn-secondary" onclick="gpSyncOneDrive()" id="gp-btn-onedrive">🔄 Sincronizar OneDrive</button>
       </div>
     </div>
 
@@ -1407,6 +1408,28 @@ async function gpDownload() {
     const a = document.createElement('a'); a.href = url; a.download = 'gestao_propostas.xlsx'; a.click();
     URL.revokeObjectURL(url);
   } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function gpSyncOneDrive() {
+  if (!_gpJobId) return;
+  const btn = document.getElementById('gp-btn-onedrive');
+  btn.disabled = true;
+  const textoOriginal = btn.textContent;
+  btn.textContent = 'Sincronizando…';
+  try {
+    const res = await fetch(`${BACKEND_URL}/gestao-propostas/onedrive/${_gpJobId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${TOKEN}` }
+    });
+    if (res.status === 401) { handleLogout(); return; }
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail||'Erro ao sincronizar'); }
+    showToast('Enviado para o OneDrive.', 'success');
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+  }
 }
 
 async function remBaixarArquivo(nomeArquivo) {
