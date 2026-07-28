@@ -171,6 +171,7 @@
   .toast.success{border-left:3px solid var(--g500)}
   .toast.error{border-left:3px solid var(--red)}
   .toast.warning{border-left:3px solid var(--amber)}
+  .toast.info{border-left:3px solid var(--blue)}
   @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
 
   .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
@@ -1096,7 +1097,7 @@
       <div class="form-group"><label class="form-label">Nome completo</label><input type="text" class="form-input" id="new-name" placeholder="Nome do colaborador"></div>
       <div class="form-group"><label class="form-label">E-mail institucional</label><input type="email" class="form-input" id="new-email" placeholder="colaborador@proagroseguros.com"></div>
       <div class="form-group"><label class="form-label">Perfil</label>
-        <select class="form-input" id="new-role" onchange="mcAtualizarChkPorRole()" ><option value="analista">Analista</option><option value="supervisor">Supervisor</option><option value="admin">Administrador</option><option value="campo">Usuário de Campo</option></select>
+        <select class="form-input" id="new-role" onchange="mcAtualizarChkPorRole()" ><option value="analista">Analista</option><option value="supervisor">Supervisor</option><option value="admin">Administrador</option><option value="campo">Usuário de Campo</option><option value="ceo">CEO</option></select>
       </div>
       <div class="form-group">
         <label class="form-label">Páginas com acesso <span style="font-size:11px;color:var(--gray400)">(baseado no perfil — ajuste se necessário)</span></label>
@@ -1407,14 +1408,18 @@ async function gpCheck() {
     document.getElementById('gp-count').textContent = (s.total ? `${s.done}/${s.total}` : '') + contexto;
     document.getElementById('gp-status-txt').textContent =
       s.status === 'processando' ? 'Processando propostas…' :
-      s.status === 'concluido'   ? 'Concluído' :
+      s.status === 'concluido'   ? (s.sem_mudancas ? 'Nenhuma alteração — Excel já estava atualizado' : 'Concluído') :
       s.status === 'erro'        ? 'Erro' : 'Iniciando…';
     if (s.status === 'concluido') {
       clearInterval(_gpPoll); _gpPoll = null;
       document.getElementById('gp-btn-gerar').disabled = false;
       document.getElementById('gp-done').style.display = 'block';
-      showToast('Excel pronto para download.', 'success');
-      carregarGpHistorico();
+      if (s.sem_mudancas) {
+        showToast('Nenhuma proposta nova ou alterada. Nenhuma versão nova foi criada.', 'info');
+      } else {
+        showToast('Excel pronto para download.', 'success');
+        carregarGpHistorico();
+      }
     } else if (s.status === 'erro') {
       clearInterval(_gpPoll); _gpPoll = null;
       document.getElementById('gp-btn-gerar').disabled = false;
@@ -1581,6 +1586,40 @@ async function remBaixarArquivo(nomeArquivo) {
   }
 }
 
+// ══════════════════════════════════════════
+// MODO SOMENTE LEITURA (cargo "ceo")
+// Desabilita botões de ação em toda a tela, mantendo só os de
+// visualização/download. É um filtro genérico por texto do botão — não é
+// uma auditoria por página, então vale conferir manualmente as telas que
+// o CEO vai de fato acessar antes de liberar em produção.
+// ══════════════════════════════════════════
+const CEO_VERBOS_PERMITIDOS = /baixar|download|ver\b|visualizar|abrir|exportar|sincronizar/i;
+
+function ceoAplicarSomenteLeitura(raiz) {
+  raiz.querySelectorAll('button, .btn, .btn-sm, .topbar-btn').forEach(el => {
+    if (el.classList.contains('topbar-btn')) return; // navegação nunca é bloqueada
+    if (el.dataset.ceoProcessado) return;
+    el.dataset.ceoProcessado = '1';
+    const texto = ((el.textContent || '') + ' ' + (el.title || '')).trim();
+    if (CEO_VERBOS_PERMITIDOS.test(texto)) return;
+    el.disabled = true;
+    el.style.opacity = '0.4';
+    el.style.pointerEvents = 'none';
+    el.style.cursor = 'not-allowed';
+    el.title = (el.title ? el.title + ' — ' : '') + 'Modo somente leitura';
+  });
+}
+
+function ativarModoSomenteLeituraCeo() {
+  ceoAplicarSomenteLeitura(document.body);
+  const observer = new MutationObserver(mutations => {
+    for (const m of mutations) {
+      m.addedNodes.forEach(n => { if (n.nodeType === 1) ceoAplicarSomenteLeitura(n); });
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
 function toggleSidebar() {
 
 
@@ -1697,6 +1736,8 @@ async function enterApp() {
   const initials = currentUser.name.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase();
   document.getElementById('top-avatar').textContent = initials;
   document.getElementById('top-username').textContent = currentUser.name;
+
+  if (currentUser.role === 'ceo') ativarModoSomenteLeituraCeo();
 
   if (currentUser.role === 'admin') {
     document.getElementById('admin-btn').style.display = '';
@@ -2778,6 +2819,7 @@ const _PG_DEFAULTS = {
   analista:   ['nova-analise','historico','solicitacoes','endosso','datas-zarc'],
   supervisor: ['ce', 'esg', 'relatorio-esg-mensal'],
   campo:      ['monitoramento'],
+  ceo:        [], // sem padrão — acesso escolhido manualmente pelo botão "Acesso"
 };
 
 function mcAtualizarChkPorRole() {
