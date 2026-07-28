@@ -2081,6 +2081,7 @@ function renderJobsTable(jobs) {
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) ? `<button class="btn-sm" style="background:${_cePrioridade.has(j.id)?'#fef2f2;border:1px solid #fca5a5;color:#b91c1c':'#fff7ed;border:1px solid #fed7aa;color:#c2410c'}" onclick="pedirPrioridadeCE('${j.id}')" title="Solicitar avaliação prioritária">${_cePrioridade.has(j.id)?'🔴 Prioritário':'🔔 Pedir Prioridade'}</button>` : ''}
           ${concluido && (j.tipo_analise==='sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '')) && j.decisao === 'aprovado' ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="window.open('https://brasil.proagroinsur.tech','_blank')">🖥️ Acessar Sistema</button>` : ''}
           ${concluido && (j.tipo_analise==='sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '')) && j.decisao === 'aprovado' ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="abrirUploadSistema('${j.id}')">📁 Enviar Arquivos</button>` : ''}
+          ${renderBadgeOnedrive(j)}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="verDecisaoAR('${j.id}')">👁 Ver Decisão AR</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="reavaliarCE('${j.id}')">🔄 Reavaliar</button>` : ''}
           ${concluido && j.decisao === 'recusado' ? `<button class="btn-sm" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c" onclick="abrirReenvioEditavel('${j.id}','sistema')">📧 Reenviar Email</button>` : ''}
@@ -2131,6 +2132,20 @@ function renderRecentJobs(jobs) {
       </div>
       ${renderStatusBadge(j)}
     </div>`).join('');
+}
+
+function renderBadgeOnedrive(j) {
+  const concluido = j.status === 'concluido';
+  const elegivel = concluido && (j.tipo_analise === 'sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '')) && j.decisao === 'aprovado';
+  if (!elegivel) return '';
+  if (j.enviado_onedrive === true) {
+    const dataEnvio = j.enviado_onedrive_em ? formatDate(j.enviado_onedrive_em) : '';
+    return `<span class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;cursor:default" title="Enviado em ${dataEnvio}">✅ Enviado ao OneDrive</span>`;
+  }
+  if (j.enviado_onedrive === false) {
+    return `<span class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b;cursor:default" title="A última tentativa de envio falhou -- tente novamente pelo botão Enviar Arquivos">⚠ Falha no envio</span>`;
+  }
+  return `<span class="btn-sm" style="background:#f9fafb;border:1px solid var(--gray200);color:var(--gray400);cursor:default" title="Arquivos ainda não enviados ao OneDrive">— Não enviado</span>`;
 }
 
 function renderBadgeScoreSubscricao(j) {
