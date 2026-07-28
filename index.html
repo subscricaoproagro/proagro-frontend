@@ -297,6 +297,7 @@
       <button class="topbar-btn" id="extrator-btn" onclick="abrirExtratorPropostas()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></span><span class="sidebar-label">Extrator de Propostas</span></button>
       <button class="topbar-btn" id="esg-btn" onclick="showPage('esg')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg></span><span class="sidebar-label">Atualização ESG</span><span id="esg-sino-alerta" class="esg-sino-alerta" style="display:none" title="Existem bases desatualizadas"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2Zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2Z"/></svg></span></button>
       <button class="topbar-btn" id="datas-zarc-btn" onclick="showPage('datas-zarc');dzInit()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span><span class="sidebar-label">Datas Zarc</span></button>
+      <button class="topbar-btn" id="rem-btn" onclick="showPage('relatorio-esg-mensal');remInit()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg></span><span class="sidebar-label">Relatório Mensal ESG</span></button>
     </nav>
   </aside>
   <div class="main-wrap">
@@ -979,6 +980,45 @@
   </div>
 </div>
 
+<div id="page-relatorio-esg-mensal" class="page-section">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Relatório Mensal ESG</div>
+      <div class="section-sub">Sobreposição das 11 camadas socioambientais a partir dos KMLs do OneDrive</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-header"><div class="card-title" style="font-size:14px">1. Planilha de propostas + CPF/CNPJ</div></div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--gray600);margin-bottom:12px">Envie a planilha .xlsx com as colunas <code>id_proposta</code> e <code>cpf_cnpj</code> — uma linha por proposta a incluir no relatório.</p>
+      <input type="file" id="rem-file-planilha" accept=".xlsx" style="font-size:13px;margin-bottom:10px;width:100%">
+      <button class="btn-sm btn-green" onclick="remUploadPlanilha()">Enviar planilha</button>
+      <div id="rem-upload-status" style="display:none;margin-top:10px;font-size:13px"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-header"><div class="card-title" style="font-size:14px">2. Gerar relatório</div></div>
+    <div class="card-body">
+      <button class="btn-sm btn-green" id="rem-btn-gerar" onclick="remGerarRelatorio()" style="padding:10px 20px">Gerar agora</button>
+      <div id="rem-progresso-wrap" style="display:none;margin-top:16px">
+        <div style="background:var(--gray100);border-radius:999px;height:10px;overflow:hidden">
+          <div id="rem-progresso-barra" style="background:var(--g600);height:100%;width:0%;transition:width .4s"></div>
+        </div>
+        <div id="rem-progresso-texto" style="font-size:13px;color:var(--gray600);margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title" style="font-size:14px">3. Relatórios gerados</div></div>
+    <div class="card-body">
+      <div id="rem-historico-lista" style="font-size:13px">Carregando…</div>
+    </div>
+  </div>
+</div>
+
 
   </div>
   </div><!-- fecha main-wrap -->
@@ -1155,7 +1195,126 @@ async function esgEnviarArquivo(baseKey) {
   }
 }
 
+// ══════════════════════════════════════════
+// RELATÓRIO MENSAL ESG
+// ══════════════════════════════════════════
+let _remPollingInterval = null;
+
+function remInit() {
+  remCarregarStatus();
+  remCarregarHistorico();
+  if (_remPollingInterval) clearInterval(_remPollingInterval);
+  _remPollingInterval = setInterval(remCarregarStatus, 3000);
+}
+
+async function remUploadPlanilha() {
+  const input = document.getElementById('rem-file-planilha');
+  const statusEl = document.getElementById('rem-upload-status');
+  if (!input || !input.files || input.files.length === 0) {
+    statusEl.style.display = 'block'; statusEl.style.color = 'var(--red)';
+    statusEl.textContent = 'Selecione a planilha .xlsx.';
+    return;
+  }
+  const formData = new FormData();
+  formData.append('arquivo', input.files[0]);
+  statusEl.style.display = 'block'; statusEl.style.color = 'var(--gray600)';
+  statusEl.textContent = 'Enviando…';
+  try {
+    const resp = await api('POST', '/relatorio-esg-mensal/upload-planilha', formData, true);
+    statusEl.style.color = 'var(--g700)';
+    statusEl.textContent = '✅ ' + resp.message;
+    showToast(resp.message, 'success');
+  } catch (e) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = '❌ ' + e.message;
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+async function remGerarRelatorio() {
+  try {
+    const resp = await api('POST', '/relatorio-esg-mensal/gerar');
+    showToast(resp.message, 'success');
+    remCarregarStatus();
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+async function remCarregarStatus() {
+  try {
+    const s = await api('GET', '/relatorio-esg-mensal/status');
+    const wrap = document.getElementById('rem-progresso-wrap');
+    const barra = document.getElementById('rem-progresso-barra');
+    const texto = document.getElementById('rem-progresso-texto');
+    const btnGerar = document.getElementById('rem-btn-gerar');
+
+    if (s.status === 'rodando') {
+      wrap.style.display = 'block';
+      barra.style.width = (s.progresso || 0) + '%';
+      texto.textContent = s.etapa || 'Processando…';
+      btnGerar.disabled = true;
+      btnGerar.style.opacity = '0.6';
+    } else {
+      btnGerar.disabled = false;
+      btnGerar.style.opacity = '1';
+      if (s.status === 'concluido') {
+        wrap.style.display = 'block';
+        barra.style.width = '100%';
+        texto.textContent = `✅ Concluído — ${s.total_processadas || 0} proposta(s) processada(s), ${s.total_nao_encontradas || 0} não encontrada(s)`;
+        remCarregarHistorico();
+      } else if (s.status === 'erro') {
+        wrap.style.display = 'block';
+        barra.style.width = '100%';
+        barra.style.background = 'var(--red)';
+        texto.textContent = '❌ Erro: ' + (s.erro || 'erro desconhecido');
+      } else {
+        wrap.style.display = 'none';
+      }
+    }
+  } catch (e) {
+    // silencioso -- nao trava a tela por causa do polling
+  }
+}
+
+async function remCarregarHistorico() {
+  const el = document.getElementById('rem-historico-lista');
+  try {
+    const data = await api('GET', '/relatorio-esg-mensal/historico');
+    if (!data.arquivos || data.arquivos.length === 0) {
+      el.innerHTML = '<span style="color:var(--gray400)">Nenhum relatório gerado ainda.</span>';
+      return;
+    }
+    el.innerHTML = data.arquivos.map((a, i) => {
+      const data_fmt = new Date(a.data_criacao).toLocaleString('pt-BR');
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray100)">
+        <span>${a.nome} <span style="color:var(--gray400)">(${data_fmt}, ${a.tamanho_kb} KB)</span></span>
+        <button class="btn-sm" onclick="remBaixarArquivo('${a.nome}')">Baixar</button>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    el.innerHTML = '<span style="color:var(--red)">Erro ao carregar histórico.</span>';
+  }
+}
+
+async function remBaixarArquivo(nomeArquivo) {
+  try {
+    const res = await fetch(`${BACKEND_URL}/relatorio-esg-mensal/download/${encodeURIComponent(nomeArquivo)}`, {
+      headers: { 'Authorization': `Bearer ${TOKEN}` }
+    });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Erro ao baixar'); }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = nomeArquivo; a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
+
 function toggleSidebar() {
+
+
   const sb = document.getElementById('app-sidebar');
   sb.classList.toggle('collapsed');
   localStorage.setItem('pa_sidebar_collapsed', sb.classList.contains('collapsed') ? '1' : '0');
@@ -1280,6 +1439,7 @@ async function enterApp() {
     document.getElementById('historico-btn').style.display = '';
     document.getElementById('solicitacoes-btn').style.display = '';
     document.getElementById('esg-btn').style.display = '';
+    document.getElementById('rem-btn').style.display = '';
     // Admin vê abas Sistema/CE e cards de stats igual ao analista
     const elAbas = document.getElementById('hist-abas');
     if (elAbas) elAbas.style.display = 'flex';
@@ -1303,6 +1463,7 @@ async function enterApp() {
   if (currentUser.role === 'supervisor') {
     document.getElementById('ce-btn').style.display = '';
     document.getElementById('esg-btn').style.display = '';
+    document.getElementById('rem-btn').style.display = '';
     document.getElementById('dashboard-sv-btn').style.display = 'none';
     document.getElementById('dashboard-btn').style.display = 'none';
     const pgDash = document.getElementById('page-dashboard'); if(pgDash) pgDash.style.display = 'none';
@@ -2310,11 +2471,12 @@ const _PG = {
   'extrator':      { label: 'Extrator de Propostas',  btn: 'extrator-btn'      },
   'datas-zarc':    { label: 'Datas Zarc',             btn: 'datas-zarc-btn'    },
   'esg':           { label: 'Atualização ESG',        btn: 'esg-btn'           },
+  'relatorio-esg-mensal': { label: 'Relatório Mensal ESG', btn: 'rem-btn'       },
 };
 const _PG_DEFAULTS = {
   admin:      Object.keys(_PG),
   analista:   ['nova-analise','historico','solicitacoes','endosso','datas-zarc'],
-  supervisor: ['ce', 'esg'],
+  supervisor: ['ce', 'esg', 'relatorio-esg-mensal'],
   campo:      ['monitoramento'],
 };
 
