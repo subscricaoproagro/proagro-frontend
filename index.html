@@ -562,6 +562,11 @@
             <option value="recusada">❌ Recusada</option>
             <option value="erro">⚠️ Erro</option>
           </select>
+          <select class="form-input" id="hist-filter-onedrive" style="width:auto;padding:8px 12px" onchange="carregarJobs()">
+            <option value="">OneDrive: Todos</option>
+            <option value="enviado">✅ Enviado ao OneDrive</option>
+            <option value="pendente">— Não enviado / falhou</option>
+          </select>
           <button class="btn-sm btn-outline" onclick="carregarJobs()">↻ Atualizar</button>
           <button class="btn-sm" style="background:#fff5f5;border:1px solid #fca5a5;color:#c0392b" onclick="excluirJobsPorStatus()">🗑 Excluir filtrados</button>
         </div>
@@ -1873,6 +1878,7 @@ let _todosJobsCarregados = false;
 async function carregarJobs() {
   try {
     const filtroAtivo = document.getElementById('hist-filter')?.value || '';
+    const filtroOnedrive = document.getElementById('hist-filter-onedrive')?.value || '';
     const buscaProposta = (document.getElementById('hist-filter-proposta')?.value || '').trim();
     const buscaCliente  = (document.getElementById('hist-filter-cliente')?.value || '').trim();
     const buscaAtiva = buscaCliente || buscaProposta; // manda pro servidor o termo mais específico disponível
@@ -1885,7 +1891,7 @@ async function carregarJobs() {
     if (buscaAtiva) {
       jobsPromise = api('GET', '/jobs?busca=' + encodeURIComponent(buscaAtiva));
       modoCompleto = true;
-    } else if (filtroAtivo) {
+    } else if (filtroAtivo || filtroOnedrive) {
       jobsPromise = api('GET', '/jobs');
       modoCompleto = true;
     } else {
@@ -1998,6 +2004,7 @@ function buscarPropostaComDebounce() {
 function _computarJobsFiltrados() {
   const jobs = allJobs || [];
   const filter = document.getElementById('hist-filter')?.value || '';
+  const filtroOnedrive = document.getElementById('hist-filter-onedrive')?.value || '';
   const filtroProposta = (document.getElementById('hist-filter-proposta')?.value || '').trim().toLowerCase();
   const filtroCliente  = (document.getElementById('hist-filter-cliente')?.value || '').trim().toLowerCase();
 
@@ -2023,6 +2030,12 @@ function _computarJobsFiltrados() {
     if (filter === 'recusada')       return j.status === 'concluido' && j.decisao === 'recusado';
     if (filter === 'erro')           return j.status === 'erro' || j.status === 'cancelado';
     return j.status === filter;
+  });
+
+  if (filtroOnedrive) filtered = filtered.filter(j => {
+    if (filtroOnedrive === 'enviado')  return j.enviado_onedrive === true;
+    if (filtroOnedrive === 'pendente') return j.enviado_onedrive !== true;
+    return true;
   });
 
   if (filtroProposta) {
@@ -2142,10 +2155,7 @@ function renderBadgeOnedrive(j) {
     const dataEnvio = j.enviado_onedrive_em ? formatDate(j.enviado_onedrive_em) : '';
     return `<span class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;cursor:default" title="Enviado em ${dataEnvio}">✅ Enviado ao OneDrive</span>`;
   }
-  if (j.enviado_onedrive === false) {
-    return `<span class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b;cursor:default" title="A última tentativa de envio falhou -- tente novamente pelo botão Enviar Arquivos">⚠ Falha no envio</span>`;
-  }
-  return `<span class="btn-sm" style="background:#f9fafb;border:1px solid var(--gray200);color:var(--gray400);cursor:default" title="Arquivos ainda não enviados ao OneDrive">— Não enviado</span>`;
+  return `<span class="btn-sm" style="background:#f9fafb;border:1px solid var(--gray200);color:var(--gray400);cursor:default" title="Ainda não enviado, ou a última tentativa falhou -- use o botão Enviar Arquivos">— Não enviado</span>`;
 }
 
 function renderBadgeScoreSubscricao(j) {
