@@ -1477,9 +1477,26 @@ async function atualizarSinoGestaoPropostas() {
   }
 }
 
+async function gpVerificarEmAndamento() {
+  try {
+    const data = await api('GET', '/gestao-propostas/em-andamento');
+    if (data.job_id) {
+      _gpJobId = data.job_id;
+      document.getElementById('gp-btn-gerar').disabled = true;
+      document.getElementById('gp-progress').style.display = 'block';
+      document.getElementById('gp-done').style.display = 'none';
+      if (!_gpPoll) _gpPoll = setInterval(gpCheck, 2000);
+      gpCheck(); // atualiza a barra na hora, sem esperar o primeiro intervalo
+    }
+  } catch (e) {
+    // silencioso -- nao trava a tela por causa disso
+  }
+}
+
 async function gpAoAbrirPagina() {
   const banner = document.getElementById('gp-auto-banner');
   carregarGpHistorico();
+  await gpVerificarEmAndamento();
   if (!banner) return;
   try {
     const data = await api('GET', '/gestao-propostas/notificacoes');
