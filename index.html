@@ -1599,11 +1599,14 @@ async function gpCancelarPorTexto() {
 async function gpCancelarPorArquivo() {
   const input = document.getElementById('gp-cancelar-arquivo');
   if (!input.files || !input.files[0]) { showToast('Escolhe um arquivo .xlsx primeiro.', 'warning'); return; }
+  if (!confirm('Isso substitui TODA a lista de canceladas pela do arquivo (o que não estiver nele deixa de ser cancelado). Continuar?')) return;
   const fd = new FormData();
   fd.append('arquivo', input.files[0]);
   try {
     const r = await api('POST', '/gestao-propostas/canceladas/upload-xlsx', fd, true);
-    showToast(`${r.novas_marcadas} proposta(s) marcada(s) como cancelada(s). Excel atualizado.`, 'success');
+    let msg = `Lista substituída: ${r.total_marcadas} proposta(s) cancelada(s) agora.`;
+    if (r.removidas_da_lista_anterior > 0) msg += ` ${r.removidas_da_lista_anterior} deixaram de ser canceladas.`;
+    showToast(msg, 'success');
     input.value = '';
     carregarGpHistorico();
   } catch (e) { showToast('Erro: ' + e.message, 'error'); }
@@ -1633,11 +1636,14 @@ async function gpEndossarPorTexto() {
 async function gpEndossarPorArquivo() {
   const input = document.getElementById('gp-endossar-arquivo');
   if (!input.files || !input.files[0]) { showToast('Escolhe um arquivo .xlsx primeiro.', 'warning'); return; }
+  if (!confirm('Isso substitui TODA a lista de endossadas pela do arquivo (o que não estiver nele deixa de ser endossado). Continuar?')) return;
   const fd = new FormData();
   fd.append('arquivo', input.files[0]);
   try {
     const r = await api('POST', '/gestao-propostas/endossadas/upload-xlsx', fd, true);
-    showToast(`${r.novas_marcadas} proposta(s) marcada(s) como endossada(s). Excel atualizado.`, 'success');
+    let msg = `Lista substituída: ${r.total_marcadas} proposta(s) endossada(s) agora.`;
+    if (r.removidas_da_lista_anterior > 0) msg += ` ${r.removidas_da_lista_anterior} deixaram de ser endossadas.`;
+    showToast(msg, 'success');
     input.value = '';
     carregarGpHistorico();
   } catch (e) { showToast('Erro: ' + e.message, 'error'); }
