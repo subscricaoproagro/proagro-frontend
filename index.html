@@ -3660,14 +3660,20 @@ async function buscarSolicitacaoCE() {
 
     if (_solCEEncontradas.length === 1) {
       // Apenas um resultado — preenche direto
-      if (elStatus) elStatus.textContent = `✅ Solicitação encontrada: ${_solCEEncontradas[0].produtor}`;
+      const brokerUnico = _solCEEncontradas[0].corretora || _solCEEncontradas[0].responsavel || 'corretor não informado';
+      if (elStatus) elStatus.textContent = `✅ Solicitação encontrada: ${_solCEEncontradas[0].produtor} (broker: ${brokerUnico})`;
       if (elWrap) elWrap.style.display = 'none';
       preencherCamposCE(_solCEEncontradas[0]);
     } else {
-      // Múltiplos municípios — mostra dropdown
-      if (elStatus) elStatus.textContent = `✅ ${_solCEEncontradas.length} solicitações encontradas. Selecione o município:`;
-      elSelect.innerHTML = '<option value="">Selecione o município</option>' +
-        _solCEEncontradas.map((s, i) => `<option value="${i}">${s.municipio_uf || s.municipio || 'Município não informado'}</option>`).join('');
+      // Múltiplos resultados — mostra dropdown com broker + município, pra
+      // diferenciar solicitações do mesmo cliente vindas de brokers diferentes.
+      if (elStatus) elStatus.textContent = `✅ ${_solCEEncontradas.length} solicitações encontradas. Selecione a solicitação (broker):`;
+      elSelect.innerHTML = '<option value="">Selecione a solicitação</option>' +
+        _solCEEncontradas.map((s, i) => {
+          const municipio = s.municipio_uf || s.municipio || 'Município não informado';
+          const broker = s.corretora || s.responsavel || 'corretor não informado';
+          return `<option value="${i}">${broker} — ${municipio}</option>`;
+        }).join('');
       if (elWrap) elWrap.style.display = '';
     }
   } catch(e) {
@@ -6971,7 +6977,7 @@ function renderizarMapaSobreposicoes(dados) {
           <input class="ce-input" id="ce-cpf-busca" placeholder="000.000.000-00 ou 00.000.000/0001-00" style="margin:0;flex:1" oninput="buscarSolicitacaoCE()">
           <div id="ce-municipio-select-wrap" style="display:none;flex:1">
             <select class="ce-input" id="ce-municipio-select" style="margin:0" onchange="preencherCEpelaMunicipio()">
-              <option value="">Selecione o município</option>
+              <option value="">Selecione a solicitação</option>
             </select>
           </div>
         </div>
