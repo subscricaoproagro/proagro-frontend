@@ -4183,7 +4183,7 @@ async function carregarCondicoesEspeciais() {
     });
 
     // Atualiza contadores
-    const nPendente = listaSemSistema.filter(ce => ce.job && !ce.job.decisao_risco).length;
+    const nPendente = listaSemSistema.filter(ce => ce.job && !ce.job.decisao_risco && !ce.resolvido_manualmente).length;
     const nAprovado = listaSemSistema.filter(ce => ce.job && (ce.job.decisao_risco === 'aprovado' || ce.job.decisao_risco === 'aprovado_diferente')).length;
     const nBalcao   = listaSemSistema.filter(ce => ce.job && ce.job.decisao_risco === 'balcao').length;
     const nRecusado = listaSemSistema.filter(ce => ce.job && ce.job.decisao_risco === 'recusado').length;
@@ -4241,7 +4241,7 @@ async function carregarCondicoesEspeciais() {
       else if (filtro === 'draft_confirmado' && !(ce.corretor_aceitou && !ce.draft_ativado)) return false;
       else if (filtro === 'draft_ativado' && !ce.draft_ativado) return false;
       else if (filtro === 'reavaliacao' && !ce.reavaliacao_solicitada) return false;
-      else if (filtro === 'pendente' && !(ce.job && !ce.job.decisao_risco)) return false;
+      else if (filtro === 'pendente' && !(ce.job && !ce.job.decisao_risco && !ce.resolvido_manualmente)) return false;
       else if (filtro && !_statusFiltros.includes(filtro) && !(ce.job && (drc === filtro || (filtro === 'aprovado' && drc === 'aprovado_diferente')))) return false;
       if (filtroUF && (ce.uf || '').toUpperCase() !== filtroUF) return false;
       if (filtroBroker && !(ce.broker || '').toLowerCase().includes(filtroBroker)) return false;
@@ -4630,6 +4630,25 @@ async function _executarBalcao(obs, assuntoEditado, corpoEditado, destinatarios=
 
 
 
+// ── Já Resolvido (manual, não mexe em decisao_risco) ──
+async function marcarResolvidoCE(jobId) {
+  if (!confirm('Marcar esta condição especial como já resolvida? Ela sai da lista de pendentes.')) return;
+  try {
+    await api('POST', '/condicoes-especiais/' + jobId + '/marcar-resolvido');
+    showToast('Marcado como resolvido.', 'success');
+    await carregarCondicoesEspeciais();
+  } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function desmarcarResolvidoCE(jobId) {
+  if (!confirm('Desmarcar como resolvido? Volta a aparecer como pendente.')) return;
+  try {
+    await api('POST', '/condicoes-especiais/' + jobId + '/desmarcar-resolvido');
+    showToast('Desmarcado.', 'success');
+    await carregarCondicoesEspeciais();
+  } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
 function renderBtnsCE(ce) {
   var jobId = ce.job_id;
   var dr = (ce.job && ce.job.decisao_risco) ? ce.job.decisao_risco : null;
@@ -4637,10 +4656,16 @@ function renderBtnsCE(ce) {
   var btnEmail = '<button class="btn-sm" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c" onclick="abrirReenvioEditavel(\'' + jobId + '\',\'ce\',\'' + (dr || '') + '\')">✏️ Editar Condição</button>';
   var btnReenviarSimples = '<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#0369a1" onclick="abrirReenvioSimplesCE(\'' + jobId + '\',\'' + (dr || '') + '\')">📨 Reenviar Email</button>';
   if (!dr) {
+    if (ce.resolvido_manualmente) {
+      return btnDados +
+             ' <span style="font-size:11px;font-weight:600;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;padding:3px 8px;border-radius:12px">✅ Resolvido manualmente</span>' +
+             ' <button class="btn-sm btn-outline" onclick="desmarcarResolvidoCE(\'' + jobId + '\')">Desmarcar</button>';
+    }
     return btnDados +
            ' <button class="btn-sm btn-primary" onclick="abrirAprovacaoCE(\'' + jobId + '\')">✅ Aprovar CE</button>' +
            ' <button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="abrirBalcao(\'' + jobId + '\')">🏦 Balcão</button>' +
-           ' <button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="abrirRecusaCE(\'' + jobId + '\')">❌ Recusar</button>';
+           ' <button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="abrirRecusaCE(\'' + jobId + '\')">❌ Recusar</button>' +
+           ' <button class="btn-sm" style="background:#f9fafb;border:1px solid #e5e7eb;color:#374151" onclick="marcarResolvidoCE(\'' + jobId + '\')" title="Use quando já foi tratado de verdade, mas voltou a aparecer aqui por causa de um reprocessamento de teste">✅ Já Resolvido</button>';
   }
   var cor = dr==='aprovado' ? '#166534' : dr==='balcao' ? '#1d4ed8' : '#c0392b';
   var label = dr==='aprovado' ? '✅ CE Aprovada' : dr==='aprovado_diferente' ? '⚠️ CE Aprovada c/ Ressalva' : dr==='balcao' ? '🏦 Balcão' : '❌ Recusada';
