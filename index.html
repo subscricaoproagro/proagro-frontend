@@ -905,7 +905,7 @@
             Marca propostas como "Cancelada" na coluna Situação — vale pra sempre, em toda geração futura, até você desmarcar.
           </p>
 
-          <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:16px">
+          <div style="display:flex;gap:24px;flex-wrap:wrap">
             <div style="flex:1;min-width:260px">
               <label class="form-label" style="font-size:12px;color:var(--gray600)">Colar IDs (separados por vírgula, espaço ou linha)</label>
               <textarea id="gp-cancelar-texto" class="form-input" rows="3" style="width:100%;margin-top:4px" placeholder="1234, 5678, 9012"></textarea>
@@ -917,13 +917,33 @@
               <button class="btn-sm" style="margin-top:8px" onclick="gpCancelarPorArquivo()">Marcar como Canceladas (arquivo)</button>
             </div>
           </div>
+        </div>
+      </div>
 
-          <div id="gp-canceladas-lista" style="font-size:13px">Carregando…</div>
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><div class="card-title" style="font-size:14px">3. Propostas Endossadas</div></div>
+        <div class="card-body">
+          <p style="color:var(--gray400);font-size:13px;margin-bottom:14px">
+            Marca propostas como "Endossada" na coluna Situação — vale pra sempre, em toda geração futura, até você desmarcar.
+          </p>
+
+          <div style="display:flex;gap:24px;flex-wrap:wrap">
+            <div style="flex:1;min-width:260px">
+              <label class="form-label" style="font-size:12px;color:var(--gray600)">Colar IDs (separados por vírgula, espaço ou linha)</label>
+              <textarea id="gp-endossar-texto" class="form-input" rows="3" style="width:100%;margin-top:4px" placeholder="1234, 5678, 9012"></textarea>
+              <button class="btn-sm" style="margin-top:8px" onclick="gpEndossarPorTexto()">Marcar como Endossadas</button>
+            </div>
+            <div style="flex:1;min-width:260px">
+              <label class="form-label" style="font-size:12px;color:var(--gray600)">Ou envia um Excel (coluna "ID Proposta")</label>
+              <input type="file" id="gp-endossar-arquivo" accept=".xlsx" class="form-input" style="width:100%;margin-top:4px">
+              <button class="btn-sm" style="margin-top:8px" onclick="gpEndossarPorArquivo()">Marcar como Endossadas (arquivo)</button>
+            </div>
+          </div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-header"><div class="card-title" style="font-size:14px">3. Versões geradas</div></div>
+        <div class="card-header"><div class="card-title" style="font-size:14px">4. Versões geradas</div></div>
         <div class="card-body">
           <div id="gp-historico-lista" style="font-size:13px">Carregando…</div>
         </div>
@@ -1520,7 +1540,6 @@ async function gpVerificarEmAndamento() {
 async function gpAoAbrirPagina() {
   const banner = document.getElementById('gp-auto-banner');
   carregarGpHistorico();
-  carregarGpCanceladas();
   await gpVerificarEmAndamento();
   if (!banner) return;
   try {
@@ -1563,30 +1582,7 @@ function gpFormatarData(iso) {
   return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-const GP_TIPO_LABEL = { manual: 'Manual', manual_forcado: 'Manual (regenerado)', automatico: 'Automático', cancelamento: 'Cancelamento manual' };
-
-async function carregarGpCanceladas() {
-  const wrap = document.getElementById('gp-canceladas-lista');
-  if (!wrap) return;
-  try {
-    const data = await api('GET', '/gestao-propostas/canceladas');
-    const itens = data.itens || [];
-    if (!itens.length) {
-      wrap.innerHTML = '<span style="color:var(--gray400)">Nenhuma proposta marcada como cancelada.</span>';
-      return;
-    }
-    wrap.innerHTML = itens.map(it => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--gray100)">
-        <span>#${it.id} <span style="color:var(--gray400)">(${GP_ORIGEM_LABEL[it.origem] || it.origem}, ${gpFormatarData(it.marcado_em)})</span></span>
-        <button class="btn-sm" onclick="gpDesmarcarCancelada('${it.id}')">Desmarcar</button>
-      </div>
-    `).join('');
-  } catch (e) {
-    wrap.innerHTML = '<span style="color:var(--gray400)">Erro ao carregar.</span>';
-  }
-}
-
-const GP_ORIGEM_LABEL = { texto: 'colado', upload_xlsx: 'arquivo' };
+const GP_TIPO_LABEL = { manual: 'Manual', manual_forcado: 'Manual (regenerado)', automatico: 'Automático', cancelamento: 'Cancelamento manual', endosso: 'Endosso manual' };
 
 async function gpCancelarPorTexto() {
   const campo = document.getElementById('gp-cancelar-texto');
@@ -1594,9 +1590,8 @@ async function gpCancelarPorTexto() {
   if (!texto) { showToast('Cola pelo menos um ID.', 'warning'); return; }
   try {
     const r = await api('POST', '/gestao-propostas/canceladas/texto', { texto });
-    showToast(`${r.novas_marcadas} proposta(s) marcada(s). Excel atualizado.`, 'success');
+    showToast(`${r.novas_marcadas} proposta(s) marcada(s) como cancelada(s). Excel atualizado.`, 'success');
     campo.value = '';
-    carregarGpCanceladas();
     carregarGpHistorico();
   } catch (e) { showToast('Erro: ' + e.message, 'error'); }
 }
@@ -1608,9 +1603,8 @@ async function gpCancelarPorArquivo() {
   fd.append('arquivo', input.files[0]);
   try {
     const r = await api('POST', '/gestao-propostas/canceladas/upload-xlsx', fd, true);
-    showToast(`${r.novas_marcadas} proposta(s) marcada(s). Excel atualizado.`, 'success');
+    showToast(`${r.novas_marcadas} proposta(s) marcada(s) como cancelada(s). Excel atualizado.`, 'success');
     input.value = '';
-    carregarGpCanceladas();
     carregarGpHistorico();
   } catch (e) { showToast('Erro: ' + e.message, 'error'); }
 }
@@ -1620,7 +1614,40 @@ async function gpDesmarcarCancelada(id) {
   try {
     await api('DELETE', `/gestao-propostas/canceladas/${id}`);
     showToast('Desmarcada. Excel atualizado.', 'success');
-    carregarGpCanceladas();
+    carregarGpHistorico();
+  } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function gpEndossarPorTexto() {
+  const campo = document.getElementById('gp-endossar-texto');
+  const texto = campo.value.trim();
+  if (!texto) { showToast('Cola pelo menos um ID.', 'warning'); return; }
+  try {
+    const r = await api('POST', '/gestao-propostas/endossadas/texto', { texto });
+    showToast(`${r.novas_marcadas} proposta(s) marcada(s) como endossada(s). Excel atualizado.`, 'success');
+    campo.value = '';
+    carregarGpHistorico();
+  } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function gpEndossarPorArquivo() {
+  const input = document.getElementById('gp-endossar-arquivo');
+  if (!input.files || !input.files[0]) { showToast('Escolhe um arquivo .xlsx primeiro.', 'warning'); return; }
+  const fd = new FormData();
+  fd.append('arquivo', input.files[0]);
+  try {
+    const r = await api('POST', '/gestao-propostas/endossadas/upload-xlsx', fd, true);
+    showToast(`${r.novas_marcadas} proposta(s) marcada(s) como endossada(s). Excel atualizado.`, 'success');
+    input.value = '';
+    carregarGpHistorico();
+  } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function gpDesmarcarEndossada(id) {
+  if (!confirm(`Desmarcar a proposta #${id} como endossada?`)) return;
+  try {
+    await api('DELETE', `/gestao-propostas/endossadas/${id}`);
+    showToast('Desmarcada. Excel atualizado.', 'success');
     carregarGpHistorico();
   } catch (e) { showToast('Erro: ' + e.message, 'error'); }
 }
