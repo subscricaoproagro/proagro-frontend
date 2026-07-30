@@ -1552,12 +1552,25 @@ async function carregarGpHistorico() {
     }
     wrap.innerHTML = itens.map(it => {
       const detalhe = it.novas || it.atualizadas ? `, ${it.novas||0} nova(s), ${it.atualizadas||0} atualizada(s)` : '';
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray100)">
-        <span>${it.arquivo} <span style="color:var(--gray400)">(${gpFormatarData(it.data_geracao)}, ${gpFormatarTamanho(it.tamanho_bytes)}, ${GP_TIPO_LABEL[it.tipo] || it.tipo}${detalhe})</span></span>
-        <span style="display:flex;gap:6px">
-          <button class="btn-sm" onclick="gpHistoricoBaixar('${it.arquivo}')">Baixar</button>
-          <button class="btn-sm" title="Apagar" onclick="gpHistoricoDeletar('${it.arquivo}')" style="color:var(--red);border-color:#fecaca">🗑</button>
-        </span>
+      const temNovasDetalhe = Array.isArray(it.novas_detalhe) && it.novas_detalhe.length > 0;
+      const idSeguro = it.arquivo.replace(/[^a-zA-Z0-9]/g, '_');
+      const linkVerQuais = temNovasDetalhe
+        ? ` <a href="#" onclick="const el=document.getElementById('gp-novas-${idSeguro}');el.style.display=el.style.display==='none'?'block':'none';return false" style="color:var(--g600);font-size:12px;text-decoration:underline">ver quais →</a>`
+        : '';
+      const listaNovas = temNovasDetalhe
+        ? `<div id="gp-novas-${idSeguro}" style="display:none;margin-top:6px;padding:8px 12px;background:var(--gray50);border-radius:8px;font-size:12px;color:var(--gray600)">
+             ${it.novas_detalhe.map(n => `#${n.id}${n.cliente ? ' — ' + n.cliente : ''}`).join('<br>')}
+           </div>`
+        : '';
+      return `<div style="padding:8px 0;border-bottom:1px solid var(--gray100)">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span>${it.arquivo} <span style="color:var(--gray400)">(${gpFormatarData(it.data_geracao)}, ${gpFormatarTamanho(it.tamanho_bytes)}, ${GP_TIPO_LABEL[it.tipo] || it.tipo}${detalhe})</span>${linkVerQuais}</span>
+          <span style="display:flex;gap:6px">
+            <button class="btn-sm" onclick="gpHistoricoBaixar('${it.arquivo}')">Baixar</button>
+            <button class="btn-sm" title="Apagar" onclick="gpHistoricoDeletar('${it.arquivo}')" style="color:var(--red);border-color:#fecaca">🗑</button>
+          </span>
+        </div>
+        ${listaNovas}
       </div>`;
     }).join('');
   } catch (e) {
