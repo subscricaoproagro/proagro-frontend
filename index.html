@@ -898,27 +898,32 @@
         </div>
       </div>
 
-      <!-- Propostas cujo GET /api/Proposta/{id} falhou na matriz: a linha existe no
-           Excel com os dados do grid, mas sem as colunas de detalhe. Só aparece
-           quando há alguma pendente. -->
-      <div class="card" id="gp-pendentes-card" style="display:none;margin-bottom:20px;border-color:#fde68a">
-        <div class="card-header" style="background:#fffbeb">
-          <div class="card-title" style="font-size:14px">⚠️ Propostas sem detalhe <span id="gp-pendentes-badge" style="font-weight:600;color:#b45309"></span></div>
-          <button class="btn-sm" id="gp-btn-retentar" onclick="gpRetentarPendentes()">Tentar novamente agora</button>
-        </div>
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><div class="card-title" style="font-size:14px">2. Propostas Canceladas</div></div>
         <div class="card-body">
-          <div style="font-size:12px;color:var(--gray600);margin-bottom:10px;line-height:1.6">
-            A API da matriz não devolveu o detalhe destas propostas (erro do lado dela).
-            Elas <strong>estão no Excel</strong> com os dados do grid, mas as colunas de detalhe
-            (área, plantio, variedade, parcelas…) ficam vazias — e vêm destacadas em âmbar na planilha.
-            O sistema tenta de novo sozinho, com espera crescente; use o botão se a matriz já corrigiu.
+          <p style="color:var(--gray400);font-size:13px;margin-bottom:14px">
+            Marca propostas como "Cancelada" na coluna Situação — vale pra sempre, em toda geração futura, até você desmarcar.
+          </p>
+
+          <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:16px">
+            <div style="flex:1;min-width:260px">
+              <label class="form-label" style="font-size:12px;color:var(--gray600)">Colar IDs (separados por vírgula, espaço ou linha)</label>
+              <textarea id="gp-cancelar-texto" class="form-input" rows="3" style="width:100%;margin-top:4px" placeholder="1234, 5678, 9012"></textarea>
+              <button class="btn-sm" style="margin-top:8px" onclick="gpCancelarPorTexto()">Marcar como Canceladas</button>
+            </div>
+            <div style="flex:1;min-width:260px">
+              <label class="form-label" style="font-size:12px;color:var(--gray600)">Ou envia um Excel (coluna "ID Proposta")</label>
+              <input type="file" id="gp-cancelar-arquivo" accept=".xlsx" class="form-input" style="width:100%;margin-top:4px">
+              <button class="btn-sm" style="margin-top:8px" onclick="gpCancelarPorArquivo()">Marcar como Canceladas (arquivo)</button>
+            </div>
           </div>
-          <div id="gp-pendentes-lista" style="font-size:13px"></div>
+
+          <div id="gp-canceladas-lista" style="font-size:13px">Carregando…</div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-header"><div class="card-title" style="font-size:14px">2. Versões geradas</div></div>
+        <div class="card-header"><div class="card-title" style="font-size:14px">3. Versões geradas</div></div>
         <div class="card-body">
           <div id="gp-historico-lista" style="font-size:13px">Carregando…</div>
         </div>
@@ -1439,10 +1444,6 @@ async function gpCheck() {
         showToast('Excel pronto para download.', 'success');
         carregarGpHistorico();
       }
-      carregarGpPendentes();
-      if (s.pendentes) {
-        showToast(`${s.pendentes} proposta(s) sem detalhe — a API da matriz falhou nelas. Veja o aviso na tela.`, 'info');
-      }
     } else if (s.status === 'erro') {
       clearInterval(_gpPoll); _gpPoll = null;
       document.getElementById('gp-btn-gerar').disabled = false;
@@ -1516,66 +1517,10 @@ async function gpVerificarEmAndamento() {
   }
 }
 
-// Propostas cujo detalhe a API da matriz não devolveu. Lido do cache no
-// backend (não bate na matriz), então pode ser chamado à vontade.
-function gpFormatarEspera(epochSegundos) {
-  if (!epochSegundos) return 'na próxima geração';
-  const faltamMs = epochSegundos * 1000 - Date.now();
-  if (faltamMs <= 0) return 'na próxima geração';
-  const horas = faltamMs / 3600000;
-  if (horas < 1) return `em ~${Math.max(1, Math.round(horas * 60))} min`;
-  if (horas < 48) return `em ~${Math.round(horas)}h`;
-  return `em ~${Math.round(horas / 24)} dia(s)`;
-}
-
-async function carregarGpPendentes() {
-  const card = document.getElementById('gp-pendentes-card');
-  const lista = document.getElementById('gp-pendentes-lista');
-  if (!card || !lista) return;
-  try {
-    const data = await api('GET', '/gestao-propostas/pendentes');
-    const itens = data.itens || [];
-    if (!itens.length) { card.style.display = 'none'; return; }
-    document.getElementById('gp-pendentes-badge').textContent = `(${itens.length})`;
-    lista.innerHTML = itens.map(it => `
-      <div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--gray100)">
-        <span>#${it.id}${it.cliente ? ' — ' + it.cliente : ''}</span>
-        <span style="color:var(--gray400);font-size:12px;white-space:nowrap">
-          ${it.erro || 'erro na API'} · ${it.falhas} tentativa(s) · nova tentativa ${gpFormatarEspera(it.proxima_tentativa)}
-        </span>
-      </div>`).join('');
-    card.style.display = 'block';
-  } catch (e) {
-    card.style.display = 'none';   // silencioso -- não trava a tela pelo aviso
-  }
-}
-
-async function gpRetentarPendentes() {
-  const btn = document.getElementById('gp-btn-retentar');
-  btn.disabled = true;
-  const textoOriginal = btn.textContent;
-  btn.textContent = 'Tentando…';
-  try {
-    const data = await api('POST', '/gestao-propostas/pendentes/retentar');
-    _gpJobId = data.job_id;
-    document.getElementById('gp-btn-gerar').disabled = true;
-    document.getElementById('gp-done').style.display = 'none';
-    document.getElementById('gp-progress').style.display = 'block';
-    document.getElementById('gp-status-txt').textContent = 'Rebuscando o detalhe das pendentes…';
-    if (!_gpPoll) _gpPoll = setInterval(gpCheck, 2000);
-    showToast(`${data.liberadas} proposta(s) liberada(s) para nova tentativa.`, 'info');
-  } catch (e) {
-    showToast('Erro: ' + e.message, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = textoOriginal;
-  }
-}
-
 async function gpAoAbrirPagina() {
   const banner = document.getElementById('gp-auto-banner');
   carregarGpHistorico();
-  carregarGpPendentes();
+  carregarGpCanceladas();
   await gpVerificarEmAndamento();
   if (!banner) return;
   try {
@@ -1618,7 +1563,67 @@ function gpFormatarData(iso) {
   return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-const GP_TIPO_LABEL = { manual: 'Manual', manual_forcado: 'Manual (regenerado)', automatico: 'Automático' };
+const GP_TIPO_LABEL = { manual: 'Manual', manual_forcado: 'Manual (regenerado)', automatico: 'Automático', cancelamento: 'Cancelamento manual' };
+
+async function carregarGpCanceladas() {
+  const wrap = document.getElementById('gp-canceladas-lista');
+  if (!wrap) return;
+  try {
+    const data = await api('GET', '/gestao-propostas/canceladas');
+    const itens = data.itens || [];
+    if (!itens.length) {
+      wrap.innerHTML = '<span style="color:var(--gray400)">Nenhuma proposta marcada como cancelada.</span>';
+      return;
+    }
+    wrap.innerHTML = itens.map(it => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--gray100)">
+        <span>#${it.id} <span style="color:var(--gray400)">(${GP_ORIGEM_LABEL[it.origem] || it.origem}, ${gpFormatarData(it.marcado_em)})</span></span>
+        <button class="btn-sm" onclick="gpDesmarcarCancelada('${it.id}')">Desmarcar</button>
+      </div>
+    `).join('');
+  } catch (e) {
+    wrap.innerHTML = '<span style="color:var(--gray400)">Erro ao carregar.</span>';
+  }
+}
+
+const GP_ORIGEM_LABEL = { texto: 'colado', upload_xlsx: 'arquivo' };
+
+async function gpCancelarPorTexto() {
+  const campo = document.getElementById('gp-cancelar-texto');
+  const texto = campo.value.trim();
+  if (!texto) { showToast('Cola pelo menos um ID.', 'warning'); return; }
+  try {
+    const r = await api('POST', '/gestao-propostas/canceladas/texto', { texto });
+    showToast(`${r.novas_marcadas} proposta(s) marcada(s). Excel atualizado.`, 'success');
+    campo.value = '';
+    carregarGpCanceladas();
+    carregarGpHistorico();
+  } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function gpCancelarPorArquivo() {
+  const input = document.getElementById('gp-cancelar-arquivo');
+  if (!input.files || !input.files[0]) { showToast('Escolhe um arquivo .xlsx primeiro.', 'warning'); return; }
+  const fd = new FormData();
+  fd.append('arquivo', input.files[0]);
+  try {
+    const r = await api('POST', '/gestao-propostas/canceladas/upload-xlsx', fd, true);
+    showToast(`${r.novas_marcadas} proposta(s) marcada(s). Excel atualizado.`, 'success');
+    input.value = '';
+    carregarGpCanceladas();
+    carregarGpHistorico();
+  } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function gpDesmarcarCancelada(id) {
+  if (!confirm(`Desmarcar a proposta #${id} como cancelada?`)) return;
+  try {
+    await api('DELETE', `/gestao-propostas/canceladas/${id}`);
+    showToast('Desmarcada. Excel atualizado.', 'success');
+    carregarGpCanceladas();
+    carregarGpHistorico();
+  } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
 
 async function carregarGpHistorico() {
   const wrap = document.getElementById('gp-historico-lista');
@@ -1631,8 +1636,7 @@ async function carregarGpHistorico() {
       return;
     }
     wrap.innerHTML = itens.map(it => {
-      const detalhe = (it.novas || it.atualizadas ? `, ${it.novas||0} nova(s), ${it.atualizadas||0} atualizada(s)` : '')
-                    + (it.pendentes ? `, ${it.pendentes} sem detalhe` : '');
+      const detalhe = it.novas || it.atualizadas ? `, ${it.novas||0} nova(s), ${it.atualizadas||0} atualizada(s)` : '';
       const temNovasDetalhe = Array.isArray(it.novas_detalhe) && it.novas_detalhe.length > 0;
       const idSeguro = it.arquivo.replace(/[^a-zA-Z0-9]/g, '_');
       const linkVerQuais = temNovasDetalhe
