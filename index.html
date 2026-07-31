@@ -4470,6 +4470,62 @@ async function reavaliarAprovacaoCE(jobId) {
   }
 }
 
+// ══════════════════════════════════════════
+// CORRIGIR ÁREA/PRÊMIO (Condição Especial) — recalcula com a mesma fórmula
+// de calcularCE(), e salva no Supabase via /corrigir-financeiro
+// ══════════════════════════════════════════
+let _cfinJobId = null;
+
+async function abrirCorrecaoFinanceiraCE(jobId) {
+  _cfinJobId = jobId;
+  try {
+    const ce = await api('GET', '/jobs/' + jobId + '/condicao-especial');
+    document.getElementById('cfin-area').value  = ce.area_solicitada || '';
+    document.getElementById('cfin-preco').value = ce.preco_saca || '';
+    document.getElementById('cfin-prod').value  = ce.produtividade_estimada_bruta || '';
+    document.getElementById('cfin-nc').value    = ce.nivel_cobertura || '';
+    document.getElementById('cfin-cuota').value = ce.cuota || '';
+    calcularPremioCorrecao();
+    openModal('modal-corrigir-financeiro-ce');
+  } catch (e) {
+    showToast('Erro ao carregar dados: ' + e.message, 'error');
+  }
+}
+
+function calcularPremioCorrecao() {
+  const area  = parseBR(document.getElementById('cfin-area')?.value);
+  const preco = parseBR(document.getElementById('cfin-preco')?.value);
+  const prod  = parseBR(document.getElementById('cfin-prod')?.value);
+  const nc    = parseBR(document.getElementById('cfin-nc')?.value);
+  const cuota = parseBR(document.getElementById('cfin-cuota')?.value);
+  const elPreview = document.getElementById('cfin-premio-preview');
+  if (area && preco && prod && nc && cuota) {
+    const premio = preco * ((prod * nc) / 60) * area * cuota;
+    elPreview.textContent = 'R$ ' + premio.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  } else {
+    elPreview.textContent = '—';
+  }
+}
+
+async function salvarCorrecaoFinanceiraCE() {
+  if (!_cfinJobId) return;
+  const body = {
+    area_solicitada: document.getElementById('cfin-area').value.trim() || null,
+    preco_saca: document.getElementById('cfin-preco').value.trim() || null,
+    produtividade_estimada_bruta: document.getElementById('cfin-prod').value.trim() || null,
+    nivel_cobertura: document.getElementById('cfin-nc').value.trim() || null,
+    cuota: document.getElementById('cfin-cuota').value.trim() || null,
+  };
+  try {
+    const r = await api('PATCH', '/condicoes-especiais/' + _cfinJobId + '/corrigir-financeiro', body);
+    showToast('Corrigido! Novo prêmio: R$ ' + r.premio_novo, 'success');
+    closeModal('modal-corrigir-financeiro-ce');
+    await carregarCondicoesEspeciais();
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
+
 function calcularCE() {
   const prodEst  = parseBR(document.getElementById('ce-prod-estimada')?.value);
   const prodIbge = parseBR(document.getElementById('ce-prod-ibge')?.value);
@@ -4655,13 +4711,14 @@ function renderBtnsCE(ce) {
   var btnDados = '<button class="btn-sm" style="background:#f0f9ff;border:1px solid #bae6fd;color:#0369a1" onclick="abrirDadosCE(\'' + jobId + '\')">📋 Dados CE</button>';
   var btnEmail = '<button class="btn-sm" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c" onclick="abrirReenvioEditavel(\'' + jobId + '\',\'ce\',\'' + (dr || '') + '\')">✏️ Editar Condição</button>';
   var btnReenviarSimples = '<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#0369a1" onclick="abrirReenvioSimplesCE(\'' + jobId + '\',\'' + (dr || '') + '\')">📨 Reenviar Email</button>';
+  var btnCorrigir = '<button class="btn-sm" style="background:#fefce8;border:1px solid #fde047;color:#854d0e" onclick="abrirCorrecaoFinanceiraCE(\'' + jobId + '\')" title="Corrige área/preço/produtividade/cobertura/taxa e recalcula o prêmio automaticamente">🧮 Corrigir Área/Prêmio</button>';
   if (!dr) {
     if (ce.resolvido_manualmente) {
-      return btnDados +
+      return btnDados + ' ' + btnCorrigir +
              ' <span style="font-size:11px;font-weight:600;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;padding:3px 8px;border-radius:12px">✅ Resolvido manualmente</span>' +
              ' <button class="btn-sm btn-outline" onclick="desmarcarResolvidoCE(\'' + jobId + '\')">Desmarcar</button>';
     }
-    return btnDados +
+    return btnDados + ' ' + btnCorrigir +
            ' <button class="btn-sm btn-primary" onclick="abrirAprovacaoCE(\'' + jobId + '\')">✅ Aprovar CE</button>' +
            ' <button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="abrirBalcao(\'' + jobId + '\')">🏦 Balcão</button>' +
            ' <button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b" onclick="abrirRecusaCE(\'' + jobId + '\')">❌ Recusar</button>' +
@@ -4701,6 +4758,7 @@ function renderBtnsCE(ce) {
 
 
   return btnDados +
+         ' ' + btnCorrigir +
          ' <button class="btn-sm btn-outline" onclick="verCondicaoEspecial(\'' + jobId + '\')">👁 Ver</button> ' +
          ' <button class="btn-sm" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e" onclick="reavaliarAprovacaoCE(\'' + jobId + '\')">🔄 Reavaliar</button> ' +
          ' ' + btnReenviarSimples +
@@ -7056,6 +7114,50 @@ function renderizarMapaSobreposicoes(dados) {
 </div>
 
 <!-- Modal: Visualização Condição Especial -->
+<div class="modal-overlay" id="modal-corrigir-financeiro-ce" style="align-items:flex-start;padding:20px;overflow-y:auto">
+  <div class="modal-card" style="max-width:480px;width:100%;margin:auto">
+    <div class="modal-header">
+      <div class="modal-title">🧮 Corrigir Área/Prêmio</div>
+      <button class="modal-close" onclick="closeModal('modal-corrigir-financeiro-ce')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px">
+      <p style="color:var(--gray400);font-size:13px;margin-bottom:16px">
+        Ajusta os campos abaixo e o prêmio é recalculado automaticamente com a mesma fórmula da tela de Aprovar CE. Só é salvo quando você clicar em "Salvar".
+      </p>
+      <div style="display:grid;gap:12px">
+        <div>
+          <label class="ce-label">Área Solicitada (ha)</label>
+          <input class="ce-input" id="cfin-area" oninput="calcularPremioCorrecao()" placeholder="0,00">
+        </div>
+        <div>
+          <label class="ce-label">Preço da Saca (R$)</label>
+          <input class="ce-input" id="cfin-preco" oninput="calcularPremioCorrecao()" placeholder="0,00">
+        </div>
+        <div>
+          <label class="ce-label">Produtividade Estimada Bruta (kg/ha)</label>
+          <input class="ce-input" id="cfin-prod" oninput="calcularPremioCorrecao()" placeholder="0,00">
+        </div>
+        <div>
+          <label class="ce-label">Nível de Cobertura (fração, ex: 0,70)</label>
+          <input class="ce-input" id="cfin-nc" oninput="calcularPremioCorrecao()" placeholder="0,70">
+        </div>
+        <div>
+          <label class="ce-label">Taxa/Cuota (fração, ex: 0,0875)</label>
+          <input class="ce-input" id="cfin-cuota" oninput="calcularPremioCorrecao()" placeholder="0,0875">
+        </div>
+        <div style="background:#fefce8;border:1px solid #fde047;border-radius:8px;padding:12px 16px">
+          <div style="font-size:11px;color:#854d0e;text-transform:uppercase;font-weight:700;margin-bottom:2px">Prêmio recalculado</div>
+          <div style="font-size:20px;font-weight:700;color:#854d0e" id="cfin-premio-preview">—</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
+        <button class="btn-sm btn-outline" onclick="closeModal('modal-corrigir-financeiro-ce')">Cancelar</button>
+        <button class="btn-sm btn-primary" onclick="salvarCorrecaoFinanceiraCE()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-ver-ce" style="align-items:flex-start;padding:20px;overflow-y:auto;background:rgba(255,255,255,0.97)">
   <div class="modal-card" style="max-width:750px;width:100%;margin:auto">
     <div class="modal-header" style="position:sticky;top:0;z-index:10;background:var(--white)">
