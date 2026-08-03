@@ -1835,8 +1835,10 @@ async function api(method, path, body = null, isForm = false, _tentativa = 1) {
     opts.body = body;
   }
 
-  // Timeout de 15s + retry automático (até 2 tentativas)
-  const TIMEOUT_MS = 15000;
+  // Timeout + retry automático (até 2 tentativas). Uploads (FormData) podem
+  // levar bem mais que 15s (ex.: shapefile de Embargos com vários arquivos),
+  // então recebem um limite bem maior para não abortar no meio da transferência.
+  const TIMEOUT_MS = isForm ? 300000 : 15000;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   opts.signal = controller.signal;
