@@ -1284,6 +1284,36 @@ function esgRenderCards(bases, totalVencidas) {
   }).join('');
 }
 
+// Upload com barra de progresso. Usa XMLHttpRequest porque o fetch() (usado no
+// api()) NÃO expõe progresso de upload. onProgress(loaded, total) é chamado
+// durante o envio; ao terminar o envio, chamamos onProgress(-1,-1) para sinalizar
+// "servidor processando" (o servidor ainda salva/normaliza antes de responder).
+async function uploadComProgresso(path, formData, onProgress) {
+  if (!BACKEND_URL || BACKEND_URL.includes('railway.app')) { await buscarUrlSupabase(); }
+  if (!BACKEND_URL) throw new Error('Backend não configurado. Configure a URL do servidor.');
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${BACKEND_URL}${path}`);
+    xhr.setRequestHeader('Authorization', `Bearer ${TOKEN}`);
+    xhr.setRequestHeader('ngrok-skip-browser-warning', 'true');
+    xhr.timeout = 300000; // 5 min, igual ao limite de upload no api()
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress(e.loaded, e.total);
+    };
+    xhr.upload.onload = () => { if (onProgress) onProgress(-1, -1); };
+    xhr.onload = () => {
+      let data = null;
+      try { data = JSON.parse(xhr.responseText); } catch (_) {}
+      if (xhr.status >= 200 && xhr.status < 300) { resolve(data || {}); }
+      else if (xhr.status === 401) { handleLogout(); reject(new Error('Sessão expirada.')); }
+      else { reject(new Error((data && data.detail) || `Erro ${xhr.status}.`)); }
+    };
+    xhr.onerror = () => reject(new Error('Falha de rede no upload.'));
+    xhr.ontimeout = () => reject(new Error('Servidor demorou para responder. Tente novamente.'));
+    xhr.send(formData);
+  });
+}
+
 async function esgEnviarArquivo(baseKey) {
   const input = document.getElementById(`esg-file-${baseKey}`);
   const statusEl = document.getElementById(`esg-status-${baseKey}`);
@@ -1294,9 +1324,32 @@ async function esgEnviarArquivo(baseKey) {
   const formData = new FormData();
   Array.from(input.files).forEach(f => formData.append('arquivos', f));
 
-  if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = 'var(--gray600)'; statusEl.textContent = 'Enviando…'; }
+  // barra de progresso
+  if (statusEl) {
+    statusEl.style.display = 'block';
+    statusEl.style.color = 'var(--gray600)';
+    statusEl.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<div style="flex:1;height:6px;background:var(--gray200,#e5e7eb);border-radius:999px;overflow:hidden">' +
+          `<div id="esg-bar-${baseKey}" style="height:100%;width:0%;background:var(--g600,#166534);transition:width .15s ease"></div>` +
+        '</div>' +
+        `<span id="esg-bar-label-${baseKey}" style="font-size:11px;min-width:70px;text-align:right;color:var(--gray600)">0%</span>` +
+      '</div>';
+  }
+  const bar = document.getElementById(`esg-bar-${baseKey}`);
+  const label = document.getElementById(`esg-bar-label-${baseKey}`);
+
   try {
-    const resp = await api('POST', `/esg/bases-status/${baseKey}/upload`, formData, true);
+    const resp = await uploadComProgresso(`/esg/bases-status/${baseKey}/upload`, formData, (loaded, total) => {
+      if (loaded === -1) { // envio concluído — servidor processando
+        if (bar) bar.style.width = '100%';
+        if (label) label.textContent = 'Processando…';
+        return;
+      }
+      const pct = total ? Math.round((loaded / total) * 100) : 0;
+      if (bar) bar.style.width = pct + '%';
+      if (label) label.textContent = pct + '%';
+    });
     if (statusEl) { statusEl.style.color = 'var(--g700)'; statusEl.textContent = '✅ ' + resp.message; }
     showToast(resp.message, 'success');
     setTimeout(carregarEsgStatus, 1200);
