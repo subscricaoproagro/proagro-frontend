@@ -4306,7 +4306,7 @@ async function carregarCondicoesEspeciais() {
     // "Cliente confirmou, mas o draft ainda não foi ativado" — mesma regra
     // do filtro "draft_confirmado" já existente. Some da lista assim que o
     // draft é ativado (não fica pendurado depois de resolvido).
-    const nDraft = listaSemSistema.filter(ce => ce.corretor_aceitou && !ce.draft_ativado).length;
+    const nDraft = listaSemSistema.filter(ce => (ce.corretor_aceitou || ce.cliente_cadastrado_api) && !ce.draft_ativado).length;
     const nReaval = listaSemSistema.filter(ce => ce.reavaliacao_solicitada).length;
     const elP = document.getElementById('ce-n-pendente'); if(elP) elP.textContent = nPendente;
     const elA = document.getElementById('ce-n-aprovado'); if(elA) elA.textContent = nAprovado;
@@ -4354,7 +4354,7 @@ async function carregarCondicoesEspeciais() {
       const aprov = drc === 'aprovado' || drc === 'aprovado_diferente';
       const _statusFiltros = ['draft_aguardando','draft_confirmado','draft_ativado','reavaliacao','pendente'];
       if (filtro === 'draft_aguardando' && !(aprov && !ce.corretor_aceitou && !ce.draft_ativado)) return false;
-      else if (filtro === 'draft_confirmado' && !(ce.corretor_aceitou && !ce.draft_ativado)) return false;
+      else if (filtro === 'draft_confirmado' && !((ce.corretor_aceitou || ce.cliente_cadastrado_api) && !ce.draft_ativado)) return false;
       else if (filtro === 'draft_ativado' && !ce.draft_ativado) return false;
       else if (filtro === 'reavaliacao' && !ce.reavaliacao_solicitada) return false;
       else if (filtro === 'pendente' && !(ce.job && !ce.job.decisao_risco && !ce.resolvido_manualmente)) return false;
@@ -4397,7 +4397,7 @@ async function carregarCondicoesEspeciais() {
     tbody.innerHTML = listaFiltrada.map(ce => {
       const job = ce.job || {};
       const _isPrioridade = !!ce.prioridade;
-      const _aguardaDraft = (job.decisao_risco === 'aprovado' || job.decisao_risco === 'aprovado_diferente') && ce.corretor_aceitou && !ce.draft_ativado;
+      const _aguardaDraft = (((job.decisao_risco === 'aprovado' || job.decisao_risco === 'aprovado_diferente') && ce.corretor_aceitou) || ce.cliente_cadastrado_api) && !ce.draft_ativado;
       const _reavPend = !!ce.reavaliacao_solicitada;
       const dataChegada = ce.data_chegada || ce.criado_em || '';
       const dataChegadaFmt = dataChegada ? new Date(dataChegada).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
@@ -4845,13 +4845,21 @@ function renderBtnsCE(ce) {
 
   // Aviso de aceite do corretor → ativar draft (somente CE aprovada)
   var blocoDraft = '';
-  if (dr === 'aprovado' || dr === 'aprovado_diferente') {
-    if (ce.draft_ativado) {
+  if (ce.draft_ativado) {
+    if (dr === 'aprovado' || dr === 'aprovado_diferente')
       blocoDraft = ' <span style="font-size:11px;font-weight:600;color:#166534">✓ Draft ativado</span>';
-    } else if (ce.corretor_aceitou) {
-      blocoDraft = ' <span style="background:#fef3c7;border:1px solid #fde68a;color:#92400e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">🔔 Corretor confirmou — ativar draft</span>'
-                 + ' <button class="btn-sm" style="background:#166534;color:#fff;font-size:11px;padding:3px 8px" onclick="ativarDraftCE(\'' + jobId + '\')">✓ Marcar draft ativado</button>';
-    }
+  } else if (ce.cliente_cadastrado_api) {
+    // Cliente já cadastrado na API move sozinho pra "ativar draft"
+    var _avInat = (ce.cliente_api_ativo === false) ? ' (cliente INATIVO na API)' : '';
+    blocoDraft = ' <span style="background:#dcfce7;border:1px solid #86efac;color:#166534;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">✓ Cadastrado na API — ativar draft' + _avInat + '</span>'
+               + ' <button class="btn-sm" style="background:#166534;color:#fff;font-size:11px;padding:3px 8px" onclick="ativarDraftCE(\'' + jobId + '\')">✓ Marcar draft ativado</button>';
+  } else if ((dr === 'aprovado' || dr === 'aprovado_diferente') && ce.corretor_aceitou) {
+    blocoDraft = ' <span style="background:#fef3c7;border:1px solid #fde68a;color:#92400e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">🔔 Corretor confirmou — ativar draft</span>'
+               + ' <button class="btn-sm" style="background:#166534;color:#fff;font-size:11px;padding:3px 8px" onclick="ativarDraftCE(\'' + jobId + '\')">✓ Marcar draft ativado</button>';
+  }
+  // Botão manual "Verificar cadastro" enquanto não ativado e ainda não cadastrado
+  if (!ce.draft_ativado && !ce.cliente_cadastrado_api) {
+    blocoDraft += ' <button class="btn-sm btn-outline" style="font-size:11px;padding:3px 8px" onclick="verificarCadastroCE(\'' + jobId + '\')" title="Consulta a API agora e move pra ativar draft se o cliente já estiver cadastrado">🔎 Verificar cadastro</button>';
   }
 
   // Pedido de reavaliação do corretor (badge + ver detalhes)
@@ -4886,11 +4894,19 @@ function renderBtnsCE(ce) {
 
 // Coluna "Status draft": espelha confirmação do corretor + ativação do draft
 function ceStatusDraft(ce) {
+  var badgeCad = '';
+  if (ce.cliente_cadastrado_api) {
+    badgeCad = (ce.cliente_api_ativo === false)
+      ? '<div style="font-size:11px;font-weight:700;color:#b45309">⚠ Cadastrado (inativo)</div>'
+      : '<div style="font-size:11px;font-weight:700;color:#166534">✓ Cliente cadastrado</div>';
+  }
   var dr = (ce.job && ce.job.decisao_risco) ? ce.job.decisao_risco : null;
-  if (dr !== 'aprovado' && dr !== 'aprovado_diferente') return '<span style="color:var(--gray400);font-size:11px">—</span>';
-  if (ce.draft_ativado)   return '<span style="font-size:11px;font-weight:600;color:#166534">✓ Draft ativado</span>';
-  if (ce.corretor_aceitou) return '<span style="font-size:11px;font-weight:600;color:#92400e">🔔 Cliente confirmou</span>';
-  return '<span style="font-size:11px;color:#b45309">Aguardando corretor</span>';
+  var base;
+  if (dr !== 'aprovado' && dr !== 'aprovado_diferente') base = badgeCad ? '' : '<span style="color:var(--gray400);font-size:11px">—</span>';
+  else if (ce.draft_ativado)   base = '<span style="font-size:11px;font-weight:600;color:#166534">✓ Draft ativado</span>';
+  else if (ce.corretor_aceitou) base = '<span style="font-size:11px;font-weight:600;color:#92400e">🔔 Cliente confirmou</span>';
+  else base = '<span style="font-size:11px;color:#b45309">Aguardando corretor</span>';
+  return badgeCad + base;
 }
 
 function escHtml(s) {
@@ -5008,6 +5024,20 @@ function verMotivoNegativaReavaliacao(jobId) {
     + '</div></div>';
   document.body.appendChild(ov);
   ov.querySelector('#reavneg-close').onclick = function(){ document.body.removeChild(ov); };
+}
+
+async function verificarCadastroCE(jobId) {
+  try {
+    const r = await api('POST', '/condicoes-especiais/' + jobId + '/verificar-cadastro', {});
+    if (r.cadastrado) {
+      showToast('Cliente cadastrado na API (id ' + r.cliente_api_id + ')' + (r.ativo === false ? ' — INATIVO' : ''), r.ativo === false ? 'error' : 'success');
+    } else {
+      showToast('Cliente ainda não cadastrado na API.');
+    }
+    carregarCondicoesEspeciais();
+  } catch (e) {
+    showToast('Erro ao verificar cadastro: ' + e.message, 'error');
+  }
 }
 
 async function ativarDraftCE(jobId) {
