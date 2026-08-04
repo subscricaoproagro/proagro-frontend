@@ -4857,10 +4857,6 @@ function renderBtnsCE(ce) {
     blocoDraft = ' <span style="background:#fef3c7;border:1px solid #fde68a;color:#92400e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">🔔 Corretor confirmou — ativar draft</span>'
                + ' <button class="btn-sm" style="background:#166534;color:#fff;font-size:11px;padding:3px 8px" onclick="ativarDraftCE(\'' + jobId + '\')">✓ Marcar draft ativado</button>';
   }
-  // Botão manual "Verificar cadastro" enquanto não ativado e ainda não cadastrado
-  if (!ce.draft_ativado && !ce.cliente_cadastrado_api) {
-    blocoDraft += ' <button class="btn-sm btn-outline" style="font-size:11px;padding:3px 8px" onclick="verificarCadastroCE(\'' + jobId + '\')" title="Consulta a API agora e move pra ativar draft se o cliente já estiver cadastrado">🔎 Verificar cadastro</button>';
-  }
 
   // Pedido de reavaliação do corretor (badge + ver detalhes)
   var blocoReav = '';
@@ -4899,6 +4895,8 @@ function ceStatusDraft(ce) {
     badgeCad = (ce.cliente_api_ativo === false)
       ? '<div style="font-size:11px;font-weight:700;color:#b45309">⚠ Cadastrado (inativo)</div>'
       : '<div style="font-size:11px;font-weight:700;color:#166534">✓ Cliente cadastrado</div>';
+  } else if (ce.cadastro_verificado_em) {
+    badgeCad = '<div style="font-size:11px;color:var(--gray400)">Não cadastrado</div>';
   }
   var dr = (ce.job && ce.job.decisao_risco) ? ce.job.decisao_risco : null;
   var base;
@@ -5024,20 +5022,6 @@ function verMotivoNegativaReavaliacao(jobId) {
     + '</div></div>';
   document.body.appendChild(ov);
   ov.querySelector('#reavneg-close').onclick = function(){ document.body.removeChild(ov); };
-}
-
-async function verificarCadastroCE(jobId) {
-  try {
-    const r = await api('POST', '/condicoes-especiais/' + jobId + '/verificar-cadastro', {});
-    if (r.cadastrado) {
-      showToast('Cliente cadastrado na API (id ' + r.cliente_api_id + ')' + (r.ativo === false ? ' — INATIVO' : ''), r.ativo === false ? 'error' : 'success');
-    } else {
-      showToast('Cliente ainda não cadastrado na API.');
-    }
-    carregarCondicoesEspeciais();
-  } catch (e) {
-    showToast('Erro ao verificar cadastro: ' + e.message, 'error');
-  }
 }
 
 async function ativarDraftCE(jobId) {
