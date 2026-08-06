@@ -4384,15 +4384,22 @@ async function carregarCondicoesEspeciais() {
         : Date.now();
       return isNaN(fim) ? -Infinity : (fim - inicio);
     }
+    const _ehAbaDrafts = ['draft_aguardando','draft_confirmado','draft_ativado'].includes(filtro);
     listaFiltrada.sort((a, b) => {
       const pa = a.prioridade ? 0 : 1;
       const pb = b.prioridade ? 0 : 1;
-      if (pa !== pb) return pa - pb;
-      // Pendentes (ainda sem decisão do AR) sempre antes das já decididas
+      if (pa !== pb) return pa - pb;              // itens fixados (📌) sempre no topo
+      if (_ehAbaDrafts) {
+        // Só na aba de Drafts: mais recentes (por chegada) no topo
+        const ca = Date.parse(a.data_chegada || a.criado_em || 0) || 0;
+        const cb = Date.parse(b.data_chegada || b.criado_em || 0) || 0;
+        return cb - ca;
+      }
+      // Demais abas: comportamento original (pendentes antes; maior espera no topo)
       const dpa = (a.job && a.job.decisao_risco) ? 1 : 0;
       const dpb = (b.job && b.job.decisao_risco) ? 1 : 0;
       if (dpa !== dpb) return dpa - dpb;
-      return _ceTempoEsperaMs(b) - _ceTempoEsperaMs(a); // maior tempo de espera primeiro
+      return _ceTempoEsperaMs(b) - _ceTempoEsperaMs(a);
     });
     tbody.innerHTML = listaFiltrada.map(ce => {
       const job = ce.job || {};
