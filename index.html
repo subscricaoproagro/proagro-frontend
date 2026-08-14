@@ -2039,15 +2039,8 @@ async function enterApp() {
     ].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
   }
 
-  // Permissões por página (override preciso — elimina ambiguidade de role)
-  // Aplica DEPOIS dos blocos de role para garantir precisão
-  // Admin sempre tem acesso a TUDO que existe em _PG, mesmo que o array salvo
-  // no banco seja antigo e não inclua uma página adicionada depois (ex: Extrator).
-  if (currentUser.role === 'admin') {
-    mcAplicarPaginas(Object.keys(_PG));
-  } else if (currentUser.paginas && currentUser.paginas.length) {
-    mcAplicarPaginas(currentUser.paginas);
-  }
+  // (A aplicação de permissões por página virou a AUTORIDADE FINAL, mais abaixo,
+  //  depois de TODOS os blocos de role — pra nada vazar por force-show de role.)
 
   // Datas Zarc — acesso para Analista e Admin (aditivo, após permissões).
   // Reexibe o botão mesmo que o array de páginas salvo no banco seja antigo.
@@ -2060,6 +2053,16 @@ async function enterApp() {
   if (currentUser.role === 'analista' || currentUser.role === 'admin') {
     const _gpBtn = document.getElementById('gestao-propostas-btn');
     if (_gpBtn) _gpBtn.style.display = '';
+  }
+
+  // ── AUTORIDADE FINAL DE NAVEGAÇÃO ──
+  // Roda por ÚLTIMO (depois de todos os force-shows por role). Se o usuário tem
+  // 'paginas' explícito no banco, ELE manda — esconde tudo que não estiver nele.
+  // Admin sempre vê tudo. Redirect fica por conta do bloco de baixo.
+  if (currentUser.role === 'admin') {
+    mcAplicarPaginas(Object.keys(_PG), false);
+  } else if (currentUser.paginas && currentUser.paginas.length) {
+    mcAplicarPaginas(currentUser.paginas, false);
   }
 
   if (currentUser.role !== 'supervisor') await carregarJobs();
@@ -2076,7 +2079,12 @@ async function enterApp() {
   } else if (currentUser.role === 'analista') {
     showPage('historico');
   } else if (currentUser.role === 'campo') {
-    if (typeof abrirMonitoramento === 'function') abrirMonitoramento();
+    // Vai pra 1ª página PERMITIDA do usuário (não força monitoramento).
+    const _pc = (currentUser.paginas && currentUser.paginas.length) ? currentUser.paginas : (_PG_DEFAULTS['campo'] || []);
+    const _pc0 = _pc[0];
+    if (_pc0 === 'monitoramento') { if (typeof abrirMonitoramento === 'function') abrirMonitoramento(); }
+    else if (_pc0 === 'ce') showPage('condicao-especial');
+    else if (_pc0 && _PG[_pc0]) showPage(_pc0);
   }
 
   // Polling a cada 10s para atualizar jobs em processamento
@@ -3111,13 +3119,13 @@ function mcPaginasSelecionadas() {
   return [...document.querySelectorAll('#new-paginas-chk input:checked')].map(el => el.value);
 }
 
-function mcAplicarPaginas(paginas) {
-  if (!paginas || !paginas.length) return; // sem override → usa lógica de role existente
-  // Esconde todos os botões de navegação administráveis
+function mcAplicarPaginas(paginas, redirecionar = true) {
+  paginas = paginas || [];
+  // Esconde TODOS os botões administráveis (mesmo se a lista vier vazia — sem vazamento)
   Object.values(_PG).forEach(({btn}) => { const el=document.getElementById(btn); if(el) el.style.display='none'; });
   // Exibe só os permitidos
   paginas.forEach(p => { const def=_PG[p]; if(def){ const el=document.getElementById(def.btn); if(el) el.style.display=''; } });
-  // Redireciona para a primeira página permitida
+  if (!redirecionar || !paginas.length) return;
   const primeiro = paginas[0];
   if (primeiro === 'monitoramento') { if(typeof abrirMonitoramento==='function') setTimeout(abrirMonitoramento,100); }
   else if (primeiro === 'ce')       showPage('condicao-especial');
