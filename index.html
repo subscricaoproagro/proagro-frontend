@@ -2065,6 +2065,22 @@ async function enterApp() {
     mcAplicarPaginas(currentUser.paginas, false);
   }
 
+  // ── PÁGINA INICIAL (determinística, antes de qualquer carregamento que possa falhar) ──
+  // Admin fica no Dashboard (padrão). Os demais vão pra 1ª página que o role/paginas permite.
+  (function _paginaInicial(){
+    const role = currentUser.role;
+    if (role === 'admin') return;                        // Dashboard
+    if (role === 'supervisor') { showPage('condicao-especial'); return; }
+    if (role === 'analista')   { showPage('historico'); return; }
+    const pags = (currentUser.paginas && currentUser.paginas.length)
+        ? currentUser.paginas : (_PG_DEFAULTS[role] || []);
+    const p0 = pags[0];
+    if (!p0) return;
+    if (p0 === 'monitoramento') { if (typeof abrirMonitoramento === 'function') abrirMonitoramento(); }
+    else if (p0 === 'ce')       showPage('condicao-especial');
+    else if (_PG[p0])           showPage(p0);
+  })();
+
   if (currentUser.role !== 'supervisor') await carregarJobs();
   carregarStats();
   verificarBackend();
@@ -2073,19 +2089,8 @@ async function enterApp() {
   atualizarSinoGestaoPropostas();
   setInterval(atualizarSinoGestaoPropostas, 300000); // reverifica a cada 5 minutos
 
-  // Redirecionar para o dashboard correto
-  if (currentUser.role === 'supervisor') {
-    showPage('condicao-especial');
-  } else if (currentUser.role === 'analista') {
-    showPage('historico');
-  } else if (currentUser.role === 'campo') {
-    // Vai pra 1ª página PERMITIDA do usuário (não força monitoramento).
-    const _pc = (currentUser.paginas && currentUser.paginas.length) ? currentUser.paginas : (_PG_DEFAULTS['campo'] || []);
-    const _pc0 = _pc[0];
-    if (_pc0 === 'monitoramento') { if (typeof abrirMonitoramento === 'function') abrirMonitoramento(); }
-    else if (_pc0 === 'ce') showPage('condicao-especial');
-    else if (_pc0 && _PG[_pc0]) showPage(_pc0);
-  }
+  // (Redirect da página inicial foi movido pra ANTES do carregarJobs, mais acima,
+  //  pra não depender de nenhuma chamada que possa falhar.)
 
   // Polling a cada 10s para atualizar jobs em processamento
   pollingInterval = setInterval(() => {
