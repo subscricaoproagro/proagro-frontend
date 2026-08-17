@@ -1816,7 +1816,7 @@ async function remBaixarArquivo(nomeArquivo) {
 // uma auditoria por página, então vale conferir manualmente as telas que
 // o CEO vai de fato acessar antes de liberar em produção.
 // ══════════════════════════════════════════
-const CEO_VERBOS_PERMITIDOS = /baixar|download|detalhe/i;
+const CEO_VERBOS_PERMITIDOS = /baixar|download|detalhe|gpGerar\(false\)/i;
 
 function ceoAplicarSomenteLeitura(raiz) {
   raiz.querySelectorAll('button, .btn, .btn-sm, .topbar-btn, a[onclick]').forEach(el => {
