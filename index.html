@@ -1816,7 +1816,7 @@ async function remBaixarArquivo(nomeArquivo) {
 // uma auditoria por página, então vale conferir manualmente as telas que
 // o CEO vai de fato acessar antes de liberar em produção.
 // ══════════════════════════════════════════
-const CEO_VERBOS_PERMITIDOS = /baixar|download|detalhe|gpGerar\(false\)/i;
+const CEO_VERBOS_PERMITIDOS = /baixar|download|detalhe/i;
 
 function ceoAplicarSomenteLeitura(raiz) {
   raiz.querySelectorAll('button, .btn, .btn-sm, .topbar-btn, a[onclick]').forEach(el => {
@@ -1971,7 +1971,8 @@ async function enterApp() {
   document.getElementById('top-avatar').textContent = initials;
   document.getElementById('top-username').textContent = currentUser.name;
 
-  if (currentUser.role === 'ceo') ativarModoSomenteLeituraCeo();
+  // CEO com acesso total: modo somente-leitura desativado (todos os botões ativos).
+  // if (currentUser.role === 'ceo') ativarModoSomenteLeituraCeo();
 
   if (currentUser.role === 'admin') {
     document.getElementById('admin-btn').style.display = '';
