@@ -905,6 +905,13 @@
         <div class="card-body">
           <button class="btn-sm btn-green" id="gp-btn-gerar" onclick="gpGerar(false)" style="padding:10px 20px">Gerar Excel de todas as propostas</button>
           <button class="btn-sm" onclick="gpGerar(true)" title="Ignora o cache e rebusca o detalhe de todas as propostas (mais lento)">Regenerar tudo do zero</button>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--gray100)">
+            <div style="font-size:13px;color:var(--gray600);margin-bottom:6px">Atualizar só uma lista de propostas (cole os IDs — vírgula, espaço ou um por linha):</div>
+            <textarea id="gp-ids-parcial" rows="2" placeholder="Ex.: 1204, 1203, 1199 1198&#10;1061" style="width:100%;max-width:520px;border:1px solid var(--gray200);border-radius:8px;padding:8px;font-size:13px;font-family:monospace"></textarea>
+            <div style="margin-top:8px">
+              <button class="btn-sm btn-green" id="gp-btn-parcial" onclick="gpGerarParcial()" style="padding:8px 16px">Atualizar estas propostas (forçado)</button>
+            </div>
+          </div>
           <div id="gp-progress" style="display:none;margin-top:16px">
             <div style="background:var(--gray100);border-radius:999px;height:10px;overflow:hidden">
               <div id="gp-bar" style="background:var(--g600);height:100%;width:0%;transition:width .4s"></div>
@@ -1509,6 +1516,36 @@ async function gpGerar(forcar) {
   }
 }
 
+async function gpGerarParcial() {
+  const txt = (document.getElementById('gp-ids-parcial').value || '').trim();
+  const ids = (txt.match(/\d+/g) || []);
+  if (!ids.length) { showToast('Cole ao menos um ID de proposta.', 'error'); return; }
+  const btn = document.getElementById('gp-btn-parcial');
+  const btnG = document.getElementById('gp-btn-gerar');
+  btn.disabled = true; if (btnG) btnG.disabled = true;
+  document.getElementById('gp-done').style.display = 'none';
+  document.getElementById('gp-progress').style.display = 'block';
+  document.getElementById('gp-bar').style.width = '0';
+  document.getElementById('gp-status-txt').textContent = 'Atualizando ' + ids.length + ' proposta(s)…';
+  document.getElementById('gp-count').textContent = '';
+  try {
+    const res = await fetch(`${BACKEND_URL}/gestao-propostas/gerar-parcial`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: txt })
+    });
+    if (res.status === 401) { handleLogout(); return; }
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail||'Erro'); }
+    const { job_id } = await res.json();
+    _gpJobId = job_id;
+    _gpPoll = setInterval(gpCheck, 2000);
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+    btn.disabled = false; if (btnG) btnG.disabled = false;
+    document.getElementById('gp-progress').style.display = 'none';
+  }
+}
+
 async function gpCheck() {
   if (!_gpJobId) return;
   try {
@@ -1532,6 +1569,7 @@ async function gpCheck() {
     if (s.status === 'concluido') {
       clearInterval(_gpPoll); _gpPoll = null;
       document.getElementById('gp-btn-gerar').disabled = false;
+      { const _bp = document.getElementById('gp-btn-parcial'); if (_bp) _bp.disabled = false; }
       document.getElementById('gp-done').style.display = 'block';
       if (s.sem_mudancas) {
         showToast('Nenhuma proposta nova ou alterada. Nenhuma versão nova foi criada.', 'info');
@@ -1542,6 +1580,7 @@ async function gpCheck() {
     } else if (s.status === 'erro') {
       clearInterval(_gpPoll); _gpPoll = null;
       document.getElementById('gp-btn-gerar').disabled = false;
+      { const _bp = document.getElementById('gp-btn-parcial'); if (_bp) _bp.disabled = false; }
       showToast('Erro ao gerar: ' + (s.error || ''), 'error');
     }
   } catch (e) { /* ignora falha pontual de polling */ }
