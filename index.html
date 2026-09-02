@@ -1413,6 +1413,7 @@ async function remGerarRelatorio() {
 }
 
 async function remCarregarStatus() {
+  if (document.hidden) return;  // aba em 2º plano: não fica batendo a cada 3s
   try {
     const s = await api('GET', '/relatorio-esg-mensal/status');
     const wrap = document.getElementById('rem-progresso-wrap');
@@ -2132,15 +2133,18 @@ async function enterApp() {
   // (Redirect da página inicial foi movido pra ANTES do carregarJobs, mais acima,
   //  pra não depender de nenhuma chamada que possa falhar.)
 
-  // Polling a cada 10s para atualizar jobs em processamento
+  // Polling para manter os dados atualizados — leve e educado com o backend:
+  // pausa quando a aba está em segundo plano, roda a cada 30s, e recarrega só a
+  // lista PESADA da página que está aberta (não jobs + CE juntos toda hora).
   pollingInterval = setInterval(() => {
-    carregarJobs();
-    carregarStats();
-    // Atualiza solicitações CE automaticamente se estiver na página
+    if (document.hidden) return;  // aba em 2º plano não martela o servidor
     const paginaAtiva = document.querySelector('.page-section.active');
-    if (paginaAtiva && paginaAtiva.id === 'page-solicitacoes') carregarSolicitacoes();
-    if (paginaAtiva && paginaAtiva.id === 'page-condicao-especial') carregarCondicoesEspeciais();
-  }, 10000);
+    const id = paginaAtiva && paginaAtiva.id;
+    carregarStats();  // contadores (leve)
+    if (id === 'page-condicao-especial') carregarCondicoesEspeciais();
+    else if (id === 'page-solicitacoes') carregarSolicitacoes();
+    else carregarJobs();  // histórico / dashboard
+  }, 30000);
 }
 
 function handleLogout() {
