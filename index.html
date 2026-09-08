@@ -2159,8 +2159,13 @@ function handleLogout() {
   document.getElementById('auth-password').value = '';
 }
 
-// Auto-restore — sempre busca URL atualizada do Supabase
+// Auto-restore — sempre busca URL atualizada do Supabase, com fallback seguro:
+// se o Supabase soluçar (a mesma instabilidade que gera os "statement timeout"
+// no backend), o login NÃO pode ficar bloqueado à toa. Usa a URL de produção
+// conhecida como padrão, e só sobrescreve se o Supabase responder com algo.
+const BACKEND_URL_PADRAO = 'https://subscricaoproagro.duckdns.org';
 async function buscarUrlSupabase() {
+  BACKEND_URL = BACKEND_URL_PADRAO;  // garante um valor válido desde já
   const SUPA_URL = 'https://nczwrgzsvxdrkmdnzqld.supabase.co/rest/v1/config?chave=eq.backend_url&select=valor';
   const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jendyZ3pzdnhkcmttZG56cWxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDI2OTgsImV4cCI6MjA5MzUxODY5OH0.2W9tvtflmpaShQmhhCyy4QC_GOxaaOdcNY04Wp4l9oA';
   for (let i = 0; i < 3; i++) {
@@ -2169,17 +2174,20 @@ async function buscarUrlSupabase() {
       if (r.ok) {
         const data = await r.json();
         if (data && data[0] && data[0].valor) {
-          BACKEND_URL = data[0].valor.trim();
+          BACKEND_URL = data[0].valor.trim();  // override intencional (ex.: backend local via túnel)
           console.log('[ProAgro] URL carregada do Supabase:', BACKEND_URL);
-          return true;
         }
       }
+      return true;  // Supabase respondeu (com ou sem override) -- segue com BACKEND_URL já definido
     } catch(e) {
       console.warn('[ProAgro] Tentativa ' + (i+1) + ' falhou:', e.message);
       if (i < 2) await new Promise(res => setTimeout(res, 1500));
     }
   }
-  return false;
+  // As 3 tentativas falharam (Supabase indisponível no momento) -- mantém o
+  // fallback padrão em vez de bloquear o login com o modal "Configurar servidor".
+  console.warn('[ProAgro] Supabase indisponível pra config; usando URL padrão:', BACKEND_URL);
+  return true;
 }
 
 window.addEventListener('load', async () => {
