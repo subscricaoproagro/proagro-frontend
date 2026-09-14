@@ -8952,4 +8952,50 @@ pendEl('pend-close').addEventListener('click',()=>{if(!pendSaving){pendOpenSeq++
 pendEl('pend-dialog').addEventListener('cancel',e=>{if(pendSaving)e.preventDefault();else pendOpenSeq++;});
 </script>
 
+<section id="rec-template" hidden></section>
+<script>
+let recJob=null,recResultado=null,recSeq=0,recLayer=null;
+const recEsc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const recNum=n=>Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4});
+const recOriginal=renderizarConteudoSobreposicoes;
+renderizarConteudoSobreposicoes=function(job,dados){
+ recSeq++;recJob=job;recResultado=null;recLayer=null;recOriginal(job,dados);
+ const rows=dados.sobreposicoes||[],nomes=[...new Set(rows.map(r=>r.camada))];
+ const raster=[...new Set((dados.rasters||[]).map(r=>r.camada))].filter(n=>!nomes.includes(n));
+ const panel=document.createElement('section');panel.id='rec-panel';panel.style.cssText='margin:16px 0;padding:18px;border:1px solid #bdd5c5;border-radius:10px;background:#f8fcf9';
+ panel.innerHTML=`<h3 style="margin:0 0 8px">Gerar KML recortado</h3><p style="font-size:13px">Selecione as camadas que deseja remover. Cada talhão afetado deve manter pelo menos 20 ha. O KML original e o relatório serão preservados.</p><div style="display:flex;gap:12px;flex-wrap:wrap">${nomes.map((n,i)=>{const ok=rows.filter(r=>r.camada===n).every(r=>r.geometria);return `<label><input type="checkbox" class="rec-select" value="${recEsc(n)}" ${ok?'':'disabled'}> ${recEsc(n)}${ok?'':' (sem geometria completa)'}</label>`;}).join('')}${raster.map(n=>`<span style="color:#777">${recEsc(n)} — imagem sem geometria de recorte</span>`).join('')}</div><p style="font-size:12px;color:#666">As caixas acima definem o recorte; ligar ou desligar camadas no mapa só altera a visualização. Fragmentos do mesmo talhão permanecem agrupados no KML. O recorte não altera a situação cadastral do imóvel.</p><div style="display:flex;gap:8px"><button type="button" class="btn-sm btn-outline" id="rec-preview" onclick="recPrevia()">Calcular prévia</button><button type="button" class="btn-sm btn-green" id="rec-download" onclick="recBaixar()" disabled>Baixar novo KML</button></div><div id="rec-message" role="status" style="margin-top:12px"></div><div id="rec-result" style="overflow-x:auto;margin-top:12px"></div>`;
+ document.getElementById('sobreposicoes-modal-body').appendChild(panel);
+ panel.querySelectorAll('.rec-select').forEach(e=>e.addEventListener('change',()=>{recSeq++;recResultado=null;document.getElementById('rec-download').disabled=true;document.getElementById('rec-preview').disabled=false;document.getElementById('rec-message').textContent='Seleção alterada. Calcule a prévia novamente.';document.getElementById('rec-result').innerHTML='';if(recLayer){recLayer.remove();recLayer=null;}}));
+};
+function recSelecionadas(){return [...document.querySelectorAll('#rec-panel .rec-select:checked')].map(e=>e.value);}
+async function recPrevia(){
+ const camadas=recSelecionadas(),seq=++recSeq,job=recJob;recResultado=null;
+ document.getElementById('rec-download').disabled=true;
+ if(!camadas.length){document.getElementById('rec-message').textContent='Selecione pelo menos uma camada.';return;}
+ document.getElementById('rec-preview').disabled=true;document.getElementById('rec-message').textContent='Calculando recorte…';
+ try{
+  const r=await api('POST',`/recorte-kml/${job}/previa`,{camadas});
+  if(seq!==recSeq||job!==_sobreposicoesModalJobIdAtual)return;
+  recResultado={...r,job};document.getElementById('rec-message').textContent=r.mensagem;
+  document.getElementById('rec-result').innerHTML=`<table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr><th>Talhão</th><th>Original (ha)</th><th>Removida (ha)</th><th>Restante (ha)</th><th>Partes</th><th>Resultado</th></tr></thead><tbody>${r.talhoes.map(t=>`<tr style="border-top:1px solid #ddd;color:${t.estado==='bloqueado'?'#b91c1c':'#193d2d'}"><td>T${recEsc(t.talhao)}</td><td>${recNum(t.original_ha)}</td><td>${recNum(t.removida_ha)}</td><td>${recNum(t.restante_ha)}</td><td>${t.partes}</td><td>${recEsc(t.motivo||({recortado:'Recorte permitido',inalterado:'Sem alteração'}[t.estado]||t.estado))}</td></tr>`).join('')}</tbody></table><p style="font-size:12px">Áreas calculadas sobre o elipsoide WGS84. O limite de 20 ha é verificado antes do arredondamento. Verde no mapa: área restante; vermelho: talhão bloqueado.</p>`;
+  document.getElementById('rec-download').disabled=!r.liberado;
+  if(recLayer)recLayer.remove();
+  if(window.L&&_mapaSobreposicoesLeaflet)recLayer=L.geoJSON(r.geojson,{style:f=>({color:f.properties.estado==='bloqueado'?'#dc2626':'#15803d',weight:3,fillOpacity:0.3})}).addTo(_mapaSobreposicoesLeaflet);
+ }catch(e){if(seq===recSeq)document.getElementById('rec-message').textContent=e.message;}
+ finally{if(seq===recSeq)document.getElementById('rec-preview').disabled=false;}
+}
+async function recBaixar(){
+ const r=recResultado;if(!r?.liberado)return;
+ const seq=recSeq;const button=document.getElementById('rec-download');button.disabled=true;
+ try{
+  const res=await fetch(`${BACKEND_URL}/recorte-kml/${r.job}/baixar`,{method:'POST',headers:{Authorization:`Bearer ${TOKEN}`,'Content-Type':'application/json','ngrok-skip-browser-warning':'true'},body:JSON.stringify({camadas:r.camadas,assinatura:r.assinatura})});
+  if(!res.ok){const err=await res.json();throw new Error(err.detail||'Falha ao gerar KML');}
+  const blob=await res.blob();if(seq!==recSeq||r.job!==_sobreposicoesModalJobIdAtual)return;
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`recortado-${r.job}.kml`;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);
+  document.getElementById('rec-message').textContent='Novo KML gerado. Original e relatório preservados.';
+ }catch(e){if(seq===recSeq)document.getElementById('rec-message').textContent=e.message;}
+ finally{if(seq===recSeq)button.disabled=false;}
+}
+</script>
+
 </body></html>
