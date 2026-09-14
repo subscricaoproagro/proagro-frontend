@@ -2715,7 +2715,7 @@ function renderJobsTable(jobs) {
       <td style="font-size:12px;color:var(--gray400)">${j.analista_email || "Não atribuído"}</td>
       <td style="font-size:12px;color:var(--gray400)">${formatDate(j.created_at)}</td>
       <td>${renderStatusBadge(j)}</td>
-      <td class="pend-cell" id="pend-cell-${j.id}">Consultando pendência…</td>
+      <td class="pend-cell" id="pend-cell-${j.id}">${pendInicial(j.id)}</td>
       <td style="font-size:11px;white-space:nowrap">${jobTempoAvaliacao(j)}</td>
       <td>
         <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
@@ -8880,13 +8880,26 @@ function pendCelula(p,jid){
  if(!p)return `<p>Sem pendência registrada</p>${button}`;
  return `<span class="pend-tag">${pendEsc(pendLabels[p.estado]||p.estado)}</span><p>${pendEsc(p.texto)}</p><p>${p.estado==='aberta'?'Aguardando: ':p.estado==='respondida'?'Conferência: ':'Responsável: '}${pendEsc(p.estado==='respondida'?'Subscrição':p.responsavel)}</p>${button}`;
 }
+const pendCache=new Map(),pendInFlight=new Set();
+function pendInicial(jid){return pendCache.has(jid)?pendCelula(pendCache.get(jid).data,jid):'Consultando pendência…';}
 async function carregarPendenciasTabela(jobs){
- const seq=++pendRenderSeq;const result={};
+ const agora=Date.now();
+ const novos=jobs.filter(j=>!pendInFlight.has(j.id)&&(!pendCache.has(j.id)||agora-pendCache.get(j.id).time>=60000));
+ if(!novos.length)return;
+ novos.forEach(j=>pendInFlight.add(j.id));
  try{
-  for(let i=0;i<jobs.length;i+=400){Object.assign(result,await api('POST','/pendencias/resumo',{ids:jobs.slice(i,i+400).map(j=>j.id)}));}
-  if(seq!==pendRenderSeq)return;
-  for(const j of jobs){const el=document.getElementById('pend-cell-'+j.id);if(el)el.innerHTML=pendCelula(result[j.id],j.id);}
- }catch(e){if(seq!==pendRenderSeq)return;for(const j of jobs){const el=document.getElementById('pend-cell-'+j.id);if(el)el.innerHTML=`<p class="pend-error">Pendências indisponíveis</p><button class="btn-sm btn-outline" onclick="abrirPendencia('${pendEsc(j.id)}')">Tentar consultar</button>`;}}
+  for(let i=0;i<novos.length;i+=400){
+   const lote=novos.slice(i,i+400),inicio=Date.now();
+   const result=await api('POST','/pendencias/resumo',{ids:lote.map(j=>j.id)});
+   for(const j of lote){
+    // Uma consulta iniciada antes de Salvar nao pode desfazer o resultado salvo.
+    if(pendCache.has(j.id)&&pendCache.get(j.id).time>inicio)continue;
+    pendCache.set(j.id,{data:result[j.id]||null,time:Date.now()});
+    const el=document.getElementById('pend-cell-'+j.id);if(el)el.innerHTML=pendCelula(result[j.id],j.id);
+   }
+  }
+ }catch(e){for(const j of novos){const el=document.getElementById('pend-cell-'+j.id);if(el&&!pendCache.has(j.id))el.innerHTML=`<p class="pend-error">Pendências indisponíveis</p><button class="btn-sm btn-outline" onclick="abrirPendencia('${pendEsc(j.id)}')">Tentar consultar</button>`;}}
+ finally{novos.forEach(j=>pendInFlight.delete(j.id));}
 }
 const pendRenderOriginal=renderJobsTable;
 renderJobsTable=function(jobs){pendRenderOriginal(jobs);carregarPendenciasTabela(jobs);};
@@ -8899,7 +8912,7 @@ async function abrirPendencia(jid){
  pendEl('pend-client').textContent=j?`${j.nome_proponente} · ${j.tipo_analise==='condicao_especial'||String(j.id_proposta)==='0'?'Condição Especial':'Sistema · proposta '+j.id_proposta}`:'';
  try{
   const data=await api('GET','/pendencias/'+encodeURIComponent(jid));if(seq!==pendOpenSeq||!d.open)return;
-  pendAtual={jid,...data};desenharPendencia();
+  pendCache.set(jid,{data:data.pendencia,time:Date.now()});pendAtual={jid,...data};desenharPendencia();
  }catch(e){if(seq===pendOpenSeq){pendEl('pend-state').textContent='Não foi possível consultar.';pendEl('pend-error').textContent=e.message;}}
 }
 function desenharPendencia(){
@@ -8928,7 +8941,7 @@ async function salvarPendencia(){
  pendSaving=true;pendEl('pend-save').disabled=true;pendEl('pend-close').disabled=true;pendEl('pend-save').textContent='Salvando…';pendEl('pend-error').textContent='';
  try{
   const data=await api('POST','/pendencias/'+encodeURIComponent(jid),{...payload,operacao_id:pendOperation.id});
-  pendAtual={...pendAtual,...data};pendOperation=null;desenharPendencia();
+  pendCache.set(jid,{data:data.pendencia,time:Date.now()});pendAtual={...pendAtual,...data};pendOperation=null;desenharPendencia();
   const el=pendEl('pend-cell-'+jid);if(el)el.innerHTML=pendCelula(data.pendencia,jid);
  }catch(e){pendEl('pend-error').textContent=e.message;}
  finally{pendSaving=false;pendEl('pend-save').disabled=false;pendEl('pend-close').disabled=false;pendEl('pend-save').textContent='Salvar';}
