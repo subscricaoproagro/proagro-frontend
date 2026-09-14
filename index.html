@@ -627,8 +627,8 @@
       <div class="card">
         <div class="overflow-x">
           <table class="jobs-table">
-            <thead><tr><th>Proposta</th><th>Proponente</th><th>Cultura</th><th>Analista</th><th>Iniciado</th><th>Status</th><th>Tempo Aval.</th><th>Ações</th></tr></thead>
-            <tbody id="jobs-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+            <thead><tr><th>Proposta</th><th>Proponente</th><th>Cultura</th><th>Analista</th><th>Iniciado</th><th>Status</th><th>Pendência</th><th>Tempo Aval.</th><th>Ações</th></tr></thead>
+            <tbody id="jobs-tbody"><tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
           </table>
         </div>
         <div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:16px">
@@ -2700,7 +2700,7 @@ function renderJobsTable(jobs) {
   const tbody = document.getElementById('jobs-tbody');
   if (!tbody) return;
   if (!jobs.length) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma análise encontrada.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma análise encontrada.</td></tr>`;
     return;
   }
   tbody.innerHTML = jobs.map(j => {
@@ -2712,9 +2712,10 @@ function renderJobsTable(jobs) {
       <td><strong>${j.id_proposta}</strong></td>
       <td>${j.nome_proponente}</td>
       <td>${j.cultura_desejada}</td>
-      <td style="font-size:12px;color:var(--gray400)">${j.analista_email}</td>
+      <td style="font-size:12px;color:var(--gray400)">${j.analista_email || "Não atribuído"}</td>
       <td style="font-size:12px;color:var(--gray400)">${formatDate(j.created_at)}</td>
       <td>${renderStatusBadge(j)}</td>
+      <td class="pend-cell" id="pend-cell-${j.id}">Consultando pendência…</td>
       <td style="font-size:11px;white-space:nowrap">${jobTempoAvaliacao(j)}</td>
       <td>
         <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
@@ -8853,3 +8854,89 @@ async function dzRemover(id, nome) {
   }
 }
 </script>
+
+<style>
+#pend-dialog{border:1px solid #d8e4dc;border-radius:16px;padding:0;width:min(720px,94vw);max-height:90vh;color:#193d2d;box-shadow:0 16px 70px #0003}#pend-dialog::backdrop{background:#10271db3}.pend-head{padding:22px 24px;border-bottom:1px solid #e5ebe7;display:flex;justify-content:space-between;gap:15px}.pend-content{padding:22px 24px}.pend-content label{display:block;font-weight:600;margin:14px 0 6px}.pend-content textarea,.pend-content select{box-sizing:border-box;width:100%;border:1px solid #bbcbbf;border-radius:8px;padding:10px;font:inherit}.pend-history{border-left:3px solid #dce8df;padding-left:14px;margin:14px 0;overflow-wrap:anywhere}.pend-history p{white-space:pre-wrap;margin:6px 0}.pend-cell{min-width:210px;max-width:280px;font-size:12px}.pend-cell p{margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere}.pend-error{color:#a51e1e;white-space:pre-wrap}.pend-tag{font-weight:700;color:#9a6400}.pend-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+</style>
+<dialog id="pend-dialog" aria-labelledby="pend-title">
+ <div class="pend-head"><div><h3 id="pend-title" style="margin:0">Pendência da análise</h3><div id="pend-client" style="font-size:13px;margin-top:7px"></div></div><button type="button" class="btn-sm btn-outline" id="pend-close">Fechar</button></div>
+ <div class="pend-content"><div id="pend-state" aria-live="polite"></div><div id="pend-error" class="pend-error" role="alert"></div>
+ <section id="pend-form" hidden><label for="pend-action">Ação</label><select id="pend-action"></select>
+ <div id="pend-owner-wrap"><label for="pend-owner">Quem precisa responder?</label><select id="pend-owner"><option value="Comercial">Comercial</option><option value="Corretor">Corretor</option><option value="Subscricao">Subscrição</option><option value="Area tecnica">Área técnica</option></select></div>
+ <label id="pend-text-label" for="pend-text">O que está faltando?</label><textarea id="pend-text" rows="4" maxlength="4000" placeholder="Descreva a informação ou o documento necessário."></textarea>
+ <div class="pend-buttons"><button type="button" class="btn-sm btn-green" id="pend-save">Salvar</button></div></section>
+ <h4 style="margin-top:25px">Histórico</h4><div id="pend-history"></div>
+ </div>
+</dialog>
+<script>
+// Pendencias: separadas do status de processamento e da decisao.
+let pendAtual=null,pendRenderSeq=0,pendOpenSeq=0,pendSaving=false,pendOperation=null;
+const pendEl=id=>document.getElementById(id);
+function pendEsc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function pendDate(s){return s?new Date(s).toLocaleString('pt-BR'):'';}
+const pendLabels={aberta:'Pendência aberta',respondida:'Resposta enviada · conferir',encerrada:'Pendência encerrada'};
+function pendCelula(p,jid){
+ const button=`<button class="btn-sm btn-outline" onclick="abrirPendencia('${pendEsc(jid)}')">${p?'Ver / atualizar':'Registrar pendência'}</button>`;
+ if(!p)return `<p>Sem pendência registrada</p>${button}`;
+ return `<span class="pend-tag">${pendEsc(pendLabels[p.estado]||p.estado)}</span><p>${pendEsc(p.texto)}</p><p>${p.estado==='aberta'?'Aguardando: ':p.estado==='respondida'?'Conferência: ':'Responsável: '}${pendEsc(p.estado==='respondida'?'Subscrição':p.responsavel)}</p>${button}`;
+}
+async function carregarPendenciasTabela(jobs){
+ const seq=++pendRenderSeq;const result={};
+ try{
+  for(let i=0;i<jobs.length;i+=400){Object.assign(result,await api('POST','/pendencias/resumo',{ids:jobs.slice(i,i+400).map(j=>j.id)}));}
+  if(seq!==pendRenderSeq)return;
+  for(const j of jobs){const el=document.getElementById('pend-cell-'+j.id);if(el)el.innerHTML=pendCelula(result[j.id],j.id);}
+ }catch(e){if(seq!==pendRenderSeq)return;for(const j of jobs){const el=document.getElementById('pend-cell-'+j.id);if(el)el.innerHTML=`<p class="pend-error">Pendências indisponíveis</p><button class="btn-sm btn-outline" onclick="abrirPendencia('${pendEsc(j.id)}')">Tentar consultar</button>`;}}
+}
+const pendRenderOriginal=renderJobsTable;
+renderJobsTable=function(jobs){pendRenderOriginal(jobs);carregarPendenciasTabela(jobs);};
+async function abrirPendencia(jid){
+ if(pendSaving)return;
+ const seq=++pendOpenSeq;pendAtual=null;pendOperation=null;
+ const d=pendEl('pend-dialog');if(!d.open)d.showModal();
+ pendEl('pend-state').textContent='Carregando…';pendEl('pend-error').textContent='';pendEl('pend-form').hidden=true;pendEl('pend-history').textContent='';
+ const j=(allJobs||[]).find(j=>j.id===jid);
+ pendEl('pend-client').textContent=j?`${j.nome_proponente} · ${j.tipo_analise==='condicao_especial'||String(j.id_proposta)==='0'?'Condição Especial':'Sistema · proposta '+j.id_proposta}`:'';
+ try{
+  const data=await api('GET','/pendencias/'+encodeURIComponent(jid));if(seq!==pendOpenSeq||!d.open)return;
+  pendAtual={jid,...data};desenharPendencia();
+ }catch(e){if(seq===pendOpenSeq){pendEl('pend-state').textContent='Não foi possível consultar.';pendEl('pend-error').textContent=e.message;}}
+}
+function desenharPendencia(){
+ const p=pendAtual.pendencia,ativa=p&&p.estado!=='encerrada';
+ pendEl('pend-state').innerHTML=p?`<strong>${pendEsc(pendLabels[p.estado])}</strong><p style="white-space:pre-wrap">${pendEsc(p.texto)}</p><p>Responsável: ${pendEsc(p.responsavel)} · Atualizado em ${pendEsc(pendDate(p.atualizado_em))}</p>`:'Sem pendência registrada nesta análise.';
+ pendEl('pend-history').innerHTML=pendAtual.historico.length?pendAtual.historico.map(e=>`<div class="pend-history"><strong>${pendEsc({registrar:'Registro / atualização',responder:'Resposta',encerrar:'Encerramento'}[e.acao])}</strong><div style="font-size:12px">${pendEsc(e.autor)} · ${pendEsc(pendDate(e.data))}</div><p>${pendEsc(e.texto)}</p><small>Responsável: ${pendEsc(e.responsavel)}</small></div>`).join(''):'Ainda não há registros.';
+ const opts=[];
+ if(pendAtual.pode_gerir)opts.push(['registrar',ativa?'Atualizar pendência':'Registrar pendência']);
+ if(ativa)opts.push(['responder','Registrar resposta']);
+ if(ativa&&pendAtual.pode_gerir)opts.push(['encerrar','Encerrar pendência']);
+ pendEl('pend-action').innerHTML=opts.map(([v,t])=>`<option value="${v}">${t}</option>`).join('');
+ pendEl('pend-form').hidden=!opts.length;
+ pendEl('pend-owner').value=p?.responsavel||'Comercial';pendEl('pend-text').value='';pendAcao();
+}
+function pendAcao(){
+ const a=pendEl('pend-action').value;pendEl('pend-owner-wrap').hidden=a!=='registrar';
+ pendEl('pend-text-label').textContent={registrar:'O que está faltando?',responder:'Qual informação foi recebida?',encerrar:'Como a pendência foi resolvida?'}[a]||'';
+ pendEl('pend-text').value=a==='registrar'&&pendAtual?.pendencia?.estado!=='encerrada'?(pendAtual?.pendencia?.texto||''):'';
+ pendOperation=null;
+}
+async function salvarPendencia(){
+ if(pendSaving||!pendAtual)return;
+ const texto=pendEl('pend-text').value.trim();if(!texto){pendEl('pend-error').textContent='Preencha a descrição.';pendEl('pend-text').focus();return;}
+ const jid=pendAtual.jid;const payload={acao:pendEl('pend-action').value,texto,responsavel:pendEl('pend-owner').value,versao:pendAtual.pendencia?.versao||0};
+ const signature=JSON.stringify(payload);if(!pendOperation||pendOperation.signature!==signature)pendOperation={signature,id:crypto.randomUUID()};
+ pendSaving=true;pendEl('pend-save').disabled=true;pendEl('pend-close').disabled=true;pendEl('pend-save').textContent='Salvando…';pendEl('pend-error').textContent='';
+ try{
+  const data=await api('POST','/pendencias/'+encodeURIComponent(jid),{...payload,operacao_id:pendOperation.id});
+  pendAtual={...pendAtual,...data};pendOperation=null;desenharPendencia();
+  const el=pendEl('pend-cell-'+jid);if(el)el.innerHTML=pendCelula(data.pendencia,jid);
+ }catch(e){pendEl('pend-error').textContent=e.message;}
+ finally{pendSaving=false;pendEl('pend-save').disabled=false;pendEl('pend-close').disabled=false;pendEl('pend-save').textContent='Salvar';}
+}
+pendEl('pend-save').addEventListener('click',salvarPendencia);
+pendEl('pend-action').addEventListener('change',pendAcao);
+pendEl('pend-close').addEventListener('click',()=>{if(!pendSaving){pendOpenSeq++;pendEl('pend-dialog').close();}});
+pendEl('pend-dialog').addEventListener('cancel',e=>{if(pendSaving)e.preventDefault();else pendOpenSeq++;});
+</script>
+
+</body></html>
