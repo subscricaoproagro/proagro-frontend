@@ -636,6 +636,23 @@
           <span id="info-carregar-mais-jobs" style="font-size:12px;color:var(--gray400)"></span>
         </div>
       </div>
+
+      <!-- AVISOS DE E-MAIL (possíveis pedidos de Condição Especial detectados na caixa) -->
+      <div class="card" style="margin-top:20px">
+        <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 16px 0">
+          <div>
+            <div class="section-title" style="font-size:15px">✉ Avisos de E-mail — Possíveis Pedidos de Condição Especial</div>
+            <div class="section-sub" style="font-size:12px">Detectados automaticamente na caixa de e-mail (por CPF/CNPJ + palavras-chave). Revise e trate manualmente.</div>
+          </div>
+          <button class="btn-sm btn-outline" onclick="carregarAvisosCeEmail()">↻ Atualizar</button>
+        </div>
+        <div class="overflow-x" style="padding:12px 16px 16px">
+          <table class="jobs-table">
+            <thead><tr><th>Recebido em</th><th>Remetente</th><th>Assunto</th><th>Motivo</th><th>Confiança</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody id="avisos-ce-email-tbody"><tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- SOLICITAÇÕES CE -->
@@ -2279,7 +2296,7 @@ function showPage(page) {
     const btn = document.getElementById(btnId);
     if (btn) btn.classList.add('active');
   }
-  if(page === 'historico') carregarJobs();
+  if(page === 'historico') { carregarJobs(); carregarAvisosCeEmail(); }
   if(page === 'admin') {
     carregarUsuarios();
     document.getElementById('backend-url-input').value = BACKEND_URL;
@@ -2511,6 +2528,49 @@ let _jobsOffset = 0;
 const _JOBS_POR_PAGINA = 200;
 let _jobsTotalServidor = 0;
 let _todosJobsCarregados = false;
+
+async function carregarAvisosCeEmail() {
+  const tbody = document.getElementById('avisos-ce-email-tbody');
+  if (!tbody) return;
+  try {
+    const avisos = await api('GET', '/avisos-ce-email');
+    if (!avisos.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:24px">Nenhum aviso detectado até agora.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = avisos.map(a => {
+      const dataFmt = a.recebido_em ? new Date(a.recebido_em).toLocaleString('pt-BR') : '—';
+      const corConf = a.confianca === 'alta' ? '#166534' : (a.confianca === 'media' ? '#92400e' : '#6b7280');
+      const statusTxt = a.revisado
+        ? `<span style="color:#166534">✓ Revisado${a.revisado_por ? ' por ' + escHtml(a.revisado_por) : ''}</span>`
+        : `<span style="color:#c0392b;font-weight:600">Pendente</span>`;
+      const acao = a.revisado
+        ? '—'
+        : `<button class="btn-sm btn-outline" onclick="marcarAvisoCeEmailRevisado('${a.id}')">✓ Marcar revisado</button>`;
+      return `<tr>
+        <td>${dataFmt}</td>
+        <td>${escHtml(a.remetente || '—')}</td>
+        <td>${escHtml(a.assunto || '—')}</td>
+        <td style="font-size:12px;color:#555">${escHtml(a.resumo || '—')}</td>
+        <td style="color:${corConf};font-weight:600;text-transform:capitalize">${escHtml(a.confianca || '—')}</td>
+        <td>${statusTxt}</td>
+        <td>${acao}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--red);padding:24px">Erro ao carregar: ${escHtml(e.message)}</td></tr>`;
+  }
+}
+
+async function marcarAvisoCeEmailRevisado(id) {
+  try {
+    await api('POST', `/avisos-ce-email/${id}/marcar-revisado`, {});
+    showToast('Aviso marcado como revisado.', 'success');
+    carregarAvisosCeEmail();
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
 
 async function carregarJobs() {
   try {
