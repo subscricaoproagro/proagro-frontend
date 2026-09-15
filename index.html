@@ -5100,8 +5100,12 @@ function verMotivoNegativaReavaliacao(jobId) {
 async function ativarDraftCE(jobId) {
   if (!confirm('Confirmar que o draft desta proposta foi ativado?')) return;
   try {
-    await api('POST', '/condicoes-especiais/' + jobId + '/ativar-draft', {});
-    showToast('Draft marcado como ativado.', 'success');
+    const r = await api('POST', '/condicoes-especiais/' + jobId + '/ativar-draft', {});
+    if (r.email_enviado) {
+      showToast('Draft ativado e corretor avisado por e-mail.', 'success');
+    } else {
+      showToast('Draft ativado. ' + (r.aviso_email || 'E-mail do corretor não enviado.'), 'warning');
+    }
     carregarCondicoesEspeciais();
   } catch(e) { showToast('Erro ao ativar draft: ' + e.message, 'error'); }
 }
