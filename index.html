@@ -2541,9 +2541,10 @@ async function carregarAvisosCeEmail() {
     tbody.innerHTML = avisos.map(a => {
       const dataFmt = a.recebido_em ? new Date(a.recebido_em).toLocaleString('pt-BR') : '—';
       const corConf = a.confianca === 'alta' ? '#166534' : (a.confianca === 'media' ? '#92400e' : '#6b7280');
-      const btnKml = a.anexo_nome
-        ? `<button class="btn-sm btn-outline" onclick="baixarAnexoAvisoCeEmail('${a.id}','${escHtml(a.anexo_nome).replace(/'/g, "\\'")}')">⬇ KML</button>`
-        : '';
+      const anexos = a.anexos || [];
+      const btnKml = anexos.map((anx, i) =>
+        `<button class="btn-sm btn-outline" onclick="baixarAnexoAvisoCeEmail('${a.id}',${i},'${escHtml(anx.nome).replace(/'/g, "\\'")}')">⬇ ${anexos.length > 1 ? ('KML ' + (i + 1)) : 'KML'}</button>`
+      ).join('');
       return `<tr id="aviso-ce-email-row-${a.id}">
         <td>${dataFmt}</td>
         <td>${escHtml(a.remetente || '—')}</td>
@@ -2573,9 +2574,9 @@ async function marcarAvisoCeEmailRevisado(id) {
   }
 }
 
-async function baixarAnexoAvisoCeEmail(id, nomeArquivo) {
+async function baixarAnexoAvisoCeEmail(id, indice, nomeArquivo) {
   try {
-    const res = await fetch(`${BACKEND_URL}/avisos-ce-email/${id}/anexo`, {
+    const res = await fetch(`${BACKEND_URL}/avisos-ce-email/${id}/anexo/${indice}`, {
       headers: { Authorization: `Bearer ${TOKEN}`, 'ngrok-skip-browser-warning': 'true' }
     });
     if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'Falha ao baixar KML'); }
