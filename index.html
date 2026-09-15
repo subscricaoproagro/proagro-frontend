@@ -8967,7 +8967,7 @@ renderizarConteudoSobreposicoes=function(job,dados){
  const rows=dados.sobreposicoes||[],nomes=[...new Set([...rows.map(r=>r.camada),"PRODES (Desmatamento)"])];
  const raster=[...new Set((dados.rasters||[]).map(r=>r.camada))].filter(n=>!nomes.includes(n));
  const panel=document.createElement('section');panel.id='rec-panel';panel.style.cssText='margin:16px 0;padding:18px;border:1px solid #bdd5c5;border-radius:10px;background:#f8fcf9';
- panel.innerHTML=`<h3 style="margin:0 0 8px">Gerar KML recortado</h3><p style="font-size:13px">Selecione as camadas que deseja remover. Cada talhão afetado deve manter pelo menos 20 ha. O KML original e o relatório serão preservados. PRODES: anos 2019–2024. Nas manchas que alcançam a borda do talhão, o corte fecha a ponta com segmentos retos e remove também as sobras entre os degraus. Confira a área adicional antes de baixar.</p><div style="display:flex;gap:12px;flex-wrap:wrap">${nomes.map((n,i)=>{const ok=n==='PRODES (Desmatamento)'||rows.filter(r=>r.camada===n).every(r=>r.geometria);return `<label><input type="checkbox" class="rec-select" value="${recEsc(n)}" ${ok?'':'disabled'}> ${recEsc(n)}${ok?'':' (sem geometria completa)'}</label>`;}).join('')}${raster.map(n=>`<span style="color:#777">${recEsc(n)} — imagem sem geometria de recorte</span>`).join('')}</div><p style="font-size:12px;color:#666">As caixas acima definem o recorte; ligar ou desligar camadas no mapa só altera a visualização. Fragmentos do mesmo talhão permanecem agrupados no KML. O recorte não altera a situação cadastral do imóvel.</p><div style="display:flex;gap:8px"><button type="button" class="btn-sm btn-outline" id="rec-preview" onclick="recPrevia()">Calcular prévia</button><button type="button" class="btn-sm btn-green" id="rec-download" onclick="recBaixar()" disabled>Baixar novo KML</button></div><div id="rec-message" role="status" style="margin-top:12px"></div><div id="rec-result" style="overflow-x:auto;margin-top:12px"></div>`;
+ panel.innerHTML=`<h3 style="margin:0 0 8px">Gerar KML recortado</h3><p style="font-size:13px">Selecione as camadas que deseja remover. Cada talhão afetado deve manter pelo menos 20 ha. O KML original e o relatório serão preservados. PRODES: anos 2019–2024. Nas manchas que alcançam a borda do talhão, o corte fecha a ponta com segmentos retos e remove também as sobras entre os degraus. Confira a área adicional antes de baixar.</p><div style="display:flex;gap:12px;flex-wrap:wrap">${nomes.map((n,i)=>{const ok=n==='PRODES (Desmatamento)'||rows.filter(r=>r.camada===n).every(r=>r.geometria);return `<label><input type="checkbox" class="rec-select" value="${recEsc(n)}" ${ok?'':'disabled'}> ${recEsc(n)}${ok?'':' (sem geometria completa)'}</label>`;}).join('')}${raster.map(n=>`<span style="color:#777">${recEsc(n)} — imagem sem geometria de recorte</span>`).join('')}</div><p style="font-size:12px;color:#666">As caixas acima definem o recorte; ligar ou desligar camadas no mapa só altera a visualização. Fragmentos do mesmo talhão permanecem agrupados no KML. O recorte não altera a situação cadastral do imóvel.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn-sm btn-outline" id="rec-preview" onclick="recPrevia()">Calcular prévia</button><button type="button" class="btn-sm btn-green" id="rec-download" onclick="recBaixar()" disabled>Baixar novo KML</button><button type="button" class="btn-sm btn-outline" id="rec-email-btn" onclick="recAbrirEmail()" disabled>✉ Avisar por e-mail</button></div><div id="rec-message" role="status" style="margin-top:12px"></div><div id="rec-result" style="overflow-x:auto;margin-top:12px"></div><div id="rec-email-painel" hidden style="margin-top:14px;padding:14px;border:1px solid #fde68a;border-radius:8px;background:#fffbeb"><strong>E-mail de aviso — polígono ajustado</strong><p style="font-size:12px;color:#92400e;margin:6px 0">Revise o texto antes de enviar. O KML recortado é anexado automaticamente.</p><label style="font-size:12px;display:block;margin-top:8px">Destinatário adicional (corretor, opcional)</label><input id="rec-email-corretor" class="form-input" placeholder="corretor@email.com" style="max-width:320px"><label style="font-size:12px;display:block;margin-top:8px">Assunto</label><input id="rec-email-assunto" class="form-input" style="width:100%;box-sizing:border-box"><label style="font-size:12px;display:block;margin-top:8px">Corpo</label><textarea id="rec-email-corpo" class="form-input" rows="10" style="width:100%;box-sizing:border-box;font-size:13px;line-height:1.6;resize:vertical"></textarea><div style="margin-top:10px;display:flex;gap:8px"><button type="button" class="btn-sm btn-green" id="rec-email-enviar" onclick="recEnviarEmail()">Enviar e-mail com KML anexo</button><button type="button" class="btn-sm btn-outline" onclick="document.getElementById('rec-email-painel').hidden=true">Cancelar</button></div><p id="rec-email-status" role="status" style="margin-top:8px;font-size:13px"></p></div>`;
  const manual=document.createElement('div');manual.style.cssText='border-top:1px solid #ccd9cf;margin-top:14px;padding-top:12px';
  manual.innerHTML=`<strong>Cortar uma ponta por linha reta</strong><p>Escolha o talhão. Marque dois pontos para a linha e depois clique dentro do lado que deseja remover. A linha se estende através do talhão; somente o talhão escolhido recebe este corte.</p><select id="rec-talhao" class="form-input" style="max-width:200px">${(dados.poligonos||[]).map(p=>`<option value="${recEsc(p.id)}">Talhão ${recEsc(p.id)}</option>`).join('')}</select> <button type="button" class="btn-sm btn-outline" onclick="recManualIniciar()">Marcar linha no mapa</button> <button type="button" class="btn-sm btn-outline" onclick="recManualLimpar()">Limpar linha</button><p id="rec-manual-status" role="status">Nenhum corte manual definido.</p>`;
  const poli=document.createElement('div');poli.style.cssText='border-top:1px solid #ccd9cf;margin-top:14px;padding-top:12px';
@@ -8977,12 +8977,13 @@ renderizarConteudoSobreposicoes=function(job,dados){
  document.getElementById('sobreposicoes-modal-body').appendChild(panel);
  document.getElementById('rec-talhao').addEventListener('change',()=>recManualLimpar());
  document.getElementById('rec-poli-talhao').addEventListener('change',()=>recPoliLimpar());
- panel.querySelectorAll('.rec-select').forEach(e=>e.addEventListener('change',()=>{recSeq++;recResultado=null;document.getElementById('rec-download').disabled=true;document.getElementById('rec-preview').disabled=false;document.getElementById('rec-message').textContent='Seleção alterada. Calcule a prévia novamente.';document.getElementById('rec-result').innerHTML='';if(recLayer){recLayer.remove();recLayer=null;}}));
+ panel.querySelectorAll('.rec-select').forEach(e=>e.addEventListener('change',()=>{recSeq++;recResultado=null;document.getElementById('rec-download').disabled=true;document.getElementById('rec-email-btn').disabled=true;document.getElementById('rec-email-painel').hidden=true;document.getElementById('rec-preview').disabled=false;document.getElementById('rec-message').textContent='Seleção alterada. Calcule a prévia novamente.';document.getElementById('rec-result').innerHTML='';if(recLayer){recLayer.remove();recLayer=null;}}));
 };
 function recSelecionadas(){return [...document.querySelectorAll('#rec-panel .rec-select:checked')].map(e=>e.value);}
 async function recPrevia(){
  const camadas=recSelecionadas(),seq=++recSeq,job=recJob;recResultado=null;
  document.getElementById('rec-download').disabled=true;
+ document.getElementById('rec-email-btn').disabled=true;document.getElementById('rec-email-painel').hidden=true;
  if(!camadas.length&&!recManualCorte&&!recPoliCorte){document.getElementById('rec-message').textContent='Selecione pelo menos uma camada.';return;}
  document.getElementById('rec-preview').disabled=true;document.getElementById('rec-message').textContent='Calculando recorte…';
  try{
@@ -8993,6 +8994,7 @@ async function recPrevia(){
   recResultado={...r,job,nomeArquivo:recNomeArquivo(recNomeCliente)};document.getElementById('rec-message').textContent=r.mensagem;
   document.getElementById('rec-result').innerHTML=`<table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr><th>Talhão</th><th>Original (ha)</th><th>Removida total (ha)</th><th>Adicional pelo fechamento (ha)</th><th>Restante (ha)</th><th>Partes</th><th>Resultado</th></tr></thead><tbody>${r.talhoes.map(t=>`<tr style="border-top:1px solid #ddd;color:${t.estado==='bloqueado'?'#b91c1c':'#193d2d'}"><td>T${recEsc(t.talhao)}</td><td>${recNum(t.original_ha)}</td><td>${recNum(t.removida_ha)}</td><td>${recNum(t.adicional_fechamento_ha||0)}</td><td>${recNum(t.restante_ha)}</td><td>${t.partes}</td><td>${recEsc(t.motivo||({recortado:'Recorte permitido',inalterado:'Sem alteração'}[t.estado]||t.estado))}</td></tr>`).join('')}</tbody></table><p style="font-size:12px">Áreas calculadas sobre o elipsoide WGS84. O limite de 20 ha é verificado antes do arredondamento. Verde no mapa: área restante; vermelho: talhão bloqueado.</p>`;
   document.getElementById('rec-download').disabled=!r.liberado;
+  document.getElementById('rec-email-btn').disabled=!r.liberado;
   if(recLayer)recLayer.remove();
   if(window.L&&_mapaSobreposicoesLeaflet)recLayer=L.geoJSON(r.geojson,{style:f=>({color:f.properties.estado==='bloqueado'?'#dc2626':'#15803d',weight:3,fillOpacity:0.3})}).addTo(_mapaSobreposicoesLeaflet);
  }catch(e){if(seq===recSeq)document.getElementById('rec-message').textContent=e.message;}
@@ -9011,11 +9013,43 @@ async function recBaixar(){
  finally{if(seq===recSeq)button.disabled=false;}
 }
 
+async function recAbrirEmail(){
+ const r=recResultado;if(!r?.liberado)return;
+ const painel=document.getElementById('rec-email-painel');
+ painel.hidden=false;
+ document.getElementById('rec-email-status').textContent='Carregando prévia…';
+ try{
+  const p=await api('POST',`/recorte-kml/${r.job}/preview-email`,{camadas:r.camadas,corte:r.corte,poligono:r.poligono,assinatura:r.assinatura});
+  document.getElementById('rec-email-assunto').value=p.assunto||'';
+  document.getElementById('rec-email-corpo').value=p.corpo||'';
+  document.getElementById('rec-email-corretor').value=p.email_corretor||'';
+  document.getElementById('rec-email-status').textContent='';
+  painel.scrollIntoView({behavior:'smooth',block:'center'});
+ }catch(e){document.getElementById('rec-email-status').textContent='Erro: '+e.message;}
+}
+async function recEnviarEmail(){
+ const r=recResultado;if(!r?.liberado)return;
+ const assunto=document.getElementById('rec-email-assunto').value.trim();
+ const corpo=document.getElementById('rec-email-corpo').value.trim();
+ const email_corretor=document.getElementById('rec-email-corretor').value.trim();
+ if(!corpo){document.getElementById('rec-email-status').textContent='O corpo do e-mail não pode ficar vazio.';return;}
+ const btn=document.getElementById('rec-email-enviar');btn.disabled=true;
+ document.getElementById('rec-email-status').textContent='Enviando…';
+ try{
+  await api('POST',`/recorte-kml/${r.job}/enviar-email`,{camadas:r.camadas,corte:r.corte,poligono:r.poligono,assinatura:r.assinatura,assunto,corpo,email_corretor});
+  document.getElementById('rec-email-status').textContent='✅ E-mail enviado com o KML anexado.';
+  showToast('✅ E-mail enviado com sucesso!','success');
+ }catch(e){document.getElementById('rec-email-status').textContent='Erro: '+e.message;}
+ finally{btn.disabled=false;}
+}
+
 let recManualCorte=null,recManualEtapa=0,recManualPontos=[],recManualMapa=null,recManualGrupo=null;
 let recPoliCorte=null,recPoliAtivo=false,recPoliPontos=[],recPoliMapa=null,recPoliGrupo=null,recPoliLinha=null;
 function recManualInvalidar(){
  recSeq++;recResultado=null;
  const btn=document.getElementById('rec-download');if(btn)btn.disabled=true;
+ const ebtn=document.getElementById('rec-email-btn');if(ebtn)ebtn.disabled=true;
+ const epainel=document.getElementById('rec-email-painel');if(epainel)epainel.hidden=true;
  const prev=document.getElementById('rec-preview');if(prev)prev.disabled=false;
  const result=document.getElementById('rec-result');if(result)result.innerHTML='';
  if(recLayer){recLayer.remove();recLayer=null;}
