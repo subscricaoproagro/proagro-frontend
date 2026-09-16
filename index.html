@@ -3025,7 +3025,7 @@ let _pcCEs = [], _pcJobs = [];
 
 async function carregarPainelComercial() {
   document.getElementById('pc-ce-tbody').innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
-  document.getElementById('pc-jobs-tbody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr>';
+  document.getElementById('pc-jobs-tbody').innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr>';
   try {
     const [ces, jobsSistema] = await Promise.all([
       api('GET', '/painel-comercial/condicoes-especiais'),
@@ -3033,6 +3033,11 @@ async function carregarPainelComercial() {
     ]);
     _pcCEs = ces || [];
     _pcJobs = jobsSistema || [];
+    // abrirReenvioSimplesCE lê os dados aprovados (taxa, cobertura, produtividade...)
+    // do window._ceCache — populado normalmente só pela tela do supervisor.
+    // Preenche aqui também pra o botão "Reenviar Email" do Painel Comercial funcionar.
+    window._ceCache = window._ceCache || {};
+    _pcCEs.forEach(ce => { window._ceCache[ce.job_id] = ce; });
     renderizarPainelComercial();
   } catch (e) {
     document.getElementById('pc-ce-tbody').innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--red);padding:24px">Erro: ${escHtml(e.message)}</td></tr>`;
@@ -3099,6 +3104,10 @@ function renderizarPainelComercial() {
             ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="pcAlternarInclusaoDraft('${ce.job_id}')">📌 Inclusão solicitada</button>`
             : `<button class="btn-sm btn-outline" onclick="pcAlternarInclusaoDraft('${ce.job_id}')">📌 Pedir inclusão no draft</button>`)
         : '';
+      const drSis = (ce.job && ce.job.decisao_risco) ? ce.job.decisao_risco : null;
+      const btnReenviarEmail = drSis
+        ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#0369a1" onclick="abrirReenvioSimplesCE('${ce.job_id}','${drSis}')">📨 Reenviar Email</button>`
+        : '';
       return `<tr>
         <td>${escHtml(cliente)}</td>
         <td>${escHtml(cpf)}</td>
@@ -3110,7 +3119,7 @@ function renderizarPainelComercial() {
         <td>${impedimentosHtml}</td>
         <td class="pend-cell" id="pend-cell-ce-${ce.job_id}">${pendInicial(ce.job_id, 'Comercial')}</td>
         <td>${efetivadaHtml}</td>
-        <td style="display:flex;gap:6px;flex-wrap:wrap">${btnPrioridade}${btnInclusao}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">${btnPrioridade}${btnInclusao}${btnReenviarEmail}</td>
       </tr>`;
     }).join('');
 
