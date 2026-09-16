@@ -3016,12 +3016,12 @@ async function carregarPainelComercial() {
   document.getElementById('pc-ce-tbody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
   document.getElementById('pc-jobs-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr>';
   try {
-    const [ces, jobsResp] = await Promise.all([
+    const [ces, jobsSistema] = await Promise.all([
       api('GET', '/painel-comercial/condicoes-especiais'),
-      api('GET', '/jobs?limit=10000')
+      api('GET', '/painel-comercial/jobs-sistema')
     ]);
     _pcCEs = ces || [];
-    _pcJobs = (jobsResp && jobsResp.jobs) ? jobsResp.jobs : (jobsResp || []);
+    _pcJobs = jobsSistema || [];
     renderizarPainelComercial();
   } catch (e) {
     document.getElementById('pc-ce-tbody').innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--red);padding:24px">Erro: ${escHtml(e.message)}</td></tr>`;
