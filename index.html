@@ -510,7 +510,7 @@
             <div style="display:flex;flex-direction:column;gap:16px">
               <div style="display:flex;gap:12px;align-items:flex-start">
                 <div style="width:24px;height:24px;border-radius:50%;background:var(--g600);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">1</div>
-                <div><div style="font-size:14px;font-weight:500;color:var(--gray900)">Prepare o Dados.xlsx</div><div style="font-size:12px;color:var(--gray400);margin-top:2px">Colunas obrigatórias: id_proposta, nome_proponente, cpf, cultura_desejada</div></div>
+                <div><div style="font-size:14px;font-weight:500;color:var(--gray900)">Prepare o Dados.xlsx</div><div style="font-size:12px;color:var(--gray400);margin-top:2px">Colunas obrigatórias: id_proposta, nome_proponente, cpf, cultura_desejada · Opcional: corretor</div></div>
               </div>
               <div style="display:flex;gap:12px;align-items:flex-start">
                 <div style="width:24px;height:24px;border-radius:50%;background:var(--g600);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">2</div>
@@ -645,8 +645,8 @@
       <div class="card">
         <div class="overflow-x">
           <table class="jobs-table">
-            <thead><tr><th>Proposta</th><th>Proponente</th><th>Cultura</th><th>Analista</th><th>Iniciado</th><th>Status</th><th>Pendência</th><th>Tempo Aval.</th><th>Ações</th></tr></thead>
-            <tbody id="jobs-tbody"><tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+            <thead><tr><th>Proposta</th><th>Proponente</th><th>Cultura</th><th>Corretor</th><th>Analista</th><th>Iniciado</th><th>Status</th><th>Pendência</th><th>Tempo Aval.</th><th>Ações</th></tr></thead>
+            <tbody id="jobs-tbody"><tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
           </table>
         </div>
         <div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:16px">
@@ -1216,8 +1216,8 @@
     <div class="card-header"><div class="card-title" style="font-size:14px">Propostas do Sistema</div><span id="pc-jobs-contagem" style="font-size:12px;color:var(--gray400)"></span></div>
     <div class="overflow-x">
       <table class="jobs-table">
-        <thead><tr><th>Proposta</th><th>Cliente</th><th>Município</th><th>Cultura</th><th>Status</th><th>Origem</th><th>Chegada</th><th>Finalizado</th><th>Pendências</th></tr></thead>
-        <tbody id="pc-jobs-tbody"><tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr></tbody>
+        <thead><tr><th>Proposta</th><th>Cliente</th><th>Município</th><th>Cultura</th><th>Corretor</th><th>Status</th><th>Origem</th><th>Chegada</th><th>Finalizado</th><th>Pendências</th></tr></thead>
+        <tbody id="pc-jobs-tbody"><tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -2852,7 +2852,7 @@ function renderJobsTable(jobs) {
   const tbody = document.getElementById('jobs-tbody');
   if (!tbody) return;
   if (!jobs.length) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma análise encontrada.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma análise encontrada.</td></tr>`;
     return;
   }
   tbody.innerHTML = jobs.map(j => {
@@ -2868,6 +2868,7 @@ function renderJobsTable(jobs) {
       <td><strong>${j.id_proposta}</strong>${viaCeBadge}</td>
       <td>${j.nome_proponente}</td>
       <td>${j.cultura_desejada}</td>
+      <td>${j.corretor || '—'}</td>
       <td style="font-size:12px;color:var(--gray400)">${j.analista_email || "Não atribuído"}</td>
       <td style="font-size:12px;color:var(--gray400)">${formatDate(j.created_at)}</td>
       <td>${renderStatusBadge(j)}</td>
@@ -3132,13 +3133,14 @@ function renderizarPainelComercial() {
         <td>${escHtml(j.nome_proponente || '—')}</td>
         <td>${escHtml(j.municipio_dominante || '—')}</td>
         <td>${escHtml(j.cultura_desejada || '—')}</td>
+        <td>${escHtml(j.corretor || '—')}</td>
         <td>${escHtml(j.status || '—')}</td>
         <td>${j.tipo_analise === 'condicao_especial' ? '⭐ Via CE' : 'Direta'}</td>
         <td>${j.created_at ? formatDate(j.created_at) : '—'}</td>
         <td>${j.concluido_at ? formatDate(j.concluido_at) : '—'}</td>
         <td class="pend-cell" id="pend-cell-jobs-${j.id}">${pendInicial(j.id, 'Comercial')}</td>
       </tr>`).join('')
-    : '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:24px">Nenhuma proposta encontrada.</td></tr>';
+    : '<tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:24px">Nenhuma proposta encontrada.</td></tr>';
 }
 
 async function pcAlternarPrioridade(jobId) {
