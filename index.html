@@ -2865,7 +2865,7 @@ function renderJobsTable(jobs) {
     const semDecisao = concluido && !j.decisao;
     const comDecisao = concluido && j.decisao;
     const isSistemaProp = j.tipo_analise === 'sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '');
-    const viaCeBadge = (isSistemaProp && j.tipo_analise === 'condicao_especial')
+    const viaCeBadge = (isSistemaProp && j.via_ce_real)
       ? ' <span title="Proposta de Sistema derivada de Condição Especial" style="font-size:11px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:4px;padding:1px 5px;font-weight:600">⭐ Via CE</span>'
       : '';
     return `
@@ -3134,8 +3134,8 @@ function renderizarPainelComercial() {
     if (!ehSistema) return false;
     if (busca && !(j.nome_proponente || '').toLowerCase().includes(busca)) return false;
     if (filtroStatusSistema && j.status !== filtroStatusSistema) return false;
-    if (filtroOrigem === 'ce' && j.tipo_analise !== 'condicao_especial') return false;
-    if (filtroOrigem === 'direta' && j.tipo_analise === 'condicao_especial') return false;
+    if (filtroOrigem === 'ce' && !j.via_ce_real) return false;
+    if (filtroOrigem === 'direta' && j.via_ce_real) return false;
     return true;
   });
   if (candidatosSistema.length) {
@@ -3152,7 +3152,7 @@ function renderizarPainelComercial() {
         <td>${escHtml(j.cultura_desejada || '—')}</td>
         <td>${escHtml(j.corretor || '—')}</td>
         <td>${escHtml(j.status || '—')}</td>
-        <td>${j.tipo_analise === 'condicao_especial' ? '⭐ Via CE' : 'Direta'}</td>
+        <td>${j.via_ce_real ? '⭐ Via CE' : 'Direta'}</td>
         <td>${j.created_at ? formatDate(j.created_at) : '—'}</td>
         <td>${j.concluido_at ? formatDate(j.concluido_at) : '—'}</td>
         <td class="pend-cell" id="pend-cell-jobs-${j.id}">${pendInicial(j.id, 'Comercial')}</td>
