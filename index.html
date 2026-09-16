@@ -3018,7 +3018,7 @@ async function carregarPainelComercial() {
   try {
     const [ces, jobsResp] = await Promise.all([
       api('GET', '/painel-comercial/condicoes-especiais'),
-      api('GET', '/jobs?limit=2000')
+      api('GET', '/jobs?limit=10000')
     ]);
     _pcCEs = ces || [];
     _pcJobs = (jobsResp && jobsResp.jobs) ? jobsResp.jobs : (jobsResp || []);
