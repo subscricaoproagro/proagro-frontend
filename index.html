@@ -300,6 +300,7 @@
       <button class="topbar-btn" id="datas-zarc-btn" onclick="showPage('datas-zarc');dzInit()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span><span class="sidebar-label">Datas Zarc</span></button>
       <button class="topbar-btn" id="gestao-propostas-btn" onclick="showPage('gestao-propostas')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="9" width="3" height="8"/><rect x="12" y="5" width="3" height="12"/><rect x="17" y="12" width="3" height="5"/></svg></span><span class="sidebar-label">Gestão de Propostas</span><span id="gp-sino-alerta" class="esg-sino-alerta" style="display:none" title="Novas propostas detectadas automaticamente"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2Zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2Z"/></svg></span></button>
       <button class="topbar-btn" id="rem-btn" onclick="showPage('relatorio-esg-mensal');remInit()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg></span><span class="sidebar-label">Relatório Mensal ESG</span></button>
+      <button class="topbar-btn" id="painel-comercial-btn" onclick="showPage('painel-comercial')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span><span class="sidebar-label">Painel Comercial</span></button>
     </nav>
   </aside>
   <div class="main-wrap">
@@ -1154,6 +1155,52 @@
   </div>
 </div>
 
+<!-- PAINEL COMERCIAL -->
+<div id="page-painel-comercial" class="page-section">
+  <div class="section-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <div>
+      <div class="section-title">Painel Comercial</div>
+      <div class="section-sub">Condições especiais e propostas do sistema</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input class="form-input" id="pc-filtro-busca" placeholder="Cliente ou corretora" style="width:220px;padding:8px 12px" oninput="renderizarPainelComercial()">
+      <select class="form-input" id="pc-filtro-fase" style="width:auto;padding:8px 12px" onchange="renderizarPainelComercial()">
+        <option value="">Todas as fases</option>
+        <option value="Aguardando decisão de risco">Aguardando decisão de risco</option>
+        <option value="Aguardando aceite do corretor">Aguardando aceite do corretor</option>
+        <option value="Aguardando ativação do draft">Aguardando ativação do draft</option>
+        <option value="Draft ativado">Draft ativado</option>
+        <option value="Balcão">Balcão</option>
+        <option value="Recusada">Recusada</option>
+        <option value="Em reavaliação">Em reavaliação</option>
+        <option value="Resolvido manualmente">Resolvido manualmente</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gray600)"><input type="checkbox" id="pc-filtro-impedimento" onchange="renderizarPainelComercial()"> Só com impedimento</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gray600)"><input type="checkbox" id="pc-filtro-efetivada" onchange="renderizarPainelComercial()"> Só efetivadas</label>
+      <button class="btn-sm btn-outline" onclick="carregarPainelComercial()">↻ Atualizar</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title" style="font-size:14px">Condições Especiais</div><span id="pc-ce-contagem" style="font-size:12px;color:var(--gray400)"></span></div>
+    <div class="overflow-x">
+      <table class="jobs-table">
+        <thead><tr><th>Cliente</th><th>CPF</th><th>Município</th><th>Corretora</th><th>Fase</th><th>Impedimentos</th><th>Efetivada</th><th>Ações</th></tr></thead>
+        <tbody id="pc-ce-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <div class="card-header"><div class="card-title" style="font-size:14px">Propostas do Sistema</div><span id="pc-jobs-contagem" style="font-size:12px;color:var(--gray400)"></span></div>
+    <div class="overflow-x">
+      <table class="jobs-table">
+        <thead><tr><th>Proposta</th><th>Cliente</th><th>Município</th><th>Cultura</th><th>Status</th><th>Origem</th></tr></thead>
+        <tbody id="pc-jobs-tbody"><tr><td colspan="6" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
   </div>
   </div><!-- fecha main-wrap -->
@@ -1187,7 +1234,7 @@
       <div class="form-group"><label class="form-label">Nome completo</label><input type="text" class="form-input" id="new-name" placeholder="Nome do colaborador"></div>
       <div class="form-group"><label class="form-label">E-mail institucional</label><input type="email" class="form-input" id="new-email" placeholder="colaborador@proagroseguros.com"></div>
       <div class="form-group"><label class="form-label">Perfil</label>
-        <select class="form-input" id="new-role" onchange="mcAtualizarChkPorRole()" ><option value="analista">Analista</option><option value="supervisor">Supervisor</option><option value="admin">Administrador</option><option value="campo">Usuário de Campo</option><option value="ceo">CEO</option></select>
+        <select class="form-input" id="new-role" onchange="mcAtualizarChkPorRole()" ><option value="analista">Analista</option><option value="supervisor">Supervisor</option><option value="admin">Administrador</option><option value="campo">Usuário de Campo</option><option value="ceo">CEO</option><option value="comercial">Comercial</option></select>
       </div>
       <div class="form-group">
         <label class="form-label">Páginas com acesso <span style="font-size:11px;color:var(--gray400)">(baseado no perfil — ajuste se necessário)</span></label>
@@ -2097,6 +2144,11 @@ async function enterApp() {
     ].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
   }
 
+  // Comercial: acessa APENAS o Painel Comercial
+  if (currentUser.role === 'comercial') {
+    ['dashboard-btn','dashboard-sv-btn'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+  }
+
   // (A aplicação de permissões por página virou a AUTORIDADE FINAL, mais abaixo,
   //  depois de TODOS os blocos de role — pra nada vazar por force-show de role.)
 
@@ -2269,6 +2321,7 @@ function showPage(page) {
   if (page === 'dashboard-supervisor') carregarDashboardSupervisor();
   if (page === 'esg') carregarEsgStatus();
   if (page === 'nova-analise') esgVerificarBloqueioNovaAnalise();
+  if (page === 'painel-comercial') carregarPainelComercial();
   document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.topbar-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
@@ -2284,7 +2337,8 @@ function showPage(page) {
     'endosso':             'endosso-btn',
     'admin':               'admin-btn',
     'datas-zarc':          'datas-zarc-btn',
-    'gestao-propostas':    'gestao-propostas-btn'
+    'gestao-propostas':    'gestao-propostas-btn',
+    'painel-comercial':    'painel-comercial-btn'
   };
   // Remove active de todos primeiro, depois aplica só no correto
   Object.values(pageToBtn).forEach(id => {
@@ -2784,9 +2838,13 @@ function renderJobsTable(jobs) {
     const concluido = j.status === 'concluido';
     const semDecisao = concluido && !j.decisao;
     const comDecisao = concluido && j.decisao;
+    const isSistemaProp = j.tipo_analise === 'sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '');
+    const viaCeBadge = (isSistemaProp && j.tipo_analise === 'condicao_especial')
+      ? ' <span title="Proposta de Sistema derivada de Condição Especial" style="font-size:11px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:4px;padding:1px 5px;font-weight:600">⭐ Via CE</span>'
+      : '';
     return `
     <tr>
-      <td><strong>${j.id_proposta}</strong></td>
+      <td><strong>${j.id_proposta}</strong>${viaCeBadge}</td>
       <td>${j.nome_proponente}</td>
       <td>${j.cultura_desejada}</td>
       <td style="font-size:12px;color:var(--gray400)">${j.analista_email || "Não atribuído"}</td>
@@ -2936,6 +2994,109 @@ function verScoreSubscricao(jobId) {
     + `<button class="btn-sm btn-outline" id="score-close">Fechar</button></div></div>`;
   document.body.appendChild(ov);
   ov.querySelector('#score-close').onclick = () => document.body.removeChild(ov);
+}
+
+// ══════════════════════════════════════════
+// PAINEL COMERCIAL
+// ══════════════════════════════════════════
+let _pcCEs = [], _pcJobs = [];
+
+async function carregarPainelComercial() {
+  document.getElementById('pc-ce-tbody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
+  document.getElementById('pc-jobs-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr>';
+  try {
+    const [ces, jobsResp] = await Promise.all([
+      api('GET', '/painel-comercial/condicoes-especiais'),
+      api('GET', '/jobs?limit=2000')
+    ]);
+    _pcCEs = ces || [];
+    _pcJobs = (jobsResp && jobsResp.jobs) ? jobsResp.jobs : (jobsResp || []);
+    renderizarPainelComercial();
+  } catch (e) {
+    document.getElementById('pc-ce-tbody').innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--red);padding:24px">Erro: ${escHtml(e.message)}</td></tr>`;
+  }
+}
+
+function renderizarPainelComercial() {
+  const busca = (document.getElementById('pc-filtro-busca')?.value || '').toLowerCase().trim();
+  const fase = document.getElementById('pc-filtro-fase')?.value || '';
+  const soImpedimento = document.getElementById('pc-filtro-impedimento')?.checked;
+  const soEfetivada = document.getElementById('pc-filtro-efetivada')?.checked;
+
+  const lista = _pcCEs.filter(ce => {
+    const cliente = (ce.cliente || ce.job?.nome_proponente || '').toLowerCase();
+    const corretora = (ce.broker || '').toLowerCase();
+    if (busca && !cliente.includes(busca) && !corretora.includes(busca)) return false;
+    if (fase && ce.fase !== fase) return false;
+    if (soImpedimento && (!ce.impedimentos || !ce.impedimentos.length)) return false;
+    if (soEfetivada && !ce.efetivada) return false;
+    return true;
+  });
+
+  document.getElementById('pc-ce-contagem').textContent = `${lista.length} de ${_pcCEs.length}`;
+
+  const tbody = document.getElementById('pc-ce-tbody');
+  tbody.innerHTML = !lista.length
+    ? '<tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada com esses filtros.</td></tr>'
+    : lista.map(ce => {
+      const cliente = ce.cliente || ce.job?.nome_proponente || '—';
+      const cpf = ce.job?.cpf || '—';
+      const municipio = ce.municipio || '—';
+      const corretora = ce.broker || '—';
+      const impedimentosHtml = (ce.impedimentos && ce.impedimentos.length)
+        ? `<span style="color:#c0392b;font-size:12px">⚠ ${ce.impedimentos.map(escHtml).join('; ')}</span>`
+        : '<span style="color:var(--gray400)">—</span>';
+      const efetivadaHtml = ce.efetivada
+        ? `<span style="color:#166534;font-weight:600">✓ Sim (Proposta ${escHtml(ce.efetivada_proposta || '')})</span>`
+        : '<span style="color:var(--gray400)">Não</span>';
+      const btnPrioridade = ce.prioridade
+        ? `<button class="btn-sm" style="background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c" onclick="pcAlternarPrioridade('${ce.job_id}')">🔴 Prioritário</button>`
+        : `<button class="btn-sm btn-outline" onclick="pcAlternarPrioridade('${ce.job_id}')">🔔 Pedir Prioridade</button>`;
+      const btnInclusao = ce.draft_ativado
+        ? (ce.pedido_inclusao_draft
+            ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="pcAlternarInclusaoDraft('${ce.job_id}')">📌 Inclusão solicitada</button>`
+            : `<button class="btn-sm btn-outline" onclick="pcAlternarInclusaoDraft('${ce.job_id}')">📌 Pedir inclusão no draft</button>`)
+        : '';
+      return `<tr>
+        <td>${escHtml(cliente)}</td>
+        <td>${escHtml(cpf)}</td>
+        <td>${escHtml(municipio)}</td>
+        <td>${escHtml(corretora)}</td>
+        <td>${escHtml(ce.fase || '—')}</td>
+        <td>${impedimentosHtml}</td>
+        <td>${efetivadaHtml}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">${btnPrioridade}${btnInclusao}</td>
+      </tr>`;
+    }).join('');
+
+  const jobsSistema = _pcJobs.filter(j => j.tipo_analise === 'sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== ''));
+  document.getElementById('pc-jobs-contagem').textContent = `${jobsSistema.length}`;
+  document.getElementById('pc-jobs-tbody').innerHTML = jobsSistema.length
+    ? jobsSistema.map(j => `<tr>
+        <td>${escHtml(j.id_proposta || '—')}</td>
+        <td>${escHtml(j.nome_proponente || '—')}</td>
+        <td>${escHtml(j.municipio_dominante || '—')}</td>
+        <td>${escHtml(j.cultura_desejada || '—')}</td>
+        <td>${escHtml(j.status || '—')}</td>
+        <td>${j.tipo_analise === 'condicao_especial' ? '⭐ Via CE' : 'Direta'}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="6" style="text-align:center;color:var(--gray400);padding:24px">Nenhuma proposta encontrada.</td></tr>';
+}
+
+async function pcAlternarPrioridade(jobId) {
+  try {
+    await api('POST', `/condicoes-especiais/${jobId}/prioridade`, {});
+    showToast('Prioridade atualizada.', 'success');
+    carregarPainelComercial();
+  } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function pcAlternarInclusaoDraft(jobId) {
+  try {
+    await api('POST', `/condicoes-especiais/${jobId}/pedir-inclusao-draft`, {});
+    showToast('Pedido de inclusão atualizado.', 'success');
+    carregarPainelComercial();
+  } catch (e) { showToast('Erro: ' + e.message, 'error'); }
 }
 
 function renderStatusBadge(j) {
@@ -3229,6 +3390,7 @@ const _PG = {
   'gestao-propostas': { label: 'Gestão de Propostas', btn: 'gestao-propostas-btn' },
   'esg':           { label: 'Atualização ESG',        btn: 'esg-btn'           },
   'relatorio-esg-mensal': { label: 'Relatório Mensal ESG', btn: 'rem-btn'       },
+  'painel-comercial': { label: 'Painel Comercial',    btn: 'painel-comercial-btn' },
 };
 const _PG_DEFAULTS = {
   admin:      Object.keys(_PG),
@@ -3236,6 +3398,7 @@ const _PG_DEFAULTS = {
   supervisor: ['ce', 'esg', 'relatorio-esg-mensal'],
   campo:      ['monitoramento'],
   ceo:        [], // sem padrão — acesso escolhido manualmente pelo botão "Acesso"
+  comercial:  ['painel-comercial'],
 };
 
 function mcAtualizarChkPorRole() {
