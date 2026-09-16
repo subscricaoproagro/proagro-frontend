@@ -1206,8 +1206,8 @@
     <div class="card-header"><div class="card-title" style="font-size:14px">Propostas do Sistema</div><span id="pc-jobs-contagem" style="font-size:12px;color:var(--gray400)"></span></div>
     <div class="overflow-x">
       <table class="jobs-table">
-        <thead><tr><th>Proposta</th><th>Cliente</th><th>Município</th><th>Cultura</th><th>Status</th><th>Origem</th></tr></thead>
-        <tbody id="pc-jobs-tbody"><tr><td colspan="6" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr></tbody>
+        <thead><tr><th>Proposta</th><th>Cliente</th><th>Município</th><th>Cultura</th><th>Status</th><th>Origem</th><th>Chegada</th><th>Finalizado</th><th>Pendências</th></tr></thead>
+        <tbody id="pc-jobs-tbody"><tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -3014,7 +3014,7 @@ let _pcCEs = [], _pcJobs = [];
 
 async function carregarPainelComercial() {
   document.getElementById('pc-ce-tbody').innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
-  document.getElementById('pc-jobs-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr>';
+  document.getElementById('pc-jobs-tbody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr>';
   try {
     const [ces, jobsSistema] = await Promise.all([
       api('GET', '/painel-comercial/condicoes-especiais'),
@@ -3081,7 +3081,7 @@ function renderizarPainelComercial() {
         <td>${premio}</td>
         <td>${escHtml(ce.fase || '—')}</td>
         <td>${impedimentosHtml}</td>
-        <td class="pend-cell" id="pend-cell-${ce.job_id}">${pendInicial(ce.job_id, 'Comercial')}</td>
+        <td class="pend-cell" id="pend-cell-ce-${ce.job_id}">${pendInicial(ce.job_id, 'Comercial')}</td>
         <td>${efetivadaHtml}</td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">${btnPrioridade}${btnInclusao}</td>
       </tr>`;
@@ -3099,8 +3099,13 @@ function renderizarPainelComercial() {
         <td>${escHtml(j.cultura_desejada || '—')}</td>
         <td>${escHtml(j.status || '—')}</td>
         <td>${j.tipo_analise === 'condicao_especial' ? '⭐ Via CE' : 'Direta'}</td>
+        <td>${j.created_at ? formatDate(j.created_at) : '—'}</td>
+        <td>${j.concluido_at ? formatDate(j.concluido_at) : '—'}</td>
+        <td class="pend-cell" id="pend-cell-jobs-${j.id}">${pendInicial(j.id, 'Comercial')}</td>
       </tr>`).join('')
-    : '<tr><td colspan="6" style="text-align:center;color:var(--gray400);padding:24px">Nenhuma proposta encontrada.</td></tr>';
+    : '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:24px">Nenhuma proposta encontrada.</td></tr>';
+
+  if (jobsSistema.length) carregarPendenciasTabela(jobsSistema.map(j => ({ id: j.id })), 'Comercial');
 }
 
 async function pcAlternarPrioridade(jobId) {
@@ -9210,10 +9215,15 @@ async function carregarPendenciasTabela(jobs,destacarResponsavel){
     // Uma consulta iniciada antes de Salvar nao pode desfazer o resultado salvo.
     if(pendCache.has(j.id)&&pendCache.get(j.id).time>inicio)continue;
     pendCache.set(j.id,{data:result[j.id]||null,time:Date.now()});
-    const el=document.getElementById('pend-cell-'+j.id);if(el)el.innerHTML=pendCelula(result[j.id],j.id,destacarResponsavel);
+    // Um mesmo job pode ter celula em mais de uma tabela visivel ao mesmo
+    // tempo (ex: Painel Comercial mostra o job tanto na aba CE quanto na
+    // aba Sistema, se ja virou proposta) -- atualiza todos os IDs conhecidos.
+    ['pend-cell-','pend-cell-ce-','pend-cell-jobs-'].forEach(prefixo=>{
+     const el=document.getElementById(prefixo+j.id);if(el)el.innerHTML=pendCelula(result[j.id],j.id,destacarResponsavel);
+    });
    }
   }
- }catch(e){for(const j of novos){const el=document.getElementById('pend-cell-'+j.id);if(el&&!pendCache.has(j.id))el.innerHTML=`<p class="pend-error">Pendências indisponíveis</p><button class="btn-sm btn-outline" onclick="abrirPendencia('${pendEsc(j.id)}')">Tentar consultar</button>`;}}
+ }catch(e){for(const j of novos){if(pendCache.has(j.id))continue;['pend-cell-','pend-cell-ce-','pend-cell-jobs-'].forEach(prefixo=>{const el=document.getElementById(prefixo+j.id);if(el)el.innerHTML=`<p class="pend-error">Pendências indisponíveis</p><button class="btn-sm btn-outline" onclick="abrirPendencia('${pendEsc(j.id)}')">Tentar consultar</button>`;});}}
  finally{novos.forEach(j=>pendInFlight.delete(j.id));}
 }
 const pendRenderOriginal=renderJobsTable;
@@ -9257,7 +9267,9 @@ async function salvarPendencia(){
  try{
   const data=await api('POST','/pendencias/'+encodeURIComponent(jid),{...payload,operacao_id:pendOperation.id});
   pendCache.set(jid,{data:data.pendencia,time:Date.now()});pendAtual={...pendAtual,...data};pendOperation=null;desenharPendencia();
-  const el=pendEl('pend-cell-'+jid);if(el)el.innerHTML=pendCelula(data.pendencia,jid);
+  const elH=pendEl('pend-cell-'+jid);if(elH)elH.innerHTML=pendCelula(data.pendencia,jid);
+  const elCE=pendEl('pend-cell-ce-'+jid);if(elCE)elCE.innerHTML=pendCelula(data.pendencia,jid,'Comercial');
+  const elJobs=pendEl('pend-cell-jobs-'+jid);if(elJobs)elJobs.innerHTML=pendCelula(data.pendencia,jid,'Comercial');
  }catch(e){pendEl('pend-error').textContent=e.message;}
  finally{pendSaving=false;pendEl('pend-save').disabled=false;pendEl('pend-close').disabled=false;pendEl('pend-save').textContent='Salvar';}
 }
