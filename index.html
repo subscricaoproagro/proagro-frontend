@@ -1196,8 +1196,8 @@
     <div class="card-header"><div class="card-title" style="font-size:14px">Condições Especiais</div><span id="pc-ce-contagem" style="font-size:12px;color:var(--gray400)"></span></div>
     <div class="overflow-x">
       <table class="jobs-table">
-        <thead><tr><th>Cliente</th><th>CPF</th><th>Município</th><th>Corretora</th><th>Prêmio estimado</th><th>Fase</th><th>Impedimentos</th><th>Efetivada</th><th>Ações</th></tr></thead>
-        <tbody id="pc-ce-tbody"><tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+        <thead><tr><th>Cliente</th><th>CPF</th><th>Município</th><th>Corretora</th><th>Chegada</th><th>Prêmio estimado</th><th>Fase</th><th>Impedimentos</th><th>Pendências</th><th>Efetivada</th><th>Ações</th></tr></thead>
+        <tbody id="pc-ce-tbody"><tr><td colspan="11" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -3013,7 +3013,7 @@ function verScoreSubscricao(jobId) {
 let _pcCEs = [], _pcJobs = [];
 
 async function carregarPainelComercial() {
-  document.getElementById('pc-ce-tbody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
+  document.getElementById('pc-ce-tbody').innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
   document.getElementById('pc-jobs-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr>';
   try {
     const [ces, jobsSistema] = await Promise.all([
@@ -3024,7 +3024,7 @@ async function carregarPainelComercial() {
     _pcJobs = jobsSistema || [];
     renderizarPainelComercial();
   } catch (e) {
-    document.getElementById('pc-ce-tbody').innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--red);padding:24px">Erro: ${escHtml(e.message)}</td></tr>`;
+    document.getElementById('pc-ce-tbody').innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--red);padding:24px">Erro: ${escHtml(e.message)}</td></tr>`;
   }
 }
 
@@ -3048,12 +3048,14 @@ function renderizarPainelComercial() {
 
   const tbody = document.getElementById('pc-ce-tbody');
   tbody.innerHTML = !lista.length
-    ? '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada com esses filtros.</td></tr>'
+    ? '<tr><td colspan="11" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada com esses filtros.</td></tr>'
     : lista.map(ce => {
       const cliente = ce.cliente || ce.job?.nome_proponente || '—';
       const cpf = ce.job?.cpf || '—';
       const municipio = ce.municipio || '—';
       const corretora = ce.broker || '—';
+      const chegada = ce.data_chegada || ce.criado_em;
+      const chegadaHtml = chegada ? formatDate(chegada) : '—';
       const premioNum = Number(ce.premio);
       const premio = ce.premio == null || ce.premio === '' ? '—' : (isNaN(premioNum) ? escHtml(ce.premio) : 'R$ ' + premioNum.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}));
       const impedimentosHtml = (ce.impedimentos && ce.impedimentos.length)
@@ -3075,13 +3077,17 @@ function renderizarPainelComercial() {
         <td>${escHtml(cpf)}</td>
         <td>${escHtml(municipio)}</td>
         <td>${escHtml(corretora)}</td>
+        <td>${chegadaHtml}</td>
         <td>${premio}</td>
         <td>${escHtml(ce.fase || '—')}</td>
         <td>${impedimentosHtml}</td>
+        <td class="pend-cell" id="pend-cell-${ce.job_id}">${pendInicial(ce.job_id, 'Comercial')}</td>
         <td>${efetivadaHtml}</td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">${btnPrioridade}${btnInclusao}</td>
       </tr>`;
     }).join('');
+
+  if (lista.length) carregarPendenciasTabela(lista.map(ce => ({ id: ce.job_id })), 'Comercial');
 
   const jobsSistema = _pcJobs.filter(j => j.tipo_analise === 'sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== ''));
   document.getElementById('pc-jobs-contagem').textContent = `${jobsSistema.length}`;
@@ -9183,14 +9189,15 @@ const pendEl=id=>document.getElementById(id);
 function pendEsc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function pendDate(s){return s?new Date(s).toLocaleString('pt-BR'):'';}
 const pendLabels={aberta:'Pendência aberta',respondida:'Resposta enviada · conferir',encerrada:'Pendência encerrada'};
-function pendCelula(p,jid){
- const button=`<button class="btn-sm btn-outline" onclick="abrirPendencia('${pendEsc(jid)}')">${p?'Ver / atualizar':'Registrar pendência'}</button>`;
+function pendCelula(p,jid,destacarResponsavel){
+ const precisaResponder=!!(destacarResponsavel&&p&&p.estado==='aberta'&&p.responsavel===destacarResponsavel);
+ const button=`<button class="btn-sm ${precisaResponder?'btn-green':'btn-outline'}" onclick="abrirPendencia('${pendEsc(jid)}')">${precisaResponder?'📮 Responder pendência':(p?'Ver / atualizar':'Registrar pendência')}</button>`;
  if(!p)return `<p>Sem pendência registrada</p>${button}`;
  return `<span class="pend-tag">${pendEsc(pendLabels[p.estado]||p.estado)}</span><p>${pendEsc(p.texto)}</p><p>${p.estado==='aberta'?'Aguardando: ':p.estado==='respondida'?'Conferência: ':'Responsável: '}${pendEsc(p.estado==='respondida'?'Subscrição':p.responsavel)}</p>${button}`;
 }
 const pendCache=new Map(),pendInFlight=new Set();
-function pendInicial(jid){return pendCache.has(jid)?pendCelula(pendCache.get(jid).data,jid):'Consultando pendência…';}
-async function carregarPendenciasTabela(jobs){
+function pendInicial(jid,destacarResponsavel){return pendCache.has(jid)?pendCelula(pendCache.get(jid).data,jid,destacarResponsavel):'Consultando pendência…';}
+async function carregarPendenciasTabela(jobs,destacarResponsavel){
  const agora=Date.now();
  const novos=jobs.filter(j=>!pendInFlight.has(j.id)&&(!pendCache.has(j.id)||agora-pendCache.get(j.id).time>=60000));
  if(!novos.length)return;
@@ -9203,7 +9210,7 @@ async function carregarPendenciasTabela(jobs){
     // Uma consulta iniciada antes de Salvar nao pode desfazer o resultado salvo.
     if(pendCache.has(j.id)&&pendCache.get(j.id).time>inicio)continue;
     pendCache.set(j.id,{data:result[j.id]||null,time:Date.now()});
-    const el=document.getElementById('pend-cell-'+j.id);if(el)el.innerHTML=pendCelula(result[j.id],j.id);
+    const el=document.getElementById('pend-cell-'+j.id);if(el)el.innerHTML=pendCelula(result[j.id],j.id,destacarResponsavel);
    }
   }
  }catch(e){for(const j of novos){const el=document.getElementById('pend-cell-'+j.id);if(el&&!pendCache.has(j.id))el.innerHTML=`<p class="pend-error">Pendências indisponíveis</p><button class="btn-sm btn-outline" onclick="abrirPendencia('${pendEsc(j.id)}')">Tentar consultar</button>`;}}
