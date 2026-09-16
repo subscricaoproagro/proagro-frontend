@@ -1192,6 +1192,7 @@
         <option value="ce">⭐ Via CE</option>
         <option value="direta">Direta</option>
       </select>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gray600)"><input type="checkbox" id="pc-filtro-cancelada-matriz" onchange="renderizarPainelComercial()"> ⚠ Só canceladas na matriz</label>
       <button class="btn-sm btn-outline" onclick="carregarPainelComercial()">↻ Atualizar</button>
     </div>
   </div>
@@ -2876,7 +2877,7 @@ function renderJobsTable(jobs) {
       <td>${j.corretor || '—'}</td>
       <td style="font-size:12px;color:var(--gray400)">${j.analista_email || "Não atribuído"}</td>
       <td style="font-size:12px;color:var(--gray400)">${formatDate(j.created_at)}</td>
-      <td>${renderStatusBadge(j)}</td>
+      <td>${renderStatusBadge(j)}${j.cancelada_matriz ? ' <span title="Consta como cancelada na matriz (Gestão de Propostas) -- não alterou a decisão já tomada aqui" style="font-size:11px;background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;border-radius:4px;padding:1px 5px;font-weight:600">⚠ Cancelada na matriz</span>' : ''}</td>
       <td class="pend-cell" id="pend-cell-${j.id}">${pendInicial(j.id)}</td>
       <td style="font-size:11px;white-space:nowrap">${jobTempoAvaliacao(j)}</td>
       <td>
@@ -3062,6 +3063,7 @@ function renderizarPainelComercial() {
   const soPendencia = document.getElementById('pc-filtro-pendencia')?.checked;
   const filtroStatusSistema = document.getElementById('pc-filtro-status-sistema')?.value || '';
   const filtroOrigem = document.getElementById('pc-filtro-origem')?.value || '';
+  const soCanceladaMatriz = document.getElementById('pc-filtro-cancelada-matriz')?.checked;
 
   // Filtra tudo MENOS pendência primeiro -- pendência depende de dado que
   // carrega assíncrono (pendCache), então busca pendência pra todo mundo
@@ -3136,6 +3138,7 @@ function renderizarPainelComercial() {
     if (filtroStatusSistema && j.status !== filtroStatusSistema) return false;
     if (filtroOrigem === 'ce' && !j.via_ce_real) return false;
     if (filtroOrigem === 'direta' && j.via_ce_real) return false;
+    if (soCanceladaMatriz && !j.cancelada_matriz) return false;
     return true;
   });
   if (candidatosSistema.length) {
@@ -3151,7 +3154,7 @@ function renderizarPainelComercial() {
         <td>${escHtml(j.municipio_dominante || '—')}</td>
         <td>${escHtml(j.cultura_desejada || '—')}</td>
         <td>${escHtml(j.corretor || '—')}</td>
-        <td>${escHtml(j.status || '—')}</td>
+        <td>${escHtml(j.status || '—')}${j.cancelada_matriz ? ' <span title="Consta como cancelada na matriz (Gestão de Propostas) -- não alterou a decisão já tomada aqui" style="font-size:11px;background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;border-radius:4px;padding:1px 5px;font-weight:600">⚠ Cancelada na matriz</span>' : ''}</td>
         <td>${j.via_ce_real ? '⭐ Via CE' : 'Direta'}</td>
         <td>${j.created_at ? formatDate(j.created_at) : '—'}</td>
         <td>${j.concluido_at ? formatDate(j.concluido_at) : '—'}</td>
