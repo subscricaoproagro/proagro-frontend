@@ -1177,6 +1177,16 @@
       </select>
       <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gray600)"><input type="checkbox" id="pc-filtro-impedimento" onchange="renderizarPainelComercial()"> Só com impedimento</label>
       <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gray600)"><input type="checkbox" id="pc-filtro-efetivada" onchange="renderizarPainelComercial()"> Só efetivadas</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gray600)"><input type="checkbox" id="pc-filtro-pendencia" onchange="renderizarPainelComercial()"> Só com pendência (Comercial)</label>
+      <select class="form-input" id="pc-filtro-status-sistema" style="width:auto;padding:8px 12px" onchange="renderizarPainelComercial()">
+        <option value="">Status (aba Sistema): todos</option>
+        <option value="aguardando">Aguardando</option>
+        <option value="processando">Processando</option>
+        <option value="concluido">Concluído</option>
+        <option value="erro">Erro</option>
+        <option value="cancelado">Cancelado</option>
+        <option value="kml_nao_encontrado">KML não encontrado</option>
+      </select>
       <button class="btn-sm btn-outline" onclick="carregarPainelComercial()">↻ Atualizar</button>
     </div>
   </div>
@@ -3028,13 +3038,24 @@ async function carregarPainelComercial() {
   }
 }
 
+function pcTemPendenciaComercial(jobId) {
+  const p = pendCache.get(jobId)?.data;
+  return !!(p && p.estado === 'aberta' && p.responsavel === 'Comercial');
+}
+
 function renderizarPainelComercial() {
   const busca = (document.getElementById('pc-filtro-busca')?.value || '').toLowerCase().trim();
   const fase = document.getElementById('pc-filtro-fase')?.value || '';
   const soImpedimento = document.getElementById('pc-filtro-impedimento')?.checked;
   const soEfetivada = document.getElementById('pc-filtro-efetivada')?.checked;
+  const soPendencia = document.getElementById('pc-filtro-pendencia')?.checked;
+  const filtroStatusSistema = document.getElementById('pc-filtro-status-sistema')?.value || '';
 
-  const lista = _pcCEs.filter(ce => {
+  // Filtra tudo MENOS pendência primeiro -- pendência depende de dado que
+  // carrega assíncrono (pendCache), então busca pendência pra todo mundo
+  // que passou nos outros filtros ANTES de decidir quem fica de fora por
+  // não ter pendência ainda (senão quem nunca foi consultado nunca entraria).
+  const candidatosCE = _pcCEs.filter(ce => {
     const cliente = (ce.cliente || ce.job?.nome_proponente || '').toLowerCase();
     const corretora = (ce.broker || '').toLowerCase();
     if (busca && !cliente.includes(busca) && !corretora.includes(busca)) return false;
@@ -3043,6 +3064,11 @@ function renderizarPainelComercial() {
     if (soEfetivada && !ce.efetivada) return false;
     return true;
   });
+  if (candidatosCE.length) {
+    carregarPendenciasTabela(candidatosCE.map(ce => ({ id: ce.job_id })), 'Comercial')
+      .then(buscouAlgo => { if (soPendencia && buscouAlgo) renderizarPainelComercial(); });
+  }
+  const lista = soPendencia ? candidatosCE.filter(ce => pcTemPendenciaComercial(ce.job_id)) : candidatosCE;
 
   document.getElementById('pc-ce-contagem').textContent = `${lista.length} de ${_pcCEs.length}`;
 
@@ -3087,9 +3113,18 @@ function renderizarPainelComercial() {
       </tr>`;
     }).join('');
 
-  if (lista.length) carregarPendenciasTabela(lista.map(ce => ({ id: ce.job_id })), 'Comercial');
-
-  const jobsSistema = _pcJobs.filter(j => j.tipo_analise === 'sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== ''));
+  const candidatosSistema = _pcJobs.filter(j => {
+    const ehSistema = j.tipo_analise === 'sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '');
+    if (!ehSistema) return false;
+    if (busca && !(j.nome_proponente || '').toLowerCase().includes(busca)) return false;
+    if (filtroStatusSistema && j.status !== filtroStatusSistema) return false;
+    return true;
+  });
+  if (candidatosSistema.length) {
+    carregarPendenciasTabela(candidatosSistema.map(j => ({ id: j.id })), 'Comercial')
+      .then(buscouAlgo => { if (soPendencia && buscouAlgo) renderizarPainelComercial(); });
+  }
+  const jobsSistema = soPendencia ? candidatosSistema.filter(j => pcTemPendenciaComercial(j.id)) : candidatosSistema;
   document.getElementById('pc-jobs-contagem').textContent = `${jobsSistema.length}`;
   document.getElementById('pc-jobs-tbody').innerHTML = jobsSistema.length
     ? jobsSistema.map(j => `<tr>
@@ -3104,8 +3139,6 @@ function renderizarPainelComercial() {
         <td class="pend-cell" id="pend-cell-jobs-${j.id}">${pendInicial(j.id, 'Comercial')}</td>
       </tr>`).join('')
     : '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:24px">Nenhuma proposta encontrada.</td></tr>';
-
-  if (jobsSistema.length) carregarPendenciasTabela(jobsSistema.map(j => ({ id: j.id })), 'Comercial');
 }
 
 async function pcAlternarPrioridade(jobId) {
@@ -9203,9 +9236,12 @@ function pendCelula(p,jid,destacarResponsavel){
 const pendCache=new Map(),pendInFlight=new Set();
 function pendInicial(jid,destacarResponsavel){return pendCache.has(jid)?pendCelula(pendCache.get(jid).data,jid,destacarResponsavel):'Consultando pendência…';}
 async function carregarPendenciasTabela(jobs,destacarResponsavel){
+ // Retorna true/false pra quem chama saber se algo foi de fato buscado
+ // (e nao so servido do cache) -- evita loop de re-render em quem encadeia
+ // .then() pra atualizar filtros que dependem desse dado.
  const agora=Date.now();
  const novos=jobs.filter(j=>!pendInFlight.has(j.id)&&(!pendCache.has(j.id)||agora-pendCache.get(j.id).time>=60000));
- if(!novos.length)return;
+ if(!novos.length)return false;
  novos.forEach(j=>pendInFlight.add(j.id));
  try{
   for(let i=0;i<novos.length;i+=400){
@@ -9225,6 +9261,7 @@ async function carregarPendenciasTabela(jobs,destacarResponsavel){
   }
  }catch(e){for(const j of novos){if(pendCache.has(j.id))continue;['pend-cell-','pend-cell-ce-','pend-cell-jobs-'].forEach(prefixo=>{const el=document.getElementById(prefixo+j.id);if(el)el.innerHTML=`<p class="pend-error">Pendências indisponíveis</p><button class="btn-sm btn-outline" onclick="abrirPendencia('${pendEsc(j.id)}')">Tentar consultar</button>`;});}}
  finally{novos.forEach(j=>pendInFlight.delete(j.id));}
+ return true;
 }
 const pendRenderOriginal=renderJobsTable;
 renderJobsTable=function(jobs){pendRenderOriginal(jobs);carregarPendenciasTabela(jobs);};
