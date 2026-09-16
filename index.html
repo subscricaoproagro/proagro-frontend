@@ -1187,6 +1187,11 @@
         <option value="cancelado">Cancelado</option>
         <option value="kml_nao_encontrado">KML não encontrado</option>
       </select>
+      <select class="form-input" id="pc-filtro-origem" style="width:auto;padding:8px 12px" onchange="renderizarPainelComercial()">
+        <option value="">Origem (aba Sistema): todas</option>
+        <option value="ce">⭐ Via CE</option>
+        <option value="direta">Direta</option>
+      </select>
       <button class="btn-sm btn-outline" onclick="carregarPainelComercial()">↻ Atualizar</button>
     </div>
   </div>
@@ -3056,6 +3061,7 @@ function renderizarPainelComercial() {
   const soEfetivada = document.getElementById('pc-filtro-efetivada')?.checked;
   const soPendencia = document.getElementById('pc-filtro-pendencia')?.checked;
   const filtroStatusSistema = document.getElementById('pc-filtro-status-sistema')?.value || '';
+  const filtroOrigem = document.getElementById('pc-filtro-origem')?.value || '';
 
   // Filtra tudo MENOS pendência primeiro -- pendência depende de dado que
   // carrega assíncrono (pendCache), então busca pendência pra todo mundo
@@ -3128,6 +3134,8 @@ function renderizarPainelComercial() {
     if (!ehSistema) return false;
     if (busca && !(j.nome_proponente || '').toLowerCase().includes(busca)) return false;
     if (filtroStatusSistema && j.status !== filtroStatusSistema) return false;
+    if (filtroOrigem === 'ce' && j.tipo_analise !== 'condicao_especial') return false;
+    if (filtroOrigem === 'direta' && j.tipo_analise === 'condicao_especial') return false;
     return true;
   });
   if (candidatosSistema.length) {
