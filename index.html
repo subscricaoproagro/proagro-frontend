@@ -9264,6 +9264,9 @@ async function dzRemover(id, nome) {
  <section id="pend-form" hidden><label for="pend-action">Ação</label><select id="pend-action"></select>
  <div id="pend-owner-wrap"><label for="pend-owner">Quem precisa responder?</label><select id="pend-owner"><option value="Comercial">Comercial</option><option value="Corretor">Corretor</option><option value="Subscricao">Subscrição</option><option value="Area tecnica">Área técnica</option></select></div>
  <label id="pend-text-label" for="pend-text">O que está faltando?</label><textarea id="pend-text" rows="4" maxlength="4000" placeholder="Descreva a informação ou o documento necessário."></textarea>
+ <label id="pend-anexo-label" for="pend-anexo" style="margin-top:10px;display:block">Anexar arquivo de comprovação (opcional)</label>
+ <input type="file" id="pend-anexo" style="margin-top:4px">
+ <div id="pend-anexo-status" style="font-size:12px;color:var(--gray400);margin-top:4px"></div>
  <div class="pend-buttons"><button type="button" class="btn-sm btn-green" id="pend-save">Salvar</button></div></section>
  <h4 style="margin-top:25px">Histórico</h4><div id="pend-history"></div>
  </div>
@@ -9275,11 +9278,27 @@ const pendEl=id=>document.getElementById(id);
 function pendEsc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function pendDate(s){return s?new Date(s).toLocaleString('pt-BR'):'';}
 const pendLabels={aberta:'Pendência aberta',respondida:'Resposta enviada · conferir',encerrada:'Pendência encerrada'};
+async function baixarAnexoPendencia(jid,caminho,nome){
+ try{
+  const res=await fetch(`${BACKEND_URL}/pendencias/${encodeURIComponent(jid)}/anexo?caminho=${encodeURIComponent(caminho)}`,{
+   headers:{Authorization:`Bearer ${TOKEN}`,'ngrok-skip-browser-warning':'true'}
+  });
+  if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.detail||'Falha ao baixar anexo');}
+  const blob=await res.blob();
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=nome||'anexo';a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),10000);
+ }catch(e){showToast('Erro: '+e.message,'error');}
+}
+function pendAnexoTag(jid,p){
+ if(!p||!p.anexo_caminho)return '';
+ return `<button type="button" class="btn-sm btn-outline" style="margin-top:4px" onclick="baixarAnexoPendencia('${pendEsc(jid)}','${pendEsc(p.anexo_caminho)}','${pendEsc(p.anexo_nome)}')">📎 ${pendEsc(p.anexo_nome||'Ver comprovação')}</button>`;
+}
 function pendCelula(p,jid,destacarResponsavel){
  const precisaResponder=!!(destacarResponsavel&&p&&p.estado==='aberta'&&p.responsavel===destacarResponsavel);
  const button=`<button class="btn-sm ${precisaResponder?'btn-green':'btn-outline'}" onclick="abrirPendencia('${pendEsc(jid)}')">${precisaResponder?'📮 Responder pendência':(p?'Ver / atualizar':'Registrar pendência')}</button>`;
  if(!p)return `<p>Sem pendência registrada</p>${button}`;
- return `<span class="pend-tag">${pendEsc(pendLabels[p.estado]||p.estado)}</span><p>${pendEsc(p.texto)}</p><p>${p.estado==='aberta'?'Aguardando: ':p.estado==='respondida'?'Conferência: ':'Responsável: '}${pendEsc(p.estado==='respondida'?'Subscrição':p.responsavel)}</p>${button}`;
+ return `<span class="pend-tag">${pendEsc(pendLabels[p.estado]||p.estado)}</span><p>${pendEsc(p.texto)}</p><p>${p.estado==='aberta'?'Aguardando: ':p.estado==='respondida'?'Conferência: ':'Responsável: '}${pendEsc(p.estado==='respondida'?'Subscrição':p.responsavel)}</p>${pendAnexoTag(jid,p)}${button}`;
 }
 const pendCache=new Map(),pendInFlight=new Set();
 function pendInicial(jid,destacarResponsavel){return pendCache.has(jid)?pendCelula(pendCache.get(jid).data,jid,destacarResponsavel):'Consultando pendência…';}
@@ -9327,15 +9346,17 @@ async function abrirPendencia(jid){
 }
 function desenharPendencia(){
  const p=pendAtual.pendencia,ativa=p&&p.estado!=='encerrada';
- pendEl('pend-state').innerHTML=p?`<strong>${pendEsc(pendLabels[p.estado])}</strong><p style="white-space:pre-wrap">${pendEsc(p.texto)}</p><p>Responsável: ${pendEsc(p.responsavel)} · Atualizado em ${pendEsc(pendDate(p.atualizado_em))}</p>`:'Sem pendência registrada nesta análise.';
- pendEl('pend-history').innerHTML=pendAtual.historico.length?pendAtual.historico.map(e=>`<div class="pend-history"><strong>${pendEsc({registrar:'Registro / atualização',responder:'Resposta',encerrar:'Encerramento'}[e.acao])}</strong><div style="font-size:12px">${pendEsc(e.autor)} · ${pendEsc(pendDate(e.data))}</div><p>${pendEsc(e.texto)}</p><small>Responsável: ${pendEsc(e.responsavel)}</small></div>`).join(''):'Ainda não há registros.';
+ pendEl('pend-state').innerHTML=p?`<strong>${pendEsc(pendLabels[p.estado])}</strong><p style="white-space:pre-wrap">${pendEsc(p.texto)}</p><p>Responsável: ${pendEsc(p.responsavel)} · Atualizado em ${pendEsc(pendDate(p.atualizado_em))}</p>${pendAnexoTag(pendAtual.jid,p)}`:'Sem pendência registrada nesta análise.';
+ pendEl('pend-history').innerHTML=pendAtual.historico.length?pendAtual.historico.map(e=>`<div class="pend-history"><strong>${pendEsc({registrar:'Registro / atualização',responder:'Resposta',encerrar:'Encerramento'}[e.acao])}</strong><div style="font-size:12px">${pendEsc(e.autor)} · ${pendEsc(pendDate(e.data))}</div><p>${pendEsc(e.texto)}</p><small>Responsável: ${pendEsc(e.responsavel)}</small>${e.anexo_caminho?`<div>${pendAnexoTag(pendAtual.jid,{anexo_caminho:e.anexo_caminho,anexo_nome:e.anexo_nome})}</div>`:''}</div>`).join(''):'Ainda não há registros.';
  const opts=[];
  if(pendAtual.pode_gerir)opts.push(['registrar',ativa?'Atualizar pendência':'Registrar pendência']);
  if(ativa)opts.push(['responder','Registrar resposta']);
  if(ativa&&pendAtual.pode_gerir)opts.push(['encerrar','Encerrar pendência']);
  pendEl('pend-action').innerHTML=opts.map(([v,t])=>`<option value="${v}">${t}</option>`).join('');
  pendEl('pend-form').hidden=!opts.length;
- pendEl('pend-owner').value=p?.responsavel||'Comercial';pendEl('pend-text').value='';pendAcao();
+ pendEl('pend-owner').value=p?.responsavel||'Comercial';pendEl('pend-text').value='';
+ pendEl('pend-anexo').value='';pendEl('pend-anexo-status').textContent='';
+ pendAcao();
 }
 function pendAcao(){
  const a=pendEl('pend-action').value;pendEl('pend-owner-wrap').hidden=a!=='registrar';
@@ -9346,16 +9367,27 @@ function pendAcao(){
 async function salvarPendencia(){
  if(pendSaving||!pendAtual)return;
  const texto=pendEl('pend-text').value.trim();if(!texto){pendEl('pend-error').textContent='Preencha a descrição.';pendEl('pend-text').focus();return;}
- const jid=pendAtual.jid;const payload={acao:pendEl('pend-action').value,texto,responsavel:pendEl('pend-owner').value,versao:pendAtual.pendencia?.versao||0};
- const signature=JSON.stringify(payload);if(!pendOperation||pendOperation.signature!==signature)pendOperation={signature,id:crypto.randomUUID()};
+ const jid=pendAtual.jid;
+ const arquivo=pendEl('pend-anexo').files[0]||null;
+ const payload={acao:pendEl('pend-action').value,texto,responsavel:pendEl('pend-owner').value,versao:pendAtual.pendencia?.versao||0};
+ const signature=JSON.stringify(payload)+(arquivo?arquivo.name+arquivo.size:'');
+ if(!pendOperation||pendOperation.signature!==signature)pendOperation={signature,id:crypto.randomUUID()};
  pendSaving=true;pendEl('pend-save').disabled=true;pendEl('pend-close').disabled=true;pendEl('pend-save').textContent='Salvando…';pendEl('pend-error').textContent='';
  try{
-  const data=await api('POST','/pendencias/'+encodeURIComponent(jid),{...payload,operacao_id:pendOperation.id});
+  let anexoInfo={};
+  if(arquivo){
+   pendEl('pend-anexo-status').textContent='Enviando arquivo…';
+   const fd=new FormData();fd.append('arquivo',arquivo);
+   const up=await api('POST','/pendencias/'+encodeURIComponent(jid)+'/anexo',fd,true);
+   anexoInfo={anexo_caminho:up.caminho,anexo_nome:up.nome};
+   pendEl('pend-anexo-status').textContent='';
+  }
+  const data=await api('POST','/pendencias/'+encodeURIComponent(jid),{...payload,...anexoInfo,operacao_id:pendOperation.id});
   pendCache.set(jid,{data:data.pendencia,time:Date.now()});pendAtual={...pendAtual,...data};pendOperation=null;desenharPendencia();
   const elH=pendEl('pend-cell-'+jid);if(elH)elH.innerHTML=pendCelula(data.pendencia,jid);
   const elCE=pendEl('pend-cell-ce-'+jid);if(elCE)elCE.innerHTML=pendCelula(data.pendencia,jid,'Comercial');
   const elJobs=pendEl('pend-cell-jobs-'+jid);if(elJobs)elJobs.innerHTML=pendCelula(data.pendencia,jid,'Comercial');
- }catch(e){pendEl('pend-error').textContent=e.message;}
+ }catch(e){pendEl('pend-error').textContent=e.message;pendEl('pend-anexo-status').textContent='';}
  finally{pendSaving=false;pendEl('pend-save').disabled=false;pendEl('pend-close').disabled=false;pendEl('pend-save').textContent='Salvar';}
 }
 pendEl('pend-save').addEventListener('click',salvarPendencia);
