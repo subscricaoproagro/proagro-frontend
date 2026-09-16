@@ -5174,10 +5174,44 @@ function verMotivoNegativaReavaliacao(jobId) {
   ov.querySelector('#reavneg-close').onclick = function(){ document.body.removeChild(ov); };
 }
 
+function abrirModalAtivarDraft() {
+  return new Promise((resolve) => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
+    ov.innerHTML =
+      '<div style="background:#fff;border-radius:12px;max-width:380px;width:100%;overflow:hidden;font-family:inherit">'
+      + '<div style="background:#166534;color:#fff;padding:16px 20px;font-weight:700;font-size:15px">✓ Ativar draft</div>'
+      + '<div style="padding:20px;font-size:14px;color:#374151">'
+      + '<label style="display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:6px">Número do draft</label>'
+      + '<input id="modal-ativar-draft-numero" class="form-input" style="width:100%;box-sizing:border-box;margin-bottom:16px" placeholder="Ex: 12345">'
+      + '<label style="display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:6px">Regulação</label>'
+      + '<select id="modal-ativar-draft-tipo" class="form-input" style="width:100%;box-sizing:border-box;margin-bottom:20px">'
+      + '<option value="Talhão">Por Talhão</option>'
+      + '<option value="Área total">Área total</option>'
+      + '</select>'
+      + '<div style="display:flex;gap:8px;justify-content:flex-end">'
+      + '<button class="btn-sm btn-outline" id="modal-ativar-draft-cancelar">Cancelar</button>'
+      + '<button class="btn-sm btn-green" id="modal-ativar-draft-confirmar">Confirmar</button>'
+      + '</div></div></div>';
+    document.body.appendChild(ov);
+    const fechar = (resultado) => { document.body.removeChild(ov); resolve(resultado); };
+    ov.onclick = (e) => { if (e.target === ov) fechar(null); };
+    ov.querySelector('#modal-ativar-draft-cancelar').onclick = () => fechar(null);
+    ov.querySelector('#modal-ativar-draft-confirmar').onclick = () => {
+      const numeroDraft = ov.querySelector('#modal-ativar-draft-numero').value.trim();
+      const tipoRegulacao = ov.querySelector('#modal-ativar-draft-tipo').value;
+      if (!numeroDraft) { showToast('Informe o número do draft.', 'error'); return; }
+      fechar({ numeroDraft, tipoRegulacao });
+    };
+  });
+}
+
 async function ativarDraftCE(jobId) {
-  if (!confirm('Confirmar que o draft desta proposta foi ativado?')) return;
+  const dados = await abrirModalAtivarDraft();
+  if (!dados) return;
+  if (!confirm('Confirmar que o draft nº ' + dados.numeroDraft + ' (' + dados.tipoRegulacao + ') foi ativado?')) return;
   try {
-    const r = await api('POST', '/condicoes-especiais/' + jobId + '/ativar-draft', {});
+    const r = await api('POST', '/condicoes-especiais/' + jobId + '/ativar-draft', { numero_draft: dados.numeroDraft, tipo_regulacao: dados.tipoRegulacao });
     if (r.email_enviado) {
       showToast('Draft ativado e corretor avisado por e-mail.', 'success');
     } else {
