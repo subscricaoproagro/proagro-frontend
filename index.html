@@ -3552,8 +3552,9 @@ async function carregarUsuarios() {
         </div>
         <span class="badge ${u.role==='admin'?'badge-warning':'badge-neutral'}">${u.role}</span>
         <span class="badge ${u.active?'badge-success':'badge-error'}">${u.active?'Ativo':'Inativo'}</span>
-        <div style="display:flex;gap:4px">
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
           ${u.email!==currentUser?.email?`<button class="btn-sm btn-outline" onclick="editarAcesso('${u.id}',${JSON.stringify(pags).replace(/"/g,'&quot;')})">📝 Acesso</button>`:''}
+          <button class="btn-sm btn-outline" onclick="resetarSenhaUsuario('${u.id}','${escHtml(u.name).replace(/'/g,"\\'")}')">🔑 Resetar senha</button>
           ${u.email!==currentUser?.email?`<button class="btn-sm btn-outline" onclick="toggleUser('${u.id}',${!u.active})">${u.active?'Desativar':'Ativar'}</button>`:''}
         </div>
       </div>`;
@@ -3586,6 +3587,31 @@ async function editarAcesso(userId, pagsAtuais) {
     catch(e) { showToast('Erro: '+e.message,'error'); }
   };
   body.appendChild(btn);
+}
+
+async function resetarSenhaUsuario(userId, nome) {
+  if (!confirm(`Gerar uma nova senha temporária para ${nome}? A senha atual dele(a) deixa de funcionar.`)) return;
+  try {
+    const data = await api('POST', `/usuarios/${userId}/resetar-senha`, {});
+    var ov = document.createElement('div');
+    ov.id = 'ov-senha-resetada';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
+    ov.onclick = function(e){ if(e.target===ov) document.body.removeChild(ov); };
+    ov.innerHTML =
+      '<div style="background:#fff;border-radius:12px;max-width:420px;width:100%;overflow:hidden;font-family:inherit">'
+      + '<div style="background:#166534;color:#fff;padding:16px 20px;font-weight:700;font-size:15px">🔑 Senha redefinida</div>'
+      + '<div style="padding:20px;font-size:14px;color:#374151;line-height:1.6">'
+      + `<p style="margin:0 0 12px">${escHtml(data.message)}</p>`
+      + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Senha temporária</div>'
+      + `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px;font-size:18px;font-weight:700;letter-spacing:.05em;text-align:center;font-family:monospace">${escHtml(data.senha_temporaria)}</div>`
+      + `<p style="font-size:12px;color:#6b7280;margin-top:12px">${escHtml(data.instrucao)}</p>`
+      + '</div>'
+      + '<div style="padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end">'
+      + '<button class="btn-sm btn-primary" onclick="document.body.removeChild(document.getElementById(\'ov-senha-resetada\'))">Fechar</button>'
+      + '</div>'
+      + '</div>';
+    document.body.appendChild(ov);
+  } catch(e) { showToast('Erro ao resetar senha: '+e.message,'error'); }
 }
 
 async function convidarUsuario() {
