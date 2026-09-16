@@ -1181,17 +1181,28 @@
     </div>
   </div>
 
-  <div class="card">
+  <div style="display:flex;gap:4px;margin-bottom:16px">
+    <button id="pc-aba-ce" onclick="pcSetAba('ce')"
+      style="padding:8px 20px;border-radius:8px 8px 0 0;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #d97706;background:#d97706;color:#fff">
+      ⭐ Condição Especial
+    </button>
+    <button id="pc-aba-sistema" onclick="pcSetAba('sistema')"
+      style="padding:8px 20px;border-radius:8px 8px 0 0;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #1a3a2a;background:#fff;color:#1a3a2a">
+      🖥️ Sistema
+    </button>
+  </div>
+
+  <div class="card" id="pc-painel-ce">
     <div class="card-header"><div class="card-title" style="font-size:14px">Condições Especiais</div><span id="pc-ce-contagem" style="font-size:12px;color:var(--gray400)"></span></div>
     <div class="overflow-x">
       <table class="jobs-table">
-        <thead><tr><th>Cliente</th><th>CPF</th><th>Município</th><th>Corretora</th><th>Fase</th><th>Impedimentos</th><th>Efetivada</th><th>Ações</th></tr></thead>
-        <tbody id="pc-ce-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+        <thead><tr><th>Cliente</th><th>CPF</th><th>Município</th><th>Corretora</th><th>Prêmio estimado</th><th>Fase</th><th>Impedimentos</th><th>Efetivada</th><th>Ações</th></tr></thead>
+        <tbody id="pc-ce-tbody"><tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
       </table>
     </div>
   </div>
 
-  <div class="card" style="margin-top:20px">
+  <div class="card" id="pc-painel-sistema" style="display:none">
     <div class="card-header"><div class="card-title" style="font-size:14px">Propostas do Sistema</div><span id="pc-jobs-contagem" style="font-size:12px;color:var(--gray400)"></span></div>
     <div class="overflow-x">
       <table class="jobs-table">
@@ -3002,7 +3013,7 @@ function verScoreSubscricao(jobId) {
 let _pcCEs = [], _pcJobs = [];
 
 async function carregarPainelComercial() {
-  document.getElementById('pc-ce-tbody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
+  document.getElementById('pc-ce-tbody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
   document.getElementById('pc-jobs-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr>';
   try {
     const [ces, jobsResp] = await Promise.all([
@@ -3013,7 +3024,7 @@ async function carregarPainelComercial() {
     _pcJobs = (jobsResp && jobsResp.jobs) ? jobsResp.jobs : (jobsResp || []);
     renderizarPainelComercial();
   } catch (e) {
-    document.getElementById('pc-ce-tbody').innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--red);padding:24px">Erro: ${escHtml(e.message)}</td></tr>`;
+    document.getElementById('pc-ce-tbody').innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--red);padding:24px">Erro: ${escHtml(e.message)}</td></tr>`;
   }
 }
 
@@ -3037,12 +3048,14 @@ function renderizarPainelComercial() {
 
   const tbody = document.getElementById('pc-ce-tbody');
   tbody.innerHTML = !lista.length
-    ? '<tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada com esses filtros.</td></tr>'
+    ? '<tr><td colspan="9" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada com esses filtros.</td></tr>'
     : lista.map(ce => {
       const cliente = ce.cliente || ce.job?.nome_proponente || '—';
       const cpf = ce.job?.cpf || '—';
       const municipio = ce.municipio || '—';
       const corretora = ce.broker || '—';
+      const premioNum = Number(ce.premio);
+      const premio = ce.premio == null || ce.premio === '' ? '—' : (isNaN(premioNum) ? escHtml(ce.premio) : 'R$ ' + premioNum.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}));
       const impedimentosHtml = (ce.impedimentos && ce.impedimentos.length)
         ? `<span style="color:#c0392b;font-size:12px">⚠ ${ce.impedimentos.map(escHtml).join('; ')}</span>`
         : '<span style="color:var(--gray400)">—</span>';
@@ -3062,6 +3075,7 @@ function renderizarPainelComercial() {
         <td>${escHtml(cpf)}</td>
         <td>${escHtml(municipio)}</td>
         <td>${escHtml(corretora)}</td>
+        <td>${premio}</td>
         <td>${escHtml(ce.fase || '—')}</td>
         <td>${impedimentosHtml}</td>
         <td>${efetivadaHtml}</td>
@@ -3089,6 +3103,22 @@ async function pcAlternarPrioridade(jobId) {
     showToast('Prioridade atualizada.', 'success');
     carregarPainelComercial();
   } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+function pcSetAba(aba) {
+  const btnCE = document.getElementById('pc-aba-ce');
+  const btnSis = document.getElementById('pc-aba-sistema');
+  const painelCE = document.getElementById('pc-painel-ce');
+  const painelSis = document.getElementById('pc-painel-sistema');
+  if (aba === 'ce') {
+    btnCE.style.background = '#d97706'; btnCE.style.color = '#fff';
+    btnSis.style.background = '#fff';   btnSis.style.color = '#1a3a2a';
+    painelCE.style.display = ''; painelSis.style.display = 'none';
+  } else {
+    btnSis.style.background = '#1a3a2a'; btnSis.style.color = '#fff';
+    btnCE.style.background  = '#fff';    btnCE.style.color  = '#d97706';
+    painelSis.style.display = ''; painelCE.style.display = 'none';
+  }
 }
 
 async function pcAlternarInclusaoDraft(jobId) {
