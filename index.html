@@ -3750,21 +3750,18 @@ function mostrarEmailParaCopiar(emailInfo) {
   const assunto = emailInfo.assunto || '';
   const corpo = emailInfo.corpo_texto || '';
   const textoCompleto = `Para: ${destinatarios.join(', ')}\nAssunto: ${assunto}\n\n${corpo}`;
-  // mailto: tem limite de tamanho (varia por SO/cliente, ~2000 chars é seguro)
-  // -- e-mail longo ou com anexo esperado usa "Copiar" mesmo, é garantido.
   const temAnexoEsperado = !!emailInfo.anexo_nome_esperado;
-  const mailtoSeguro = !temAnexoEsperado && textoCompleto.length < 1800;
   const ov = document.createElement('div');
   ov.id = 'ov-email-copiar';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
   ov.dataset.textoCompleto = textoCompleto;
-  ov.dataset.destinatarios = destinatarios.join(',');
+  ov.dataset.destinatarios = destinatarios.join(';');
   ov.dataset.assunto = assunto;
   ov.dataset.corpo = corpo;
   ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
   ov.innerHTML =
     '<div style="background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;font-family:inherit">'
-    + '<div style="background:#1a3c5e;color:#fff;padding:16px 20px;font-weight:700;font-size:15px">📧 E-mail pronto — copie e envie pelo Outlook</div>'
+    + '<div style="background:#1a3c5e;color:#fff;padding:16px 20px;font-weight:700;font-size:15px">📧 E-mail pronto — abra no Outlook e envie</div>'
     + '<div style="padding:20px;overflow-y:auto;font-size:14px;color:#374151;line-height:1.6">'
     + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Para</div>'
     + `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:14px">${escHtml(destinatarios.join(', ') || '—')}</div>`
@@ -3772,13 +3769,12 @@ function mostrarEmailParaCopiar(emailInfo) {
     + `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:14px">${escHtml(assunto)}</div>`
     + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Corpo</div>'
     + `<textarea id="ov-email-copiar-corpo" readonly style="width:100%;box-sizing:border-box;min-height:260px;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:13px;white-space:pre-wrap;resize:vertical">${escHtml(corpo)}</textarea>`
-    + (temAnexoEsperado ? `<div style="margin-top:10px;font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px">📎 Não esqueça de anexar <strong>${escHtml(emailInfo.anexo_nome_esperado)}</strong> antes de enviar (o "Abrir no Outlook" não anexa arquivo automaticamente).</div>` : '')
-    + (!mailtoSeguro && !temAnexoEsperado ? '<div style="margin-top:10px;font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px">⚠️ Esse e-mail é longo -- "Abrir no Outlook" pode cortar o texto. Use "Copiar tudo" pra garantir.</div>' : '')
+    + (temAnexoEsperado ? `<div style="margin-top:10px;font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px">📎 Não esqueça de anexar <strong>${escHtml(emailInfo.anexo_nome_esperado)}</strong> antes de enviar (abrir no Outlook não anexa arquivo automaticamente).</div>` : '')
     + '</div>'
     + '<div style="padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">'
     + '<button class="btn-sm btn-outline" onclick="document.getElementById(\'ov-email-copiar\').remove()">Fechar</button>'
-    + '<button class="btn-sm btn-outline" onclick="abrirEmailNoOutlook()">📧 Abrir no Outlook</button>'
-    + '<button class="btn-sm btn-primary" id="ov-email-copiar-btn" onclick="copiarEmailParaClipboard()">📋 Copiar tudo</button>'
+    + '<button class="btn-sm btn-outline" onclick="copiarEmailParaClipboard()" id="ov-email-copiar-btn">📋 Copiar tudo</button>'
+    + '<button class="btn-sm btn-primary" onclick="abrirEmailNoOutlook()">📧 Abrir no Outlook</button>'
     + '</div></div>';
   document.body.appendChild(ov);
 }
@@ -3796,12 +3792,18 @@ async function copiarEmailParaClipboard() {
 function abrirEmailNoOutlook() {
   const ov = document.getElementById('ov-email-copiar');
   if (!ov) return;
+  // Usa o link de composição do Outlook na Web (outlook.office.com), NÃO o
+  // "mailto:" -- mailto: aciona o handler de protocolo do Windows, que tem
+  // um limite rígido de tamanho de URL (trava/corta o texto perto de ~2000
+  // caracteres, sem eu poder controlar isso pelo navegador). O link do
+  // Outlook na Web é só uma navegação HTTP normal, sem esse limite curto --
+  // suporta e-mails bem mais longos sem cortar nada. Precisa estar logado
+  // no Outlook/M365 no navegador (mesma conta usada no dia a dia já serve).
   const to = encodeURIComponent(ov.dataset.destinatarios || '');
   const subject = encodeURIComponent(ov.dataset.assunto || '');
   const body = encodeURIComponent(ov.dataset.corpo || '');
-  // window.location (não window.open) -- abrir mailto: numa aba nova deixa
-  // uma aba em branco pra trás; assim só aciona o cliente de e-mail padrão.
-  window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+  const url = `https://outlook.office.com/mail/deeplink/compose?to=${to}&subject=${subject}&body=${body}`;
+  window.open(url, '_blank');
 }
 
 // ══════════════════════════════════════════
