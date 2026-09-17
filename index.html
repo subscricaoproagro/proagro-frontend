@@ -3340,6 +3340,22 @@ async function baixarJob(id) {
 // ══════════════════════════════════════════
 // STATS
 // ══════════════════════════════════════════
+// Endpoints de relatório respondem com o Excel direto (download) -- o texto
+// do e-mail pra copiar vem à parte, num header (não dá pra misturar JSON com
+// um arquivo binário na mesma resposta). Ver Vigésimo terceiro ajuste.
+function mostrarEmailParaCopiarDoHeader(res) {
+  const hdr = res.headers.get('X-Email-Manual');
+  if (!hdr) return;
+  try {
+    // atob() decodifica base64 pra string "binária" (1 char = 1 byte) --
+    // como o JSON tem acento (utf-8, multi-byte), precisa redecodificar os
+    // bytes certos antes do JSON.parse, senão vem tudo corrompido.
+    const bytes = Uint8Array.from(atob(hdr), c => c.charCodeAt(0));
+    const info = JSON.parse(new TextDecoder('utf-8').decode(bytes));
+    mostrarEmailParaCopiar(info);
+  } catch (e) { /* header ausente/corrompido: só ignora, o download já aconteceu */ }
+}
+
 async function enviarRelatorioTeste() {
   const btn = event?.target;
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
@@ -3353,7 +3369,8 @@ async function enviarRelatorioTeste() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'ProAgro_Relatorio_TESTE.xlsx'; a.click();
     URL.revokeObjectURL(url);
-    showToast('Relatório de teste gerado e enviado para seu email!', 'success');
+    showToast('Relatório de teste gerado!', 'success');
+    mostrarEmailParaCopiarDoHeader(res);
   } catch(e) {
     showToast('Erro: ' + e.message, 'error');
   } finally {
@@ -3379,7 +3396,8 @@ async function gerarRelatorio(enviarEmail = false) {
     a.download = `ProAgro_Relatorio_${periodo}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast(enviarEmail ? 'Relatório gerado e enviado por email!' : 'Relatório baixado com sucesso!', 'success');
+    showToast(enviarEmail ? 'Relatório gerado!' : 'Relatório baixado com sucesso!', 'success');
+    if (enviarEmail) mostrarEmailParaCopiarDoHeader(res);
   } catch(e) {
     showToast('Erro ao gerar relatório: ' + e.message, 'error');
   } finally {
@@ -3715,6 +3733,53 @@ function showToast(msg, type='success') {
   const t = document.createElement('div');
   t.className=`toast ${type}`; t.textContent=msg;
   c.appendChild(t); setTimeout(()=>t.remove(),4000);
+}
+
+// ══════════════════════════════════════════
+// E-MAIL MANUAL — o sistema não manda mais e-mail sozinho (o Gmail pessoal
+// vivia bloqueando envios automáticos como suspeitos). Toda ação que antes
+// disparava um e-mail agora só monta o texto, mostra aqui pra copiar, e
+// quem manda de verdade é a própria analista, pelo Outlook. Ver Vigésimo
+// terceiro ajuste no changelog.
+// ══════════════════════════════════════════
+function mostrarEmailParaCopiar(emailInfo) {
+  if (!emailInfo || !emailInfo.envio_manual) return;
+  const existente = document.getElementById('ov-email-copiar');
+  if (existente) existente.remove();
+  const destinatarios = [...(emailInfo.destinatarios_internos || []), ...(emailInfo.destinatarios_externos || [])].filter(Boolean);
+  const textoCompleto = `Para: ${destinatarios.join(', ')}\nAssunto: ${emailInfo.assunto || ''}\n\n${emailInfo.corpo_texto || ''}`;
+  const ov = document.createElement('div');
+  ov.id = 'ov-email-copiar';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
+  ov.dataset.textoCompleto = textoCompleto;
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  ov.innerHTML =
+    '<div style="background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;font-family:inherit">'
+    + '<div style="background:#1a3c5e;color:#fff;padding:16px 20px;font-weight:700;font-size:15px">📧 E-mail pronto — copie e envie pelo Outlook</div>'
+    + '<div style="padding:20px;overflow-y:auto;font-size:14px;color:#374151;line-height:1.6">'
+    + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Para</div>'
+    + `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:14px">${escHtml(destinatarios.join(', ') || '—')}</div>`
+    + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Assunto</div>'
+    + `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:14px">${escHtml(emailInfo.assunto || '')}</div>`
+    + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Corpo</div>'
+    + `<textarea id="ov-email-copiar-corpo" readonly style="width:100%;box-sizing:border-box;min-height:260px;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:13px;white-space:pre-wrap;resize:vertical">${escHtml(emailInfo.corpo_texto || '')}</textarea>`
+    + '</div>'
+    + '<div style="padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px">'
+    + '<button class="btn-sm btn-outline" onclick="document.getElementById(\'ov-email-copiar\').remove()">Fechar</button>'
+    + '<button class="btn-sm btn-primary" id="ov-email-copiar-btn" onclick="copiarEmailParaClipboard()">📋 Copiar tudo</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+}
+async function copiarEmailParaClipboard() {
+  const ov = document.getElementById('ov-email-copiar');
+  const btn = document.getElementById('ov-email-copiar-btn');
+  if (!ov) return;
+  try {
+    await navigator.clipboard.writeText(ov.dataset.textoCompleto);
+    if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(() => { btn.textContent = '📋 Copiar tudo'; }, 2000); }
+  } catch (e) {
+    showToast('Não consegui copiar automaticamente — selecione o texto manualmente.', 'error');
+  }
 }
 
 // ══════════════════════════════════════════
@@ -4608,9 +4673,10 @@ async function confirmarReenvioEditavel() {
   if (!confirm('Confirma o envio? A decisão atual será revertida e a proposta volta para nova avaliação.')) return;
   const endpoint = tipo === 'ce' ? ('/jobs/' + jobId + '/reenviar-email-ce-editado') : ('/jobs/' + jobId + '/reenviar-email-recusa');
   try {
-    await api('POST', endpoint, { assunto, corpo, email_corretor });
+    const res = await api('POST', endpoint, { assunto, corpo, email_corretor });
     closeModal('modal-reenvio-editavel');
-    showToast('E-mail enviado e proposta reaberta para nova avaliação.', 'success');
+    showToast('Proposta reaberta para nova avaliação.', 'success');
+    mostrarEmailParaCopiar(res.email);
     _reenvioContexto = null;
     carregarJobs();
     if (typeof carregarCondicoesEspeciais === 'function') carregarCondicoesEspeciais();
@@ -4622,8 +4688,8 @@ async function confirmarReenvioEditavel() {
 async function reenviarEmailCE(jobId) {
   if (!confirm('Reenviar o email de devolutiva para esta condição especial?')) return;
   try {
-    await api('POST', '/jobs/' + jobId + '/reenviar-email-ce');
-    showToast('✅ Email reenviado com sucesso!', 'success');
+    const res = await api('POST', '/jobs/' + jobId + '/reenviar-email-ce');
+    mostrarEmailParaCopiar(res.email);
   } catch(e) {
     showToast('Erro ao reenviar email: ' + e.message, 'error');
   }
@@ -4665,11 +4731,11 @@ async function abrirReenvioSimplesCE(jobId, decisaoAtual) {
       + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin:16px 0 4px">E-mail do corretor (destinatário)</div>'
       + '<input type="email" id="reenvio-simples-email-corretor" class="form-input" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px" value="' + escHtml(data.email_corretor || '') + '" placeholder="email@corretor.com.br">'
       + '<div style="font-size:11px;color:#6b7280;margin-top:4px">Pré-carregado com o e-mail cadastrado. Pode editar antes de enviar.</div>'
-      + '<div style="margin-top:14px;font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px">ℹ️ Esta prévia mostra só o texto. O e-mail enviado de verdade também inclui os botões de ação ("Aceito a condição…", "Pedir reavaliação…") — eles não aparecem aqui, mas vão junto no envio.</div>'
+      + '<div style="margin-top:14px;font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px">ℹ️ Esta prévia mostra só o texto. O e-mail de verdade (que vai aparecer pra copiar) também inclui os links de ação ("Aceito a condição…", "Pedir reavaliação…") — eles não aparecem aqui, mas vão junto no texto final.</div>'
       + '</div>'
       + '<div style="padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px">'
       + '<button class="btn-sm btn-outline" onclick="document.body.removeChild(document.getElementById(\'ov-reenvio-simples\'))">Cancelar</button>'
-      + '<button class="btn-sm btn-primary" id="btn-confirmar-reenvio-simples" onclick="confirmarReenvioSimplesCE(\'' + jobId + '\')">📨 Enviar agora</button>'
+      + '<button class="btn-sm btn-primary" id="btn-confirmar-reenvio-simples" onclick="confirmarReenvioSimplesCE(\'' + jobId + '\')">📨 Gerar e-mail</button>'
       + '</div>'
       + '</div>';
     document.body.appendChild(ov);
@@ -4684,13 +4750,13 @@ async function confirmarReenvioSimplesCE(jobId) {
   try {
     var campoEmail = document.getElementById('reenvio-simples-email-corretor');
     var emailCorretor = campoEmail ? campoEmail.value.trim() : '';
-    await api('POST', '/jobs/' + jobId + '/reenviar-email-ce', { email_corretor: emailCorretor });
+    const res = await api('POST', '/jobs/' + jobId + '/reenviar-email-ce', { email_corretor: emailCorretor });
     var ov = document.getElementById('ov-reenvio-simples');
     if (ov) document.body.removeChild(ov);
-    showToast('✅ Email reenviado com sucesso!', 'success');
+    mostrarEmailParaCopiar(res.email);
   } catch(e) {
     showToast('Erro ao reenviar email: ' + e.message, 'error');
-    if (btn) { btn.disabled = false; btn.innerHTML = '📨 Enviar agora'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = '📨 Gerar e-mail'; }
   }
 }
 
@@ -4997,7 +5063,8 @@ async function _executarAprovacaoCE(assuntoEditado, corpoEditado, conformidade, 
       await uploadPlanilhaCE(_ceAprovJobId);
     }
     closeModal('modal-aprovacao-ce');
-    showToast('✅ Condição Especial aprovada! Email enviado!', 'success');
+    showToast('✅ Condição Especial aprovada!', 'success');
+    mostrarEmailParaCopiar(res.email);
     await carregarJobs();
     await carregarCondicoesEspeciais();
   } catch(e) {
@@ -5196,9 +5263,10 @@ async function _executarRecusaCE(motivo, assuntoEditado, corpoEditado, destinata
 
     // Remove prioridade ao resolver CE
     _cePrioridade.delete(_ceRecusaJobId);
-    await api('POST', '/jobs/' + _ceRecusaJobId + '/decisao-risco', { decisao: 'recusado', observacoes: motivo, email_assunto: assuntoEditado, email_corpo: corpoEditado, destinatarios_adicionais: destinatarios });
+    const res = await api('POST', '/jobs/' + _ceRecusaJobId + '/decisao-risco', { decisao: 'recusado', observacoes: motivo, email_assunto: assuntoEditado, email_corpo: corpoEditado, destinatarios_adicionais: destinatarios });
     closeModal('modal-recusa-ce');
     showToast('Proposta recusada.', 'success');
+    mostrarEmailParaCopiar(res.email);
     await carregarJobs();
     await carregarCondicoesEspeciais();
   } catch(e) { showToast('Erro: ' + e.message, 'error'); }
@@ -5226,9 +5294,10 @@ async function _executarBalcao(obs, assuntoEditado, corpoEditado, destinatarios=
 
     // Remove prioridade ao resolver CE
     _cePrioridade.delete(_ceBalcaoJobId);
-    await api('POST', '/jobs/' + _ceBalcaoJobId + '/decisao-risco', { decisao: 'balcao', observacoes: obs, email_assunto: assuntoEditado, email_corpo: corpoEditado, destinatarios_adicionais: destinatarios });
+    const res = await api('POST', '/jobs/' + _ceBalcaoJobId + '/decisao-risco', { decisao: 'balcao', observacoes: obs, email_assunto: assuntoEditado, email_corpo: corpoEditado, destinatarios_adicionais: destinatarios });
     closeModal('modal-balcao-ce');
-    showToast('🏦 Condição de Balcão enviada! Email disparado.', 'success');
+    showToast('🏦 Condição de Balcão registrada.', 'success');
+    mostrarEmailParaCopiar(res.email);
     await carregarJobs();
     await carregarCondicoesEspeciais();
   } catch(e) { showToast('Erro: ' + e.message, 'error'); }
@@ -5497,10 +5566,11 @@ async function ativarDraftCE(jobId) {
   if (!confirm('Confirmar que o draft nº ' + dados.numeroDraft + ' (' + dados.tipoRegulacao + ') foi ativado?')) return;
   try {
     const r = await api('POST', '/condicoes-especiais/' + jobId + '/ativar-draft', { numero_draft: dados.numeroDraft, tipo_regulacao: dados.tipoRegulacao });
-    if (r.email_enviado) {
-      showToast('Draft ativado e corretor avisado por e-mail.', 'success');
+    if (r.email) {
+      showToast('Draft ativado.', 'success');
+      mostrarEmailParaCopiar(r.email);
     } else {
-      showToast('Draft ativado. ' + (r.aviso_email || 'E-mail do corretor não enviado.'), 'warning');
+      showToast('Draft ativado. ' + (r.aviso_email || 'Sem e-mail do corretor pra avisar.'), 'warning');
     }
     carregarCondicoesEspeciais();
   } catch(e) { showToast('Erro ao ativar draft: ' + e.message, 'error'); }
@@ -6083,9 +6153,10 @@ async function confirmarEndossoReducao() {
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner" style="border-top-color:#fff;width:14px;height:14px"></div> Gerando…';
   try {
-    await api('POST', '/endossos', body);
+    const res = await api('POST', '/endossos', body);
     closeModal('modal-endosso-reducao');
-    showToast('✅ Endosso gerado e enviado por email!', 'success');
+    showToast('✅ Endosso gerado!', 'success');
+    mostrarEmailParaCopiar(res.email);
     carregarEndossos();
   } catch(e) {
     showToast('Erro ao gerar endosso: ' + e.message, 'error');
@@ -6128,7 +6199,7 @@ const _endossoTextosPT = {
   lblRestitTotal:     'Total a Restituir',
   lblObs:          'Observações',
   phObs:           'Motivo do ajuste de área (opcional)',
-  infoEmail:       '📊 Ao confirmar, será gerado o Excel de endosso no modelo padrão e enviado por email.',
+  infoEmail:       '📊 Ao confirmar, será gerado o Excel de endosso no modelo padrão e o texto do e-mail vem pronto pra copiar (o Excel precisa ser anexado manualmente).',
   btnCancelar:     'Cancelar',
   btnGerar:        '📐 Gerar Endosso',
   btnTraduzir:     'Traducir',
@@ -6165,7 +6236,7 @@ const _endossoTextosES = {
   lblRestitTotal:     'Total a Restituir',
   lblObs:          'Observaciones',
   phObs:           'Motivo del ajuste de superficie (opcional)',
-  infoEmail:       '📊 Al confirmar, se generará el Excel de endoso en el modelo estándar y se enviará por correo.',
+  infoEmail:       '📊 Al confirmar, se generará el Excel de endoso en el modelo estándar y el texto del correo queda listo para copiar (el Excel debe adjuntarse manualmente).',
   btnCancelar:     'Cancelar',
   btnGerar:        '📐 Generar Endoso',
   btnTraduzir:     'Traduzir',
@@ -6528,7 +6599,7 @@ const _cancTextosPT = {
   lblCpf:       'CPF / CNPJ',
   lblCliente:   'Nome do Cliente',
   lblMotivo:    'Motivo do Cancelamento',
-  aviso:        '⚠️ O cancelamento será registrado e o Excel gerado será enviado por email.',
+  aviso:        '⚠️ O cancelamento será registrado, o Excel será gerado e o texto do e-mail vem pronto pra copiar (o Excel precisa ser anexado manualmente).',
   btnCancelar:  'Cancelar',
   btnGerar:     '❌ Gerar Endosso de Cancelamento',
   btnTraduzir:  'Traducir',
@@ -6722,9 +6793,10 @@ async function confirmarEndossoCancelamento() {
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner" style="border-top-color:#fff;width:14px;height:14px"></div> Gerando…';
   try {
-    await api('POST', '/endossos', body);
+    const res = await api('POST', '/endossos', body);
     closeModal('modal-endosso-cancelamento');
-    showToast(`✅ Endosso gerado com ${linhas.length} solicitação(ões) e enviado por email!`, 'success');
+    showToast(`✅ Endosso gerado com ${linhas.length} solicitação(ões)!`, 'success');
+    mostrarEmailParaCopiar(res.email);
     carregarEndossos();
   } catch(e) {
     showToast('Erro: ' + e.message, 'error');
@@ -7901,7 +7973,7 @@ function renderizarMapaSobreposicoes(dados) {
 
       <div id="end-info-box" style="background:#f0faf4;border:1px solid #a8e0c0;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#1a3a2a">
         <strong>Atenção:</strong> Preencha as condições aprovadas para esta proposta.
-        Um email será enviado automaticamente para <strong>subscricao@proagroseguros.com</strong> ao confirmar.
+        Ao confirmar, o texto do e-mail já vem pronto pra você copiar e enviar direto do Outlook.
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
@@ -7954,7 +8026,7 @@ function renderizarMapaSobreposicoes(dados) {
       </div>
 
       <div style="background:#fff8e1;border:1px solid #fbbf24;border-radius:8px;padding:10px 14px;margin-top:16px;font-size:12px;color:#92400e">
-        📧 Após confirmar, um email detalhado com as condições aprovadas e os dados da proposta será enviado automaticamente para a equipe de subscrição.
+        📧 Após confirmar, o texto do e-mail com as condições aprovadas e os dados da proposta já vem pronto pra copiar e enviar pelo Outlook.
       </div>
 
       <!-- Upload planilha preenchida -->
@@ -8176,7 +8248,7 @@ function renderizarMapaSobreposicoes(dados) {
       </button>
 
       <div id="canc-info-aviso" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-top:16px;font-size:12px;color:#991b1b">
-        ⚠️ O cancelamento será registrado e o Excel gerado será enviado por email.
+        ⚠️ O cancelamento será registrado, o Excel será gerado e o texto do e-mail vem pronto pra copiar (o Excel precisa ser anexado manualmente).
       </div>
 
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
@@ -8214,7 +8286,7 @@ function renderizarMapaSobreposicoes(dados) {
     </div>
     <div class="modal-body" style="padding:24px">
       <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#1d4ed8">
-        A proposta será atendida nas <strong>condições padrão de balcão</strong>. Um email será enviado automaticamente.
+        A proposta será atendida nas <strong>condições padrão de balcão</strong>. O texto do e-mail já vem pronto pra copiar e enviar.
       </div>
       <label class="ce-label">Observações (opcional)</label>
       <textarea class="ce-input" id="balcao-obs" rows="3" placeholder="Observações sobre a oferta de balcão..." style="resize:vertical"></textarea>
@@ -8361,7 +8433,7 @@ function renderizarMapaSobreposicoes(dados) {
       <div style="margin-bottom:14px">
         <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Data de Semeadura *</label>
         <input type="date" id="upload-data-semeadura" style="width:100%;font-size:13px;padding:6px;border:1px solid var(--gray200);border-radius:var(--r-sm);background:#fff">
-        <span style="font-size:11px;color:var(--gray500);margin-top:4px;display:block">Se for data passada, será enviado email solicitando vistoria prévia.</span>
+        <span style="font-size:11px;color:var(--gray500);margin-top:4px;display:block">Se for data passada, o texto de um e-mail solicitando vistoria prévia vem pronto pra copiar.</span>
       </div>
       <div style="margin-bottom:14px">
         <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Observações (opcional)</label>
@@ -9480,9 +9552,9 @@ async function recEnviarEmail(){
  const btn=document.getElementById('rec-email-enviar');btn.disabled=true;
  document.getElementById('rec-email-status').textContent='Enviando…';
  try{
-  await api('POST',`/recorte-kml/${r.job}/enviar-email`,{camadas:r.camadas,corte:r.corte,poligono:r.poligono,assinatura:r.assinatura,assunto,corpo,email_corretor});
-  document.getElementById('rec-email-status').textContent='✅ E-mail enviado com o KML anexado.';
-  showToast('✅ E-mail enviado com sucesso!','success');
+  const res=await api('POST',`/recorte-kml/${r.job}/enviar-email`,{camadas:r.camadas,corte:r.corte,poligono:r.poligono,assinatura:r.assinatura,assunto,corpo,email_corretor});
+  document.getElementById('rec-email-status').textContent='✅ E-mail pronto pra enviar.';
+  mostrarEmailParaCopiar(res);
  }catch(e){document.getElementById('rec-email-status').textContent='Erro: '+e.message;}
  finally{btn.disabled=false;}
 }
