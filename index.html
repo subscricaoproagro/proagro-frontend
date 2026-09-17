@@ -3760,16 +3760,17 @@ function mostrarEmailParaCopiar(emailInfo) {
   ov.dataset.corpo = corpo;
   ov.dataset.corpoHtml = emailInfo.corpo_html || '';
   ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  const corpoHtmlInicial = emailInfo.corpo_html || escHtml(corpo).replace(/\n/g, '<br>');
   ov.innerHTML =
     '<div style="background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;font-family:inherit">'
-    + '<div style="background:#1a3c5e;color:#fff;padding:16px 20px;font-weight:700;font-size:15px">📧 E-mail pronto — abra no Outlook e envie</div>'
+    + '<div style="background:#1a3c5e;color:#fff;padding:16px 20px;font-weight:700;font-size:15px">📧 E-mail pronto — edite se quiser, depois abra no Outlook e envie</div>'
     + '<div style="padding:20px;overflow-y:auto;font-size:14px;color:#374151;line-height:1.6">'
     + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Para</div>'
     + `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:14px">${escHtml(destinatarios.join(', ') || '—')}</div>`
     + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Assunto</div>'
-    + `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:14px">${escHtml(assunto)}</div>`
-    + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Corpo</div>'
-    + `<textarea id="ov-email-copiar-corpo" readonly style="width:100%;box-sizing:border-box;min-height:260px;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-family:inherit;font-size:13px;white-space:pre-wrap;resize:vertical">${escHtml(corpo)}</textarea>`
+    + `<input type="text" id="ov-email-copiar-assunto" value="${escHtml(assunto)}" style="width:100%;box-sizing:border-box;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-family:inherit;font-size:14px;color:#374151">`
+    + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Corpo (clique e edite à vontade)</div>'
+    + `<div id="ov-email-copiar-corpo" contenteditable="true" style="width:100%;box-sizing:border-box;min-height:260px;max-height:400px;overflow-y:auto;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-family:Arial,sans-serif;font-size:13px;line-height:1.6">${corpoHtmlInicial}</div>`
     + (temAnexoEsperado ? `<div style="margin-top:10px;font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px">📎 Não esqueça de anexar <strong>${escHtml(emailInfo.anexo_nome_esperado)}</strong> antes de enviar (abrir no Outlook não anexa arquivo automaticamente).</div>` : '')
     + '</div>'
     + '<div style="padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">'
@@ -3779,13 +3780,34 @@ function mostrarEmailParaCopiar(emailInfo) {
     + '</div></div>';
   document.body.appendChild(ov);
 }
+// Lê o assunto e o corpo ATUAIS (com as edições que o usuário tiver feito
+// no modal, se houver) -- em vez de sempre usar o conteúdo original que veio
+// do backend. O campo de assunto é um <input> normal; o corpo é uma <div
+// contenteditable> que guarda o HTML de verdade (inclusive os botões).
+function _assuntoAtual(ov) {
+  const el = document.getElementById('ov-email-copiar-assunto');
+  return el ? el.value : (ov.dataset.assunto || '');
+}
+function _corpoHtmlAtual(ov) {
+  const el = document.getElementById('ov-email-copiar-corpo');
+  return el ? el.innerHTML : (ov.dataset.corpoHtml || '');
+}
+function _corpoTextoAtual(ov) {
+  const el = document.getElementById('ov-email-copiar-corpo');
+  return el ? el.innerText : (ov.dataset.corpo || '');
+}
+function _textoCompletoAtual(ov) {
+  const destinatariosFmt = (ov.dataset.destinatarios || '').split(';').filter(Boolean).join(', ');
+  return `Para: ${destinatariosFmt}\nAssunto: ${_assuntoAtual(ov)}\n\n${_corpoTextoAtual(ov)}`;
+}
 // Monta o HTML completo (Para/Assunto/Corpo) e copia pro clipboard como
 // HTML de verdade (não só texto) quando o navegador suporta -- assim, ao
 // colar no Outlook, os links de ação vêm CLICÁVEIS, não só como URL crua.
 // Cai pra texto puro se o navegador não suportar ClipboardItem/text-html
 // (ainda cola, só sem o link clicável). Retorna 'html', 'texto' ou null.
 async function _copiarCorpoRicoParaClipboard(ov, incluirCabecalho = true) {
-  const corpoHtml = ov.dataset.corpoHtml;
+  const corpoHtml = _corpoHtmlAtual(ov);
+  const textoCompleto = _textoCompletoAtual(ov);
   try {
     if (corpoHtml && window.ClipboardItem && navigator.clipboard.write) {
       // O cabeçalho (Para/Assunto) só faz sentido quando cola num e-mail em
@@ -3796,7 +3818,7 @@ async function _copiarCorpoRicoParaClipboard(ov, incluirCabecalho = true) {
         ? (() => {
             const destinatariosFmt = (ov.dataset.destinatarios || '').split(';').filter(Boolean).join(', ');
             return `<div><strong>Para:</strong> ${escHtml(destinatariosFmt)}</div>`
-              + `<div><strong>Assunto:</strong> ${escHtml(ov.dataset.assunto || '')}</div><br>`;
+              + `<div><strong>Assunto:</strong> ${escHtml(_assuntoAtual(ov))}</div><br>`;
           })()
         : '';
       const htmlCompleto = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#374151">`
@@ -3804,16 +3826,16 @@ async function _copiarCorpoRicoParaClipboard(ov, incluirCabecalho = true) {
         + corpoHtml + '</div>';
       const item = new ClipboardItem({
         'text/html': new Blob([htmlCompleto], { type: 'text/html' }),
-        'text/plain': new Blob([ov.dataset.textoCompleto], { type: 'text/plain' }),
+        'text/plain': new Blob([textoCompleto], { type: 'text/plain' }),
       });
       await navigator.clipboard.write([item]);
       return 'html';
     }
-    await navigator.clipboard.writeText(ov.dataset.textoCompleto);
+    await navigator.clipboard.writeText(textoCompleto);
     return 'texto';
   } catch (e) {
     try {
-      await navigator.clipboard.writeText(ov.dataset.textoCompleto);
+      await navigator.clipboard.writeText(textoCompleto);
       return 'texto';
     } catch (e2) {
       return null;
@@ -3839,14 +3861,15 @@ async function abrirEmailNoOutlook() {
   // O link de composição do Outlook na Web só aceita o corpo em TEXTO PURO
   // (limitação da própria Microsoft -- não existe parâmetro pra HTML nesse
   // link), então um link colado ali nunca sai clicável só com isso. Solução:
-  // copia o corpo em HTML de verdade (com o link clicável) pro clipboard
-  // ANTES de abrir o Outlook -- aí é só dar Ctrl+V no corpo do e-mail já
-  // aberto que o link vem clicável, herdado do que foi copiado.
+  // copia o corpo em HTML de verdade (com o link clicável e as edições do
+  // usuário) pro clipboard ANTES de abrir o Outlook -- aí é só dar Ctrl+V no
+  // corpo do e-mail já aberto que o link vem clicável, herdado do que foi
+  // copiado.
   const resultado = await _copiarCorpoRicoParaClipboard(ov, false);
   const to = encodeURIComponent(ov.dataset.destinatarios || '');
-  const subject = encodeURIComponent(ov.dataset.assunto || '');
+  const subject = encodeURIComponent(_assuntoAtual(ov));
   const avisoColar = '(Cole aqui com Ctrl+V o corpo do e-mail, já copiado automaticamente)';
-  const body = encodeURIComponent(resultado ? avisoColar : (ov.dataset.corpo || ''));
+  const body = encodeURIComponent(resultado ? avisoColar : _corpoTextoAtual(ov));
   // Usa o link de composição do Outlook na Web (outlook.office.com), NÃO o
   // "mailto:" -- mailto: aciona o handler de protocolo do Windows, que tem
   // um limite rígido de tamanho de URL (trava/corta o texto perto de ~2000
