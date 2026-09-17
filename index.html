@@ -3766,7 +3766,7 @@ function mostrarEmailParaCopiar(emailInfo) {
     + '<div style="background:#1a3c5e;color:#fff;padding:16px 20px;font-weight:700;font-size:15px">📧 E-mail pronto — edite se quiser, depois abra no Outlook e envie</div>'
     + '<div style="padding:20px;overflow-y:auto;font-size:14px;color:#374151;line-height:1.6">'
     + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Para</div>'
-    + `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:14px">${escHtml(destinatarios.join(', ') || '—')}</div>`
+    + `<input type="text" id="ov-email-copiar-para" value="${escHtml(destinatarios.join(', '))}" placeholder="e-mails separados por vírgula" style="width:100%;box-sizing:border-box;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-family:inherit;font-size:14px;color:#374151">`
     + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Assunto</div>'
     + `<input type="text" id="ov-email-copiar-assunto" value="${escHtml(assunto)}" style="width:100%;box-sizing:border-box;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-family:inherit;font-size:14px;color:#374151">`
     + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Corpo (clique e edite à vontade)</div>'
@@ -3788,6 +3788,11 @@ function _assuntoAtual(ov) {
   const el = document.getElementById('ov-email-copiar-assunto');
   return el ? el.value : (ov.dataset.assunto || '');
 }
+function _destinatariosAtual(ov) {
+  const el = document.getElementById('ov-email-copiar-para');
+  const bruto = el ? el.value : (ov.dataset.destinatarios || '').replace(/;/g, ',');
+  return bruto.split(',').map(e => e.trim()).filter(Boolean);
+}
 function _corpoHtmlAtual(ov) {
   const el = document.getElementById('ov-email-copiar-corpo');
   return el ? el.innerHTML : (ov.dataset.corpoHtml || '');
@@ -3797,8 +3802,7 @@ function _corpoTextoAtual(ov) {
   return el ? el.innerText : (ov.dataset.corpo || '');
 }
 function _textoCompletoAtual(ov) {
-  const destinatariosFmt = (ov.dataset.destinatarios || '').split(';').filter(Boolean).join(', ');
-  return `Para: ${destinatariosFmt}\nAssunto: ${_assuntoAtual(ov)}\n\n${_corpoTextoAtual(ov)}`;
+  return `Para: ${_destinatariosAtual(ov).join(', ')}\nAssunto: ${_assuntoAtual(ov)}\n\n${_corpoTextoAtual(ov)}`;
 }
 // Monta o HTML completo (Para/Assunto/Corpo) e copia pro clipboard como
 // HTML de verdade (não só texto) quando o navegador suporta -- assim, ao
@@ -3815,11 +3819,8 @@ async function _copiarCorpoRicoParaClipboard(ov, incluirCabecalho = true) {
       // preenchidos nos campos nativos da janela de composição -- repetir
       // eles de novo dentro do corpo fica redundante e feio.
       const cabecalho = incluirCabecalho
-        ? (() => {
-            const destinatariosFmt = (ov.dataset.destinatarios || '').split(';').filter(Boolean).join(', ');
-            return `<div><strong>Para:</strong> ${escHtml(destinatariosFmt)}</div>`
-              + `<div><strong>Assunto:</strong> ${escHtml(_assuntoAtual(ov))}</div><br>`;
-          })()
+        ? `<div><strong>Para:</strong> ${escHtml(_destinatariosAtual(ov).join(', '))}</div>`
+          + `<div><strong>Assunto:</strong> ${escHtml(_assuntoAtual(ov))}</div><br>`
         : '';
       const htmlCompleto = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#374151">`
         + cabecalho
@@ -3866,7 +3867,7 @@ async function abrirEmailNoOutlook() {
   // corpo do e-mail já aberto que o link vem clicável, herdado do que foi
   // copiado.
   const resultado = await _copiarCorpoRicoParaClipboard(ov, false);
-  const to = encodeURIComponent(ov.dataset.destinatarios || '');
+  const to = encodeURIComponent(_destinatariosAtual(ov).join(';'));
   const subject = encodeURIComponent(_assuntoAtual(ov));
   const avisoColar = '(Cole aqui com Ctrl+V o corpo do e-mail, já copiado automaticamente)';
   const body = encodeURIComponent(resultado ? avisoColar : _corpoTextoAtual(ov));
@@ -4221,13 +4222,14 @@ async function confirmarDecisao() {
   btn.disabled = true;
 
   try {
-    await api('POST', '/jobs/' + _decisaoJobId + '/decisao', {
+    const res = await api('POST', '/jobs/' + _decisaoJobId + '/decisao', {
       decisao: _decisaoTipo,
       justificativa: justificativa,
       email_corretor: _decisaoTipo === 'recusado' ? emailCorretor : ''
     });
     closeModal('modal-decisao');
     showToast('Proposta ' + (_decisaoTipo === 'aprovado' ? 'aprovada' : 'recusada') + ' com sucesso!', _decisaoTipo === 'aprovado' ? 'success' : 'warning');
+    if (res && res.email) mostrarEmailParaCopiar(res.email);
     carregarJobs();
   } catch(e) {
     errEl.textContent = e.message;
