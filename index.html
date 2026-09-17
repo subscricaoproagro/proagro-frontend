@@ -3784,14 +3784,23 @@ function mostrarEmailParaCopiar(emailInfo) {
 // colar no Outlook, os links de ação vêm CLICÁVEIS, não só como URL crua.
 // Cai pra texto puro se o navegador não suportar ClipboardItem/text-html
 // (ainda cola, só sem o link clicável). Retorna 'html', 'texto' ou null.
-async function _copiarCorpoRicoParaClipboard(ov) {
+async function _copiarCorpoRicoParaClipboard(ov, incluirCabecalho = true) {
   const corpoHtml = ov.dataset.corpoHtml;
   try {
     if (corpoHtml && window.ClipboardItem && navigator.clipboard.write) {
-      const destinatariosFmt = (ov.dataset.destinatarios || '').split(';').filter(Boolean).join(', ');
+      // O cabeçalho (Para/Assunto) só faz sentido quando cola num e-mail em
+      // branco (Copiar tudo). No "Abrir no Outlook" o Para/Assunto já vêm
+      // preenchidos nos campos nativos da janela de composição -- repetir
+      // eles de novo dentro do corpo fica redundante e feio.
+      const cabecalho = incluirCabecalho
+        ? (() => {
+            const destinatariosFmt = (ov.dataset.destinatarios || '').split(';').filter(Boolean).join(', ');
+            return `<div><strong>Para:</strong> ${escHtml(destinatariosFmt)}</div>`
+              + `<div><strong>Assunto:</strong> ${escHtml(ov.dataset.assunto || '')}</div><br>`;
+          })()
+        : '';
       const htmlCompleto = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#374151">`
-        + `<div><strong>Para:</strong> ${escHtml(destinatariosFmt)}</div>`
-        + `<div><strong>Assunto:</strong> ${escHtml(ov.dataset.assunto || '')}</div><br>`
+        + cabecalho
         + corpoHtml + '</div>';
       const item = new ClipboardItem({
         'text/html': new Blob([htmlCompleto], { type: 'text/html' }),
@@ -3833,7 +3842,7 @@ async function abrirEmailNoOutlook() {
   // copia o corpo em HTML de verdade (com o link clicável) pro clipboard
   // ANTES de abrir o Outlook -- aí é só dar Ctrl+V no corpo do e-mail já
   // aberto que o link vem clicável, herdado do que foi copiado.
-  const resultado = await _copiarCorpoRicoParaClipboard(ov);
+  const resultado = await _copiarCorpoRicoParaClipboard(ov, false);
   const to = encodeURIComponent(ov.dataset.destinatarios || '');
   const subject = encodeURIComponent(ov.dataset.assunto || '');
   const avisoColar = '(Cole aqui com Ctrl+V o corpo do e-mail, já copiado automaticamente)';
