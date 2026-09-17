@@ -3758,6 +3758,7 @@ function mostrarEmailParaCopiar(emailInfo) {
   ov.dataset.destinatarios = destinatarios.join(';');
   ov.dataset.assunto = assunto;
   ov.dataset.corpo = corpo;
+  ov.dataset.corpoHtml = emailInfo.corpo_html || '';
   ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
   ov.innerHTML =
     '<div style="background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;font-family:inherit">'
@@ -3782,10 +3783,34 @@ async function copiarEmailParaClipboard() {
   const ov = document.getElementById('ov-email-copiar');
   const btn = document.getElementById('ov-email-copiar-btn');
   if (!ov) return;
+  const corpoHtml = ov.dataset.corpoHtml;
   try {
-    await navigator.clipboard.writeText(ov.dataset.textoCompleto);
+    // Copia como HTML de verdade (não só texto) quando o navegador suporta
+    // -- assim, ao colar no Outlook, os links de ação vêm CLICÁVEIS, não só
+    // como URL crua. Cai pra texto puro se o navegador não suportar
+    // ClipboardItem/text-html (ainda funciona, só sem o link clicável).
+    if (corpoHtml && window.ClipboardItem && navigator.clipboard.write) {
+      const destinatariosFmt = (ov.dataset.destinatarios || '').split(';').filter(Boolean).join(', ');
+      const htmlCompleto = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#374151">`
+        + `<div><strong>Para:</strong> ${escHtml(destinatariosFmt)}</div>`
+        + `<div><strong>Assunto:</strong> ${escHtml(ov.dataset.assunto || '')}</div><br>`
+        + corpoHtml + '</div>';
+      const item = new ClipboardItem({
+        'text/html': new Blob([htmlCompleto], { type: 'text/html' }),
+        'text/plain': new Blob([ov.dataset.textoCompleto], { type: 'text/plain' }),
+      });
+      await navigator.clipboard.write([item]);
+    } else {
+      await navigator.clipboard.writeText(ov.dataset.textoCompleto);
+    }
     if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(() => { btn.textContent = '📋 Copiar tudo'; }, 2000); }
   } catch (e) {
+    // Última tentativa: pelo menos o texto puro, antes de desistir de vez.
+    try {
+      await navigator.clipboard.writeText(ov.dataset.textoCompleto);
+      if (btn) { btn.textContent = '✅ Copiado (texto simples)'; setTimeout(() => { btn.textContent = '📋 Copiar tudo'; }, 2500); }
+      return;
+    } catch (e2) { /* segue pro erro abaixo */ }
     showToast('Não consegui copiar automaticamente — selecione o texto manualmente.', 'error');
   }
 }
