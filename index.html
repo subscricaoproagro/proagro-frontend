@@ -3779,16 +3779,14 @@ function mostrarEmailParaCopiar(emailInfo) {
     + '</div></div>';
   document.body.appendChild(ov);
 }
-async function copiarEmailParaClipboard() {
-  const ov = document.getElementById('ov-email-copiar');
-  const btn = document.getElementById('ov-email-copiar-btn');
-  if (!ov) return;
+// Monta o HTML completo (Para/Assunto/Corpo) e copia pro clipboard como
+// HTML de verdade (não só texto) quando o navegador suporta -- assim, ao
+// colar no Outlook, os links de ação vêm CLICÁVEIS, não só como URL crua.
+// Cai pra texto puro se o navegador não suportar ClipboardItem/text-html
+// (ainda cola, só sem o link clicável). Retorna 'html', 'texto' ou null.
+async function _copiarCorpoRicoParaClipboard(ov) {
   const corpoHtml = ov.dataset.corpoHtml;
   try {
-    // Copia como HTML de verdade (não só texto) quando o navegador suporta
-    // -- assim, ao colar no Outlook, os links de ação vêm CLICÁVEIS, não só
-    // como URL crua. Cai pra texto puro se o navegador não suportar
-    // ClipboardItem/text-html (ainda funciona, só sem o link clicável).
     if (corpoHtml && window.ClipboardItem && navigator.clipboard.write) {
       const destinatariosFmt = (ov.dataset.destinatarios || '').split(';').filter(Boolean).join(', ');
       const htmlCompleto = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#374151">`
@@ -3800,32 +3798,52 @@ async function copiarEmailParaClipboard() {
         'text/plain': new Blob([ov.dataset.textoCompleto], { type: 'text/plain' }),
       });
       await navigator.clipboard.write([item]);
-    } else {
-      await navigator.clipboard.writeText(ov.dataset.textoCompleto);
+      return 'html';
     }
-    if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(() => { btn.textContent = '📋 Copiar tudo'; }, 2000); }
+    await navigator.clipboard.writeText(ov.dataset.textoCompleto);
+    return 'texto';
   } catch (e) {
-    // Última tentativa: pelo menos o texto puro, antes de desistir de vez.
     try {
       await navigator.clipboard.writeText(ov.dataset.textoCompleto);
-      if (btn) { btn.textContent = '✅ Copiado (texto simples)'; setTimeout(() => { btn.textContent = '📋 Copiar tudo'; }, 2500); }
-      return;
-    } catch (e2) { /* segue pro erro abaixo */ }
+      return 'texto';
+    } catch (e2) {
+      return null;
+    }
+  }
+}
+async function copiarEmailParaClipboard() {
+  const ov = document.getElementById('ov-email-copiar');
+  const btn = document.getElementById('ov-email-copiar-btn');
+  if (!ov) return;
+  const resultado = await _copiarCorpoRicoParaClipboard(ov);
+  if (resultado === 'html') {
+    if (btn) { btn.textContent = '✅ Copiado!'; setTimeout(() => { btn.textContent = '📋 Copiar tudo'; }, 2000); }
+  } else if (resultado === 'texto') {
+    if (btn) { btn.textContent = '✅ Copiado (texto simples)'; setTimeout(() => { btn.textContent = '📋 Copiar tudo'; }, 2500); }
+  } else {
     showToast('Não consegui copiar automaticamente — selecione o texto manualmente.', 'error');
   }
 }
-function abrirEmailNoOutlook() {
+async function abrirEmailNoOutlook() {
   const ov = document.getElementById('ov-email-copiar');
   if (!ov) return;
+  // O link de composição do Outlook na Web só aceita o corpo em TEXTO PURO
+  // (limitação da própria Microsoft -- não existe parâmetro pra HTML nesse
+  // link), então um link colado ali nunca sai clicável só com isso. Solução:
+  // copia o corpo em HTML de verdade (com o link clicável) pro clipboard
+  // ANTES de abrir o Outlook -- aí é só dar Ctrl+V no corpo do e-mail já
+  // aberto que o link vem clicável, herdado do que foi copiado.
+  const resultado = await _copiarCorpoRicoParaClipboard(ov);
+  const to = encodeURIComponent(ov.dataset.destinatarios || '');
+  const subject = encodeURIComponent(ov.dataset.assunto || '');
+  const avisoColar = '(Cole aqui com Ctrl+V o corpo do e-mail, já copiado automaticamente)';
+  const body = encodeURIComponent(resultado ? avisoColar : (ov.dataset.corpo || ''));
   // Usa o link de composição do Outlook na Web (outlook.office.com), NÃO o
   // "mailto:" -- mailto: aciona o handler de protocolo do Windows, que tem
   // um limite rígido de tamanho de URL (trava/corta o texto perto de ~2000
   // caracteres, sem eu poder controlar isso pelo navegador). O link do
   // Outlook na Web é só uma navegação HTTP normal, sem esse limite curto --
   // suporta e-mails bem mais longos sem cortar nada.
-  const to = encodeURIComponent(ov.dataset.destinatarios || '');
-  const subject = encodeURIComponent(ov.dataset.assunto || '');
-  const body = encodeURIComponent(ov.dataset.corpo || '');
   const urlOutlook = `https://outlook.office.com/mail/deeplink/compose?to=${to}&subject=${subject}&body=${body}`;
   // "microsoft-edge:" é um protocolo próprio do Windows que força abrir
   // especificamente no Edge, não importa qual navegador está mostrando esta
@@ -3833,6 +3851,13 @@ function abrirEmailNoOutlook() {
   // instalado (padrão em qualquer Windows). Sem isso, abriria no navegador
   // padrão configurado na máquina, que pode não ser o Edge.
   window.open(`microsoft-edge:${urlOutlook}`, '_blank');
+  if (resultado === 'html') {
+    showToast('Corpo copiado com link clicável — cole com Ctrl+V no corpo do e-mail.', 'success');
+  } else if (resultado === 'texto') {
+    showToast('Corpo copiado (texto simples) — cole com Ctrl+V no corpo do e-mail.', 'info');
+  } else {
+    showToast('Não consegui copiar automaticamente — copie o texto manualmente antes de colar.', 'error');
+  }
 }
 
 // ══════════════════════════════════════════
