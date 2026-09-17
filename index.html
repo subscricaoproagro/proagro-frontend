@@ -3197,6 +3197,11 @@ async function pcAlternarInclusaoDraft(jobId) {
 
 function renderStatusBadge(j) {
   if (j.status === 'concluido') {
+    if (j.decisao === 'aguardando_reenvio') {
+      const obsTexto = j.justificativa ? j.justificativa.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : '';
+      const obs = obsTexto ? `<div style="font-size:11px;color:#92400e;margin-top:4px;max-width:220px;line-height:1.4">${obsTexto}</div>` : '';
+      return `<div><span class="badge" style="background:#fefce8;color:#92400e;border:1px solid #fde68a"><span class="badge-dot" style="background:#92400e"></span>Aguardando Reenvio</span>${obs}</div>`;
+    }
     if (j.decisao === 'recusado') {
       const motivoTexto = j.justificativa ? j.justificativa.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : '';
       const motivo = motivoTexto ? `<div style="font-size:11px;color:#c0392b;margin-top:4px;max-width:220px;line-height:1.4">${motivoTexto}</div>` : '';
@@ -3702,6 +3707,7 @@ function mostrarEmailParaCopiar(emailInfo) {
   const corpo = emailInfo.corpo_texto || '';
   const textoCompleto = `Para: ${destinatarios.join(', ')}\nAssunto: ${assunto}\n\n${corpo}`;
   const temAnexoEsperado = !!emailInfo.anexo_nome_esperado;
+  const avisoExtra = emailInfo.aviso_extra || '';
   const ov = document.createElement('div');
   ov.id = 'ov-email-copiar';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
@@ -3723,6 +3729,7 @@ function mostrarEmailParaCopiar(emailInfo) {
     + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Corpo (clique e edite à vontade)</div>'
     + `<div id="ov-email-copiar-corpo" contenteditable="true" style="width:100%;box-sizing:border-box;min-height:260px;max-height:400px;overflow-y:auto;padding:10px;border:1px solid #e5e7eb;border-radius:8px;font-family:Arial,sans-serif;font-size:13px;line-height:1.6">${corpoHtmlInicial}</div>`
     + (temAnexoEsperado ? `<div style="margin-top:10px;font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px">📎 Não esqueça de anexar <strong>${escHtml(emailInfo.anexo_nome_esperado)}</strong> antes de enviar (abrir no Outlook não anexa arquivo automaticamente).</div>` : '')
+    + (avisoExtra ? `<div style="margin-top:10px;font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px">📎 ${escHtml(avisoExtra)}</div>` : '')
     + '</div>'
     + '<div style="padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">'
     + '<button class="btn-sm btn-outline" onclick="document.getElementById(\'ov-email-copiar\').remove()">Fechar</button>'
@@ -3935,6 +3942,7 @@ async function deletarJob(id) {
 let _decisaoJobId = null;
 let allJobs = [];
 let _decisaoTipo = null;
+let _decisaoIsSistema = false;
 
 function abrirDecisao(jobId, tipo) {
   _decisaoJobId = jobId;
@@ -3953,6 +3961,7 @@ function abrirDecisao(jobId, tipo) {
   // Para aprovação de sistema, abre modal de upload em vez do modal padrão
   const job = allJobs.find(j => j.id === jobId);
   const isSistemaJob = job && (job.tipo_analise === 'sistema' || (job.id_proposta && String(job.id_proposta).trim() !== '0' && String(job.id_proposta).trim() !== ''));
+  _decisaoIsSistema = !!isSistemaJob;
   if (tipo === 'aprovado' && isSistemaJob) {
     abrirUploadSistema(jobId);
     return;
@@ -3968,13 +3977,33 @@ function abrirDecisao(jobId, tipo) {
     btnConfirmar.style.color = '#fff';
     btnConfirmar.style.border = 'none';
     btnConfirmar.textContent = 'Aprovar proposta';
+  } else if (tipo === 'recusado') {
+    // Recusa DEFINITIVA -- só existe pra proposta de Sistema (não tem etapa
+    // de Condição Especial depois pra pegar um caso "sem jeito"; nas de CE
+    // essa decisão final fica pro AR, então esse botão nem aparece lá).
+    title.textContent = '❌ Recusar Proposta';
+    info.textContent = 'Recusa definitiva -- sem possibilidade de correção. O relatório será movido para "Propostas Recusadas".';
+    justWrap.style.display = 'block';
+    document.getElementById('modal-justificativa').setAttribute('data-placeholder', 'Descreva o motivo da recusa...');
+    document.getElementById('modal-justificativa-label').textContent = 'Motivo da recusa *';
+    const corretorWrap = document.getElementById('modal-corretor-wrap');
+    corretorWrap.style.display = 'block';
+    document.getElementById('modal-corretor-email').value = _ceEmailByJob[jobId] || '';
+    btnConfirmar.style.background = '#fff5f5';
+    btnConfirmar.style.color = 'var(--red)';
+    btnConfirmar.style.border = '1px solid #fecaca';
+    btnConfirmar.textContent = 'Confirmar recusa';
   } else {
     // "Observação/Pendência": não recusa a proposta de vez -- registra o
-    // impedimento encontrado (com imagem, se precisar) e segue pra Condição
-    // Especial. A decisão final (aprovar/balcão/recusar) fica pra etapa do
-    // AR, depois de "Preencher Dados CE", já com o caso todo mapeado.
+    // impedimento encontrado (com imagem, se precisar). Em CE, a proposta
+    // segue pra Condição Especial (decisão final fica pro AR, depois de
+    // "Preencher Dados CE"); em Sistema, fica "Aguardando Reenvio" -- pede
+    // pro corretor reemitir a proposta corrigida (podendo anexar um KML
+    // ajustado, se tiver sido gerado na ferramenta de Recorte de Polígono).
     title.textContent = '📝 Observação / Pendência';
-    info.textContent = 'Descreva a pendência encontrada (ex.: impedimento em algum talhão, documento faltante). Um e-mail avisando o corretor será gerado, e a proposta segue para Condição Especial -- não é uma recusa definitiva.';
+    info.textContent = _decisaoIsSistema
+      ? 'Descreva a pendência encontrada (ex.: impedimento em algum talhão, documento faltante). Um e-mail será gerado pedindo que o corretor reemita a proposta corrigida -- não é uma recusa definitiva.'
+      : 'Descreva a pendência encontrada (ex.: impedimento em algum talhão, documento faltante). Um e-mail avisando o corretor será gerado, e a proposta segue para Condição Especial -- não é uma recusa definitiva.';
     justWrap.style.display = 'block';
     document.getElementById('modal-justificativa').setAttribute('data-placeholder', 'Descreva a pendência/observação...');
     document.getElementById('modal-justificativa-label').textContent = 'Observação / Pendência *';
@@ -4160,12 +4189,13 @@ async function confirmarDecisao() {
   const errEl = document.getElementById('modal-decisao-error');
   errEl.style.display = 'none';
 
-  if (_decisaoTipo === 'observacao' && !justificativaTexto && !justEl.querySelector('img')) {
-    errEl.textContent = 'Descreva a pendência/observação.';
+  const precisaJustificativaEmail = _decisaoTipo === 'observacao' || _decisaoTipo === 'recusado';
+  if (precisaJustificativaEmail && !justificativaTexto && !justEl.querySelector('img')) {
+    errEl.textContent = _decisaoTipo === 'recusado' ? 'Informe o motivo da recusa.' : 'Descreva a pendência/observação.';
     errEl.style.display = 'block';
     return;
   }
-  if (_decisaoTipo === 'observacao' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailCorretor)) {
+  if (precisaJustificativaEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailCorretor)) {
     errEl.textContent = 'Informe um e-mail de corretor válido.';
     errEl.style.display = 'block';
     return;
@@ -4177,18 +4207,35 @@ async function confirmarDecisao() {
   btn.disabled = true;
 
   try {
-    // "observacao" não recusa a proposta -- sempre manda decisao 'aprovado'
-    // pro backend (o que já libera "Preencher Dados CE"), só que junto com a
-    // justificativa/observação, que o backend usa pra montar o e-mail de
-    // pendência pro corretor (ver Trigésimo primeiro ajuste no changelog).
-    const decisaoParaBackend = _decisaoTipo === 'observacao' ? 'aprovado' : _decisaoTipo;
-    const res = await api('POST', '/jobs/' + _decisaoJobId + '/decisao', {
-      decisao: decisaoParaBackend,
-      justificativa: justificativa,
-      email_corretor: _decisaoTipo === 'observacao' ? emailCorretor : ''
-    });
+    let res;
+    if (_decisaoTipo === 'observacao' && _decisaoIsSistema) {
+      // Sistema não tem etapa de Condição Especial depois pra reavaliar --
+      // então a observação aqui não aprova nada, só marca "Aguardando
+      // Reenvio" e pede pro corretor reemitir a proposta corrigida.
+      res = await api('POST', '/jobs/' + _decisaoJobId + '/observacao-sistema', {
+        justificativa: justificativa,
+        email_corretor: emailCorretor
+      });
+    } else {
+      // "observacao" (CE) não recusa a proposta -- sempre manda decisao
+      // 'aprovado' pro backend (o que já libera "Preencher Dados CE"), só
+      // que junto com a justificativa/observação, que o backend usa pra
+      // montar o e-mail de pendência pro corretor (Trigésimo primeiro
+      // ajuste). "recusado" só é alcançável aqui pra proposta de Sistema
+      // (o botão nem aparece pra CE) e mantém o comportamento de sempre.
+      const decisaoParaBackend = _decisaoTipo === 'observacao' ? 'aprovado' : _decisaoTipo;
+      res = await api('POST', '/jobs/' + _decisaoJobId + '/decisao', {
+        decisao: decisaoParaBackend,
+        justificativa: justificativa,
+        email_corretor: precisaJustificativaEmail ? emailCorretor : ''
+      });
+    }
     closeModal('modal-decisao');
-    if (_decisaoTipo === 'observacao') {
+    if (_decisaoTipo === 'recusado') {
+      showToast('Proposta recusada.', 'warning');
+    } else if (_decisaoTipo === 'observacao' && _decisaoIsSistema) {
+      showToast('Observação registrada. Proposta aguardando reenvio do corretor.', 'success');
+    } else if (_decisaoTipo === 'observacao') {
       showToast('Observação registrada. Proposta segue para Condição Especial.', 'success');
     } else {
       showToast('Proposta aprovada com sucesso!', 'success');
@@ -4201,6 +4248,19 @@ async function confirmarDecisao() {
   } finally {
     btn.textContent = textoOriginal;
     btn.disabled = false;
+  }
+}
+
+// Reabre (reconstrói) o último e-mail de observação/pendência ou recusa
+// mandado pra essa proposta -- útil pra conferir depois o que foi
+// comunicado, sem precisar ter guardado o e-mail em outro lugar.
+async function verUltimaObservacao(jobId) {
+  try {
+    const res = await api('GET', '/jobs/' + jobId + '/ultima-observacao');
+    if (res && res.email) mostrarEmailParaCopiar(res.email);
+    else showToast('Não há e-mail registrado pra essa proposta.', 'warning');
+  } catch(e) {
+    showToast('Erro ao carregar e-mail: ' + e.message, 'error');
   }
 }
 
@@ -7245,6 +7305,7 @@ function _gerarXlsx(ce, job) {
       <div style="flex:1;font-size:13px;color:var(--gray600)" id="relatorio-decisao-info"></div>
       <button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;padding:10px 20px;font-size:14px" id="btn-relatorio-aprovar" onclick="decisaoRelatorio('aprovado')">✅ Aprovar</button>
       <button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e;padding:10px 20px;font-size:14px" id="btn-relatorio-recusar" onclick="decisaoRelatorio('observacao')">📝 Observação / Pendência</button>
+      <button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b;padding:10px 20px;font-size:14px;display:none" id="btn-relatorio-recusar-definitiva" onclick="decisaoRelatorio('recusado')">❌ Recusar</button>
     </div>
   </div>
 </div>
@@ -7291,7 +7352,7 @@ async function decisaoRelatorio(tipo) {
   const jobId = _relatorioJobIdGlobal;
   closeModal('modal-relatorio');
 
-  if (tipo === 'observacao') {
+  if (tipo === 'observacao' || tipo === 'recusado') {
     abrirDecisao(jobId, tipo);
     return;
   }
@@ -7339,19 +7400,37 @@ async function verRelatorio(jobId) {
     const job = await api('GET', '/jobs/' + jobId);
     const footer = document.getElementById('relatorio-footer');
     const info = document.getElementById('relatorio-decisao-info');
+    const btnAprovar = document.getElementById('btn-relatorio-aprovar');
+    const btnObs = document.getElementById('btn-relatorio-recusar');
+    const btnRecusaDef = document.getElementById('btn-relatorio-recusar-definitiva');
     footer.style.display = 'flex';
+    const idProp = String(job.id_proposta || '0').trim();
+    const isSistema = job.tipo_analise === 'sistema' || (idProp !== '0' && idProp !== '');
+    // "❌ Recusar" definitiva (mata a proposta de vez) só existe pra Sistema
+    // -- nas de Condição Especial a decisão final fica pro AR, mais na frente
+    // (ver Trigésimo primeiro ajuste no changelog).
+    btnRecusaDef.style.display = isSistema ? '' : 'none';
+    const verEmailBtn = (job.justificativa && job.decisao && job.decisao !== 'aprovado')
+      ? ` <button class="btn-sm btn-outline" style="font-size:11px;padding:4px 10px" onclick="verUltimaObservacao('${jobId}')">📧 Ver e-mail enviado</button>` : '';
     if (job.decisao === 'aprovado') {
       info.innerHTML = '<span style="color:#166534;font-weight:600">✅ Proposta Aprovada</span>' + (job.decisao_por ? ' por ' + job.decisao_por : '');
-      document.getElementById('btn-relatorio-aprovar').style.display = 'none';
-      document.getElementById('btn-relatorio-recusar').style.display = 'none';
+      btnAprovar.style.display = 'none';
+      btnObs.style.display = 'none';
+      btnRecusaDef.style.display = 'none';
     } else if (job.decisao === 'recusado') {
-      info.innerHTML = '<span style="color:#c0392b;font-weight:600">❌ Proposta Recusada</span>' + (job.decisao_por ? ' por ' + job.decisao_por : '') + (job.justificativa ? '<br><span style="font-size:12px">' + job.justificativa + '</span>' : '');
-      document.getElementById('btn-relatorio-aprovar').style.display = 'none';
-      document.getElementById('btn-relatorio-recusar').style.display = 'none';
+      info.innerHTML = '<span style="color:#c0392b;font-weight:600">❌ Proposta Recusada</span>' + (job.decisao_por ? ' por ' + job.decisao_por : '') + (job.justificativa ? '<br><span style="font-size:12px">' + job.justificativa + '</span>' : '') + verEmailBtn;
+      btnAprovar.style.display = 'none';
+      btnObs.style.display = 'none';
+      btnRecusaDef.style.display = 'none';
+    } else if (job.decisao === 'aguardando_reenvio') {
+      info.innerHTML = '<span style="color:#92400e;font-weight:600">📝 Aguardando Reenvio</span>' + (job.decisao_por ? ' por ' + job.decisao_por : '') + (job.justificativa ? '<br><span style="font-size:12px">' + job.justificativa.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim() + '</span>' : '') + verEmailBtn;
+      btnAprovar.style.display = '';
+      btnObs.style.display = '';
+      btnRecusaDef.style.display = isSistema ? '' : 'none';
     } else {
       info.textContent = 'Registre sua decisão:';
-      document.getElementById('btn-relatorio-aprovar').style.display = '';
-      document.getElementById('btn-relatorio-recusar').style.display = '';
+      btnAprovar.style.display = '';
+      btnObs.style.display = '';
     }
 
 
