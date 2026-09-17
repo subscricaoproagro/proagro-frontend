@@ -3262,55 +3262,6 @@ async function pedirPrioridadeCE(jobId) {
 }
 
 
-// ══════════════════════════════════════════
-// PREVIEW EMAIL CE
-// ══════════════════════════════════════════
-let _previewEmailCallback = null;
-
-async function abrirPreviewEmail(payload, jobId, callback) {
-  try {
-    const data = await api('POST', `/jobs/${jobId}/preview-email-ce`, payload);
-    document.getElementById('preview-email-assunto').value = data.assunto;
-    document.getElementById('preview-email-corpo').value   = data.corpo;
-    document.getElementById('preview-email-destinatario').value = data.email_corretor || '';
-
-    const imagens = data.imagens_observacao_subscritor || [];
-    const wrapImgs = document.getElementById('preview-email-imagens-wrap');
-    const boxImgs = document.getElementById('preview-email-imagens');
-    if (imagens.length) {
-      boxImgs.innerHTML = imagens.map(src => `<img src="${src}" style="max-height:110px;border-radius:6px;border:1px solid var(--gray200)">`).join('');
-      wrapImgs.style.display = 'block';
-    } else {
-      boxImgs.innerHTML = '';
-      wrapImgs.style.display = 'none';
-    }
-
-    _previewEmailCallback = callback;
-    openModal('modal-preview-email-ce');
-  } catch(e) {
-    showToast('Erro ao carregar preview: ' + e.message, 'error');
-  }
-}
-
-async function enviarComPreview() {
-  const btn = document.getElementById('btn-enviar-email-preview');
-  btn.disabled = true;
-  btn.innerHTML = '<div class="spinner" style="border-top-color:#fff;width:14px;height:14px"></div> Enviando…';
-  try {
-    const assunto = document.getElementById('preview-email-assunto').value;
-    const corpo   = document.getElementById('preview-email-corpo').value;
-    const destExtra = document.getElementById('preview-email-destinatario').value.trim();
-    const destinatarios = destExtra ? destExtra.split(',').map(e => e.trim()).filter(Boolean) : [];
-    if (_previewEmailCallback) await _previewEmailCallback(assunto, corpo, destinatarios);
-    closeModal('modal-preview-email-ce');
-  } catch(e) {
-    showToast('Erro: ' + e.message, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '📤 Confirmar e Enviar';
-  }
-}
-
 async function baixarJob(id) {
   try {
     const data = await api('GET', `/jobs/${id}/baixar`);
@@ -5140,14 +5091,11 @@ async function confirmarAprovacaoCE() {
   const replantio2= document.getElementById('aprov-replantio').value;
   const obs2      = document.getElementById('aprov-obs').value.trim();
   if (!taxa || !nc2 || !prodBruta2 || !replantio2) { showToast('Preencha todos os campos obrigatórios.', 'error'); return; }
-  const payloadPreview = {
-    decisao: conformidade === 'diferente' ? 'aprovado_diferente' : 'aprovado',
-    taxa_aprovada: taxa, nivel_cobertura_aprovado: nc2,
-    prod_bruta_aprovada: prodBruta2, replantio_aprovado: replantio2, observacoes: obs2
-  };
-  await abrirPreviewEmail(payloadPreview, _ceAprovJobId, async (assunto, corpo, destinatarios) => {
-    await _executarAprovacaoCE(assunto, corpo, conformidade, destinatarios);
-  });
+  // Não usa mais o modal de revisão antigo (texto puro, link não clicável) --
+  // vai direto pra decisão; a edição de verdade (com HTML/botões clicáveis)
+  // acontece depois, no modal "E-mail pronto" que já abre a seguir, igual ao
+  // fluxo de reenvio de e-mail.
+  await _executarAprovacaoCE('', '', conformidade, []);
 }
 
 async function _executarAprovacaoCE(assuntoEditado, corpoEditado, conformidade, destinatarios=[]) {
@@ -5376,9 +5324,7 @@ function abrirRecusaCE(jobId) {
 async function confirmarRecusaCE() {
   const motivo = document.getElementById('recusa-ce-motivo').value.trim();
   if (!motivo) { showToast('Informe o motivo da recusa.', 'error'); return; }
-  await abrirPreviewEmail({ decisao: 'recusado', observacoes: motivo }, _ceRecusaJobId, async (assunto, corpo, destinatarios) => {
-    await _executarRecusaCE(motivo, assunto, corpo, destinatarios);
-  });
+  await _executarRecusaCE(motivo, '', '', []);
 }
 
 async function _executarRecusaCE(motivo, assuntoEditado, corpoEditado, destinatarios=[]) {
@@ -5407,9 +5353,7 @@ function abrirBalcao(jobId) {
 }
 async function confirmarBalcao() {
   const obs = document.getElementById('balcao-obs').value.trim();
-  await abrirPreviewEmail({ decisao: 'balcao', observacoes: obs }, _ceBalcaoJobId, async (assunto, corpo, destinatarios) => {
-    await _executarBalcao(obs, assunto, corpo, destinatarios);
-  });
+  await _executarBalcao(obs, '', '', []);
 }
 
 async function _executarBalcao(obs, assuntoEditado, corpoEditado, destinatarios=[]) {
@@ -9079,41 +9023,6 @@ async function mcDeletar(id){
   }catch(e){ alert('Erro ao excluir: '+e.message); }
 }
 </script>
-
-<!-- MODAL PREVIEW EMAIL CE -->
-<div class="modal-overlay" id="modal-preview-email-ce" style="align-items:flex-start;padding:20px;overflow-y:auto;background:rgba(0,0,0,0.5)">
-  <div class="modal-card" style="max-width:600px;width:100%;margin:auto">
-    <div class="modal-header" style="background:#1a3a2a;border-radius:10px 10px 0 0">
-      <div class="modal-title" style="color:#fff">📧 Revisar Email Antes de Enviar</div>
-      <button class="modal-close" style="color:#fff;opacity:.8" onclick="closeModal('modal-preview-email-ce')">✕</button>
-    </div>
-    <div class="modal-body" style="padding:24px">
-      <div style="margin-bottom:12px">
-        <label class="ce-label">Destinatário Adicional <span style="font-size:11px;color:var(--gray400)">(opcional — email do corretor ou cliente)</span></label>
-        <input class="ce-input" id="preview-email-destinatario" placeholder="ex: corretor@email.com, cliente@email.com" style="font-size:13px">
-      </div>
-      <div id="preview-email-imagens-wrap" style="display:none;margin-bottom:12px">
-        <label class="ce-label">Imagem anexada pela subscrição <span style="font-size:11px;color:var(--gray400)">(vai junto no e-mail, mesmo que você edite o texto)</span></label>
-        <div id="preview-email-imagens" style="display:flex;gap:8px;flex-wrap:wrap"></div>
-      </div>
-      <div style="margin-bottom:12px">
-        <label class="ce-label">Assunto</label>
-        <input class="ce-input" id="preview-email-assunto" style="font-size:13px">
-      </div>
-      <div style="margin-bottom:16px">
-        <label class="ce-label">Corpo do Email</label>
-        <textarea class="ce-input" id="preview-email-corpo" rows="18" style="font-family:monospace;font-size:13px;line-height:1.6;resize:vertical"></textarea>
-      </div>
-      <div style="background:#fff8e1;border:1px solid #fbbf24;border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e;margin-bottom:16px">
-        ✏️ Edite o texto acima se necessário. A imagem anexada (se houver) é enviada de qualquer forma, mesmo que você mude o texto.
-      </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button class="btn btn-outline" onclick="closeModal('modal-preview-email-ce')">Cancelar</button>
-        <button class="btn btn-primary" id="btn-enviar-email-preview" onclick="enviarComPreview()">📤 Confirmar e Enviar</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <div class="modal-overlay" id="modal-reenvio-editavel" style="align-items:flex-start;padding:20px;overflow-y:auto;background:rgba(0,0,0,0.5)">
   <div class="modal-card" style="max-width:600px;width:100%;margin:auto">
