@@ -4018,19 +4018,23 @@ function abrirDecisao(jobId, tipo) {
     btnConfirmar.style.border = 'none';
     btnConfirmar.textContent = 'Aprovar proposta';
   } else {
-    title.textContent = '❌ Recusar Proposta';
-    info.textContent = 'Ao recusar, informe o motivo. O relatório será movido para "Propostas Recusadas" com um arquivo de justificativa.';
+    // "Observação/Pendência": não recusa a proposta de vez -- registra o
+    // impedimento encontrado (com imagem, se precisar) e segue pra Condição
+    // Especial. A decisão final (aprovar/balcão/recusar) fica pra etapa do
+    // AR, depois de "Preencher Dados CE", já com o caso todo mapeado.
+    title.textContent = '📝 Observação / Pendência';
+    info.textContent = 'Descreva a pendência encontrada (ex.: impedimento em algum talhão, documento faltante). Um e-mail avisando o corretor será gerado, e a proposta segue para Condição Especial -- não é uma recusa definitiva.';
     justWrap.style.display = 'block';
-    document.getElementById('modal-justificativa').setAttribute('data-placeholder', 'Descreva o motivo da recusa...');
-    document.getElementById('modal-justificativa-label').textContent = 'Motivo da recusa *';
+    document.getElementById('modal-justificativa').setAttribute('data-placeholder', 'Descreva a pendência/observação...');
+    document.getElementById('modal-justificativa-label').textContent = 'Observação / Pendência *';
     // Campo do corretor: pré-carrega se houver e-mail conhecido (da CE), senão fica em branco para preenchimento manual
     const corretorWrap = document.getElementById('modal-corretor-wrap');
     corretorWrap.style.display = 'block';
     document.getElementById('modal-corretor-email').value = _ceEmailByJob[jobId] || '';
-    btnConfirmar.style.background = '#fff5f5';
-    btnConfirmar.style.color = 'var(--red)';
-    btnConfirmar.style.border = '1px solid #fecaca';
-    btnConfirmar.textContent = 'Confirmar recusa';
+    btnConfirmar.style.background = '#fefce8';
+    btnConfirmar.style.color = '#92400e';
+    btnConfirmar.style.border = '1px solid #fde68a';
+    btnConfirmar.textContent = 'Salvar observação e continuar';
   }
 
   openModal('modal-decisao');
@@ -4205,12 +4209,12 @@ async function confirmarDecisao() {
   const errEl = document.getElementById('modal-decisao-error');
   errEl.style.display = 'none';
 
-  if (_decisaoTipo === 'recusado' && !justificativaTexto && !justEl.querySelector('img')) {
-    errEl.textContent = 'Informe o motivo da recusa.';
+  if (_decisaoTipo === 'observacao' && !justificativaTexto && !justEl.querySelector('img')) {
+    errEl.textContent = 'Descreva a pendência/observação.';
     errEl.style.display = 'block';
     return;
   }
-  if (_decisaoTipo === 'recusado' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailCorretor)) {
+  if (_decisaoTipo === 'observacao' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailCorretor)) {
     errEl.textContent = 'Informe um e-mail de corretor válido.';
     errEl.style.display = 'block';
     return;
@@ -4222,13 +4226,22 @@ async function confirmarDecisao() {
   btn.disabled = true;
 
   try {
+    // "observacao" não recusa a proposta -- sempre manda decisao 'aprovado'
+    // pro backend (o que já libera "Preencher Dados CE"), só que junto com a
+    // justificativa/observação, que o backend usa pra montar o e-mail de
+    // pendência pro corretor (ver Trigésimo primeiro ajuste no changelog).
+    const decisaoParaBackend = _decisaoTipo === 'observacao' ? 'aprovado' : _decisaoTipo;
     const res = await api('POST', '/jobs/' + _decisaoJobId + '/decisao', {
-      decisao: _decisaoTipo,
+      decisao: decisaoParaBackend,
       justificativa: justificativa,
-      email_corretor: _decisaoTipo === 'recusado' ? emailCorretor : ''
+      email_corretor: _decisaoTipo === 'observacao' ? emailCorretor : ''
     });
     closeModal('modal-decisao');
-    showToast('Proposta ' + (_decisaoTipo === 'aprovado' ? 'aprovada' : 'recusada') + ' com sucesso!', _decisaoTipo === 'aprovado' ? 'success' : 'warning');
+    if (_decisaoTipo === 'observacao') {
+      showToast('Observação registrada. Proposta segue para Condição Especial.', 'success');
+    } else {
+      showToast('Proposta aprovada com sucesso!', 'success');
+    }
     if (res && res.email) mostrarEmailParaCopiar(res.email);
     carregarJobs();
   } catch(e) {
@@ -7239,7 +7252,7 @@ function _gerarXlsx(ce, job) {
         <div class="form-group">
           <label class="form-label" id="modal-corretor-label">E-mail do corretor *</label>
           <input type="email" class="form-input" id="modal-corretor-email" placeholder="corretor@exemplo.com.br" autocomplete="off">
-          <div style="font-size:11px;color:var(--gray400);margin-top:4px">Receberá cópia (Cc) do e-mail de recusa.</div>
+          <div style="font-size:11px;color:var(--gray400);margin-top:4px">Receberá cópia (Cc) do e-mail sobre a pendência.</div>
         </div>
       </div>
       <div id="modal-decisao-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px"></div>
@@ -7287,7 +7300,7 @@ function _gerarXlsx(ce, job) {
     <div id="relatorio-footer" style="display:none;position:sticky;bottom:0;background:#fff;border-top:2px solid #e5e7eb;padding:14px 24px;display:flex;gap:10px;align-items:center;z-index:10">
       <div style="flex:1;font-size:13px;color:var(--gray600)" id="relatorio-decisao-info"></div>
       <button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;padding:10px 20px;font-size:14px" id="btn-relatorio-aprovar" onclick="decisaoRelatorio('aprovado')">✅ Aprovar</button>
-      <button class="btn-sm" style="background:#fff5f5;border:1px solid #fecaca;color:#c0392b;padding:10px 20px;font-size:14px" id="btn-relatorio-recusar" onclick="decisaoRelatorio('recusado')">❌ Recusar</button>
+      <button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e;padding:10px 20px;font-size:14px" id="btn-relatorio-recusar" onclick="decisaoRelatorio('observacao')">📝 Observação / Pendência</button>
     </div>
   </div>
 </div>
@@ -7334,7 +7347,7 @@ async function decisaoRelatorio(tipo) {
   const jobId = _relatorioJobIdGlobal;
   closeModal('modal-relatorio');
 
-  if (tipo === 'recusado') {
+  if (tipo === 'observacao') {
     abrirDecisao(jobId, tipo);
     return;
   }
