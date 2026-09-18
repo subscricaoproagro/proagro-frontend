@@ -9981,7 +9981,7 @@ function recLigarRenderLista(){
  if(!recLigarCortes.length){wrap.innerHTML='';return;}
  wrap.innerHTML='<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">'+recLigarCortes.map((c,i)=>
   `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;background:#fff;border:1px solid #ddd;border-radius:6px;padding:4px 10px">
-    <span>Ligação ${i+1}: Talhão ${recEsc(c.talhao)}${c.talhao_secundario?(' + Talhão '+recEsc(c.talhao_secundario)+' (fundidos)'):' (partes soltas)'} — faixa ${c.largura_m}m</span>
+    <span>Ligação ${i+1}: Talhão ${recEsc(c.talhao)}${(c.talhao_secundario&&c.talhao_secundario!==c.talhao)?(' + Talhão '+recEsc(c.talhao_secundario)+' (fundidos)'):' (partes soltas)'} — faixa ${c.largura_m}m</span>
     <button type="button" class="btn-sm btn-outline" style="padding:2px 8px;font-size:11px" onclick="recLigarRemover(${i})">Remover</button>
   </div>`
  ).join('')+'</div>';
