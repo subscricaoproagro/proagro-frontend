@@ -4016,7 +4016,7 @@ function abrirDecisao(jobId, tipo) {
     // de Condição Especial depois pra pegar um caso "sem jeito"; nas de CE
     // essa decisão final fica pro AR, então esse botão nem aparece lá).
     title.textContent = '❌ Recusar Proposta';
-    info.textContent = 'Recusa definitiva -- sem possibilidade de correção. O relatório será movido para "Propostas Recusadas".';
+    info.textContent = 'Recusa definitiva -- sem possibilidade de correção. O relatório será movido para "Propostas Recusadas". O e-mail de recusa será enviado para aprovação do Admin antes de poder ser enviado ao corretor.';
     justWrap.style.display = 'block';
     document.getElementById('modal-justificativa').setAttribute('data-placeholder', 'Descreva o motivo da recusa...');
     document.getElementById('modal-justificativa-label').textContent = 'Motivo da recusa *';
@@ -4036,8 +4036,8 @@ function abrirDecisao(jobId, tipo) {
     // ajustado, se tiver sido gerado na ferramenta de Recorte de Polígono).
     title.textContent = '📝 Observação / Pendência';
     info.textContent = _decisaoIsSistema
-      ? 'Descreva a pendência encontrada (ex.: impedimento em algum talhão, documento faltante). Um e-mail será gerado pedindo que o corretor reemita a proposta corrigida -- não é uma recusa definitiva.'
-      : 'Descreva a pendência encontrada (ex.: impedimento em algum talhão, documento faltante). Um e-mail avisando o corretor será gerado, e a proposta segue para Condição Especial -- não é uma recusa definitiva.';
+      ? 'Descreva a pendência encontrada (ex.: impedimento em algum talhão, documento faltante). Um e-mail pedindo que o corretor reemita a proposta corrigida será gerado e enviado para aprovação do Admin antes de poder ser enviado -- não é uma recusa definitiva.'
+      : 'Descreva a pendência encontrada (ex.: impedimento em algum talhão, documento faltante). Um e-mail avisando o corretor será gerado e enviado para aprovação do Admin antes de poder ser enviado, e a proposta segue para Condição Especial -- não é uma recusa definitiva.';
     justWrap.style.display = 'block';
     document.getElementById('modal-justificativa').setAttribute('data-placeholder', 'Descreva a pendência/observação...');
     document.getElementById('modal-justificativa-label').textContent = 'Observação / Pendência *';
@@ -4266,7 +4266,7 @@ async function confirmarDecisao() {
     }
     closeModal('modal-decisao');
     if (_decisaoTipo === 'recusado') {
-      showToast('Proposta recusada.', 'warning');
+      showToast('Proposta recusada. E-mail de recusa enviado para aprovação do Admin.', 'warning');
     } else if (_decisaoTipo === 'observacao' && _decisaoIsSistema) {
       showToast('Observação enviada para aprovação do Admin. Proposta aguardando reenvio do corretor.', 'success');
     } else if (_decisaoTipo === 'observacao') {
@@ -4274,9 +4274,10 @@ async function confirmarDecisao() {
     } else {
       showToast('Proposta aprovada com sucesso!', 'success');
     }
-    // Observação (CE ou Sistema) não devolve mais "email" pronto -- fica
-    // pendente de aprovação do Admin (Trigésimo sexto ajuste). Só recusa
-    // definitiva e aprovação simples continuam mostrando o modal na hora.
+    // Observação (CE ou Sistema) e recusa definitiva não devolvem mais
+    // "email" pronto -- ficam pendentes de aprovação do Admin (Trigésimo
+    // sexto e sétimo ajustes). Só a aprovação simples continua mostrando o
+    // modal na hora (não gera e-mail pra ninguém validar).
     if (res && res.email) mostrarEmailParaCopiar(res.email);
     carregarJobs();
   } catch(e) {
@@ -4321,7 +4322,7 @@ async function carregarObservacoesPendentes() {
       wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray400)">Nenhuma observação ' + (filtro === 'pendente' ? 'pendente de aprovação' : 'encontrada') + '.</div>';
       return;
     }
-    const tipoLabel = { ce_observacao: '📋 Condição Especial', sistema_observacao: '🖥️ Sistema' };
+    const tipoLabel = { ce_observacao: '📋 Condição Especial', sistema_observacao: '🖥️ Sistema', sistema_recusa: '❌ Recusa Sistema' };
     const statusCor = { pendente: '#92400e', aprovado: '#166534', rejeitado: '#c0392b' };
     const statusLabel = { pendente: '⏳ Pendente', aprovado: '✅ Aprovado', rejeitado: '❌ Rejeitado' };
     wrap.innerHTML = lista.map(o => `
