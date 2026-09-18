@@ -9720,7 +9720,7 @@ const recEsc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>'
 const recNum=n=>Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4});
 const recOriginal=renderizarConteudoSobreposicoes;
 renderizarConteudoSobreposicoes=function(job,dados){
- recManualLimpar(false);recSeq++;recJob=job;recNomeCliente=dados.cliente?.nome_proponente||"Cliente";recResultado=null;recLayer=null;recOriginal(job,dados);
+ recManualLimpar(false);recLigarLimpar(false);recSeq++;recJob=job;recNomeCliente=dados.cliente?.nome_proponente||"Cliente";recResultado=null;recLayer=null;recOriginal(job,dados);
  const rows=dados.sobreposicoes||[],nomes=[...new Set([...rows.map(r=>r.camada),"PRODES (Desmatamento)"])];
  const raster=[...new Set((dados.rasters||[]).map(r=>r.camada))].filter(n=>!nomes.includes(n));
  const panel=document.createElement('section');panel.id='rec-panel';panel.style.cssText='margin:16px 0;padding:18px;border:1px solid #bdd5c5;border-radius:10px;background:#f8fcf9';
@@ -9729,11 +9729,15 @@ renderizarConteudoSobreposicoes=function(job,dados){
  manual.innerHTML=`<strong>Cortar uma ponta por linha reta</strong><p>Escolha o talhão. Marque dois pontos para a linha e depois clique dentro do lado que deseja remover. A linha se estende através do talhão; somente o talhão escolhido recebe este corte.</p><select id="rec-talhao" class="form-input" style="max-width:200px">${(dados.poligonos||[]).map(p=>`<option value="${recEsc(p.id)}">Talhão ${recEsc(p.id)}</option>`).join('')}</select> <button type="button" class="btn-sm btn-outline" onclick="recManualIniciar()">Marcar linha no mapa</button> <button type="button" class="btn-sm btn-outline" onclick="recManualLimpar()">Limpar linha</button><p id="rec-manual-status" role="status">Nenhum corte manual definido.</p>`;
  const poli=document.createElement('div');poli.style.cssText='border-top:1px solid #ccd9cf;margin-top:14px;padding-top:12px';
  poli.innerHTML=`<strong>Recortar por área desenhada</strong><p>Escolha o talhão, clique em "Desenhar área" e marque no mapa os pontos do contorno que deseja recortar (mínimo 3). Clique em "Fechar desenho" para concluir.</p><select id="rec-poli-talhao" class="form-input" style="max-width:200px">${(dados.poligonos||[]).map(p=>`<option value="${recEsc(p.id)}">Talhão ${recEsc(p.id)}</option>`).join('')}</select> <label style="margin-left:8px"><input type="radio" name="rec-poli-modo" value="remover" checked> Remover área desenhada</label> <label style="margin-left:8px"><input type="radio" name="rec-poli-modo" value="manter"> Manter só a área desenhada</label><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn-sm btn-outline" onclick="recPoliIniciar()">Desenhar área</button><button type="button" class="btn-sm btn-outline" onclick="recPoliFechar()">Fechar desenho</button><button type="button" class="btn-sm btn-outline" onclick="recPoliDesfazer()">Desfazer último ponto</button><button type="button" class="btn-sm btn-outline" onclick="recPoliLimpar()">Limpar</button></div><p id="rec-poli-status" role="status">Nenhuma área desenhada.</p>`;
+ const ligar=document.createElement('div');ligar.style.cssText='border-top:1px solid #ccd9cf;margin-top:14px;padding-top:12px';
+ ligar.innerHTML=`<strong>🔗 Juntar duas partes separadas</strong><p>Se depois do recorte o talhão ficou dividido em pedaços separados (ex: a sobreposição cortou o meio), escolha o talhão, clique em "Marcar ligação" e marque dois pontos no mapa (um em cada pedaço) pra desenhar uma faixa fina conectando os dois num único polígono. Calcule a prévia de novo depois.</p><select id="rec-ligar-talhao" class="form-input" style="max-width:200px">${(dados.poligonos||[]).map(p=>`<option value="${recEsc(p.id)}">Talhão ${recEsc(p.id)}</option>`).join('')}</select> <label style="margin-left:8px">Largura da faixa (m): <input type="number" id="rec-ligar-largura" value="4" min="1" max="30" style="width:60px"></label><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn-sm btn-outline" onclick="recLigarIniciar()">Marcar ligação no mapa</button><button type="button" class="btn-sm btn-outline" onclick="recLigarLimpar()">Limpar ligação</button></div><p id="rec-ligar-status" role="status">Nenhuma ligação definida.</p>`;
  panel.insertBefore(poli,panel.firstChild);
  panel.insertBefore(manual,panel.firstChild);
+ panel.appendChild(ligar);
  document.getElementById('sobreposicoes-modal-body').appendChild(panel);
  document.getElementById('rec-talhao').addEventListener('change',()=>recManualLimpar());
  document.getElementById('rec-poli-talhao').addEventListener('change',()=>recPoliLimpar());
+ document.getElementById('rec-ligar-talhao').addEventListener('change',()=>recLigarLimpar());
  panel.querySelectorAll('.rec-select').forEach(e=>e.addEventListener('change',()=>{recSeq++;recResultado=null;document.getElementById('rec-download').disabled=true;document.getElementById('rec-email-btn').disabled=true;document.getElementById('rec-email-painel').hidden=true;document.getElementById('rec-preview').disabled=false;document.getElementById('rec-message').textContent='Seleção alterada. Calcule a prévia novamente.';document.getElementById('rec-result').innerHTML='';if(recLayer){recLayer.remove();recLayer=null;}}));
 };
 function recSelecionadas(){return [...document.querySelectorAll('#rec-panel .rec-select:checked')].map(e=>e.value);}
@@ -9746,7 +9750,8 @@ async function recPrevia(){
  try{
   if(recManualEtapa){document.getElementById('rec-message').textContent='Conclua os três cliques no mapa ou limpe a linha.';document.getElementById('rec-preview').disabled=false;return;}
   if(recPoliAtivo){document.getElementById('rec-message').textContent='Feche o desenho da área (ou limpe) antes de calcular.';document.getElementById('rec-preview').disabled=false;return;}
-  const r=await api('POST',`/recorte-kml/${job}/previa`,{camadas,corte:recManualCorte,poligono:recPoliCorte});
+  if(recLigarEtapa){document.getElementById('rec-message').textContent='Conclua os dois cliques da ligação (ou limpe) antes de calcular.';document.getElementById('rec-preview').disabled=false;return;}
+  const r=await api('POST',`/recorte-kml/${job}/previa`,{camadas,corte:recManualCorte,poligono:recPoliCorte,ligacao:recLigarCorte});
   if(seq!==recSeq||job!==_sobreposicoesModalJobIdAtual)return;
   recResultado={...r,job,nomeArquivo:recNomeArquivo(recNomeCliente)};document.getElementById('rec-message').textContent=r.mensagem;
   document.getElementById('rec-result').innerHTML=`<table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr><th>Talhão</th><th>Original (ha)</th><th>Removida total (ha)</th><th>Adicional pelo fechamento (ha)</th><th>Restante (ha)</th><th>Partes</th><th>Resultado</th></tr></thead><tbody>${r.talhoes.map(t=>`<tr style="border-top:1px solid #ddd;color:${t.estado==='bloqueado'?'#b91c1c':'#193d2d'}"><td>T${recEsc(t.talhao)}</td><td>${recNum(t.original_ha)}</td><td>${recNum(t.removida_ha)}</td><td>${recNum(t.adicional_fechamento_ha||0)}</td><td>${recNum(t.restante_ha)}</td><td>${t.partes}</td><td>${recEsc(t.motivo||({recortado:'Recorte permitido',inalterado:'Sem alteração'}[t.estado]||t.estado))}</td></tr>`).join('')}</tbody></table><p style="font-size:12px">Áreas calculadas sobre o elipsoide WGS84. O limite de 20 ha é verificado antes do arredondamento. Verde no mapa: área restante; vermelho: talhão bloqueado.</p>`;
@@ -9761,7 +9766,7 @@ async function recBaixar(){
  const r=recResultado;if(!r?.liberado)return;
  const seq=recSeq;const button=document.getElementById('rec-download');button.disabled=true;
  try{
-  const res=await fetch(`${BACKEND_URL}/recorte-kml/${r.job}/baixar`,{method:'POST',headers:{Authorization:`Bearer ${TOKEN}`,'Content-Type':'application/json','ngrok-skip-browser-warning':'true'},body:JSON.stringify({camadas:r.camadas,corte:r.corte,poligono:r.poligono,assinatura:r.assinatura})});
+  const res=await fetch(`${BACKEND_URL}/recorte-kml/${r.job}/baixar`,{method:'POST',headers:{Authorization:`Bearer ${TOKEN}`,'Content-Type':'application/json','ngrok-skip-browser-warning':'true'},body:JSON.stringify({camadas:r.camadas,corte:r.corte,poligono:r.poligono,ligacao:r.ligacao,assinatura:r.assinatura})});
   if(!res.ok){const err=await res.json();throw new Error(err.detail||'Falha ao gerar KML');}
   const blob=await res.blob();if(seq!==recSeq||r.job!==_sobreposicoesModalJobIdAtual)return;
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=r.nomeArquivo;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);
@@ -9776,7 +9781,7 @@ async function recAbrirEmail(){
  painel.hidden=false;
  document.getElementById('rec-email-status').textContent='Carregando prévia…';
  try{
-  const p=await api('POST',`/recorte-kml/${r.job}/preview-email`,{camadas:r.camadas,corte:r.corte,poligono:r.poligono,assinatura:r.assinatura});
+  const p=await api('POST',`/recorte-kml/${r.job}/preview-email`,{camadas:r.camadas,corte:r.corte,poligono:r.poligono,ligacao:r.ligacao,assinatura:r.assinatura});
   document.getElementById('rec-email-assunto').value=p.assunto||'';
   document.getElementById('rec-email-corpo').value=p.corpo||'';
   document.getElementById('rec-email-corretor').value=p.email_corretor||'';
@@ -9793,7 +9798,7 @@ async function recEnviarEmail(){
  const btn=document.getElementById('rec-email-enviar');btn.disabled=true;
  document.getElementById('rec-email-status').textContent='Enviando…';
  try{
-  const res=await api('POST',`/recorte-kml/${r.job}/enviar-email`,{camadas:r.camadas,corte:r.corte,poligono:r.poligono,assinatura:r.assinatura,assunto,corpo,email_corretor});
+  const res=await api('POST',`/recorte-kml/${r.job}/enviar-email`,{camadas:r.camadas,corte:r.corte,poligono:r.poligono,ligacao:r.ligacao,assinatura:r.assinatura,assunto,corpo,email_corretor});
   document.getElementById('rec-email-status').textContent='✅ E-mail pronto pra enviar.';
   mostrarEmailParaCopiar(res);
  }catch(e){document.getElementById('rec-email-status').textContent='Erro: '+e.message;}
@@ -9896,6 +9901,43 @@ function recPoliLimpar(invalidar=true){
  recPoliPontos=[];recPoliMapa=null;recPoliGrupo=null;recPoliAtivo=false;recPoliLinha=null;recPoliCorte=null;
  if(invalidar)recManualInvalidar();
  const label=document.getElementById('rec-poli-status');if(label)label.textContent='Nenhuma área desenhada.';
+}
+
+// "Juntar duas partes separadas" -- depois de um recorte deixar o talhão em
+// pedaços soltos (MultiPolygon), o usuário marca 2 pontos (um em cada
+// pedaço) e o backend desenha uma faixa fina conectando os dois, unindo tudo
+// num único Polygon de novo. Mesmo padrão de clique-no-mapa do corte manual.
+let recLigarPontos=[],recLigarEtapa=0,recLigarMapa=null,recLigarGrupo=null,recLigarCorte=null;
+function recLigarLimpar(invalidar=true){
+ if(recLigarMapa)recLigarMapa.off('click',recLigarClique);
+ if(recLigarGrupo)recLigarGrupo.remove();
+ recLigarPontos=[];recLigarEtapa=0;recLigarMapa=null;recLigarGrupo=null;recLigarCorte=null;
+ if(invalidar)recManualInvalidar();
+ const label=document.getElementById('rec-ligar-status');if(label)label.textContent='Nenhuma ligação definida.';
+}
+function recLigarIniciar(){
+ recLigarLimpar();recManualLimpar();recPoliLimpar();
+ if(!window.L||!_mapaSobreposicoesLeaflet){document.getElementById('rec-ligar-status').textContent='Aguarde o mapa carregar.';return;}
+ recLigarMapa=_mapaSobreposicoesLeaflet;recLigarGrupo=L.layerGroup().addTo(recLigarMapa);recLigarEtapa=1;
+ recLigarMapa.on('click',recLigarClique);
+ document.getElementById('rec-ligar-status').textContent='1/2: clique num ponto dentro (ou perto) da primeira parte.';
+ document.getElementById('mapa-sobreposicoes').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function recLigarClique(e){
+ if(!recLigarEtapa||recJob!==_sobreposicoesModalJobIdAtual){recLigarLimpar();return;}
+ const xy=[e.latlng.lng,e.latlng.lat];
+ recLigarPontos.push(xy);
+ L.circleMarker(e.latlng,{radius:6,color:'#0d9488',fillOpacity:.7,interactive:false}).addTo(recLigarGrupo);
+ if(recLigarEtapa===1){
+  recLigarEtapa=2;document.getElementById('rec-ligar-status').textContent='2/2: clique num ponto dentro (ou perto) da segunda parte.';return;
+ }
+ const a=recLigarPontos[0],b=recLigarPontos[1];
+ L.polyline([[a[1],a[0]],[b[1],b[0]]],{color:'#0d9488',weight:4,interactive:false}).addTo(recLigarGrupo);
+ const largura=parseFloat(document.getElementById('rec-ligar-largura').value)||4;
+ recLigarCorte={talhao:document.getElementById('rec-ligar-talhao').value,pontos:recLigarPontos,largura_m:largura};
+ recLigarEtapa=0;recLigarMapa.off('click',recLigarClique);recManualInvalidar();
+ document.getElementById('rec-ligar-status').textContent='Ligação definida. Clique em Calcular prévia pra conferir.';
+ document.getElementById('rec-preview').scrollIntoView({behavior:'smooth',block:'center'});
 }
 
 </script>
