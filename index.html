@@ -9720,7 +9720,7 @@ const recEsc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>'
 const recNum=n=>Number(n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4});
 const recOriginal=renderizarConteudoSobreposicoes;
 renderizarConteudoSobreposicoes=function(job,dados){
- recManualLimpar(false);recLigarLimpar(false);recSeq++;recJob=job;recNomeCliente=dados.cliente?.nome_proponente||"Cliente";recResultado=null;recLayer=null;recOriginal(job,dados);
+ recManualLimpar(false);recLigarLimpar(false);recPoliLimpar(false);recSeq++;recJob=job;recNomeCliente=dados.cliente?.nome_proponente||"Cliente";recResultado=null;recLayer=null;recOriginal(job,dados);
  const rows=dados.sobreposicoes||[],nomes=[...new Set([...rows.map(r=>r.camada),"PRODES (Desmatamento)"])];
  const raster=[...new Set((dados.rasters||[]).map(r=>r.camada))].filter(n=>!nomes.includes(n));
  const panel=document.createElement('section');panel.id='rec-panel';panel.style.cssText='margin:16px 0;padding:18px;border:1px solid #bdd5c5;border-radius:10px;background:#f8fcf9';
@@ -9728,7 +9728,7 @@ renderizarConteudoSobreposicoes=function(job,dados){
  const manual=document.createElement('div');manual.style.cssText='border-top:1px solid #ccd9cf;margin-top:14px;padding-top:12px';
  manual.innerHTML=`<strong>Cortar uma ponta por linha reta</strong><p>Escolha o talhão. Marque dois pontos para a linha e depois clique dentro do lado que deseja remover. A linha se estende através do talhão; somente o talhão escolhido recebe este corte.</p><select id="rec-talhao" class="form-input" style="max-width:200px">${(dados.poligonos||[]).map(p=>`<option value="${recEsc(p.id)}">Talhão ${recEsc(p.id)}</option>`).join('')}</select> <button type="button" class="btn-sm btn-outline" onclick="recManualIniciar()">Marcar linha no mapa</button> <button type="button" class="btn-sm btn-outline" onclick="recManualLimpar()">Limpar linha</button><p id="rec-manual-status" role="status">Nenhum corte manual definido.</p>`;
  const poli=document.createElement('div');poli.style.cssText='border-top:1px solid #ccd9cf;margin-top:14px;padding-top:12px';
- poli.innerHTML=`<strong>Recortar por área desenhada</strong><p>Escolha o talhão (ou "Qualquer talhão" pra desenhar sem se prender a um só — o corte se aplica a qualquer talhão que a área tocar, útil quando o desenho passa por mais de um), clique em "Desenhar área" e marque no mapa os pontos do contorno que deseja recortar (mínimo 3). Clique em "Fechar desenho" para concluir.</p><select id="rec-poli-talhao" class="form-input" style="max-width:220px"><option value="">Qualquer talhão (o que a área tocar)</option>${(dados.poligonos||[]).map(p=>`<option value="${recEsc(p.id)}">Talhão ${recEsc(p.id)}</option>`).join('')}</select> <label style="margin-left:8px"><input type="radio" name="rec-poli-modo" value="remover" checked> Remover área desenhada</label> <label style="margin-left:8px"><input type="radio" name="rec-poli-modo" value="manter"> Manter só a área desenhada</label><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn-sm btn-outline" onclick="recPoliIniciar()">Desenhar área</button><button type="button" class="btn-sm btn-outline" onclick="recPoliFechar()">Fechar desenho</button><button type="button" class="btn-sm btn-outline" onclick="recPoliDesfazer()">Desfazer último ponto</button><button type="button" class="btn-sm btn-outline" onclick="recPoliLimpar()">Limpar</button></div><p id="rec-poli-status" role="status">Nenhuma área desenhada.</p>`;
+ poli.innerHTML=`<strong>Recortar por área desenhada</strong><p>Escolha o talhão (ou "Qualquer talhão" pra desenhar sem se prender a um só), clique em "Desenhar área" e marque no mapa os pontos do contorno (mínimo 3). Clique em "Fechar desenho" pra concluir essa área -- depois pode clicar em "Desenhar área" de novo quantas vezes quiser pra adicionar outras áreas independentes (em talhões diferentes, ou não), todas serão aplicadas juntas.</p><select id="rec-poli-talhao" class="form-input" style="max-width:220px"><option value="">Qualquer talhão (o que a área tocar)</option>${(dados.poligonos||[]).map(p=>`<option value="${recEsc(p.id)}">Talhão ${recEsc(p.id)}</option>`).join('')}</select> <label style="margin-left:8px"><input type="radio" name="rec-poli-modo" value="remover" checked> Remover área desenhada</label> <label style="margin-left:8px"><input type="radio" name="rec-poli-modo" value="manter"> Manter só a área desenhada</label><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn-sm btn-outline" onclick="recPoliIniciar()">Desenhar área</button><button type="button" class="btn-sm btn-outline" onclick="recPoliFechar()">Fechar desenho</button><button type="button" class="btn-sm btn-outline" onclick="recPoliDesfazer()">Desfazer último ponto</button><button type="button" class="btn-sm btn-outline" onclick="recPoliLimpar()">Limpar tudo</button></div><p id="rec-poli-status" role="status">Nenhuma área desenhada.</p><div id="rec-poli-lista"></div>`;
  const ligar=document.createElement('div');ligar.style.cssText='border-top:1px solid #ccd9cf;margin-top:14px;padding-top:12px';
  ligar.innerHTML=`<strong>🔗 Juntar duas partes separadas</strong><p>Se depois do recorte o talhão ficou dividido em pedaços separados (ex: a sobreposição cortou o meio), escolha o talhão, clique em "Marcar ligação" e marque dois pontos no mapa (um em cada pedaço) pra desenhar uma faixa fina conectando os dois num único polígono. Calcule a prévia de novo depois.</p><select id="rec-ligar-talhao" class="form-input" style="max-width:200px">${(dados.poligonos||[]).map(p=>`<option value="${recEsc(p.id)}">Talhão ${recEsc(p.id)}</option>`).join('')}</select> <label style="margin-left:8px">Largura da faixa (m): <input type="number" id="rec-ligar-largura" value="4" min="1" max="30" style="width:60px"></label><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn-sm btn-outline" onclick="recLigarIniciar()">Marcar ligação no mapa</button><button type="button" class="btn-sm btn-outline" onclick="recLigarLimpar()">Limpar ligação</button></div><p id="rec-ligar-status" role="status">Nenhuma ligação definida.</p>`;
  panel.insertBefore(poli,panel.firstChild);
@@ -9736,7 +9736,7 @@ renderizarConteudoSobreposicoes=function(job,dados){
  panel.appendChild(ligar);
  document.getElementById('sobreposicoes-modal-body').appendChild(panel);
  document.getElementById('rec-talhao').addEventListener('change',()=>recManualLimpar());
- document.getElementById('rec-poli-talhao').addEventListener('change',()=>recPoliLimpar());
+ document.getElementById('rec-poli-talhao').addEventListener('change',()=>recPoliCancelarAtual());
  document.getElementById('rec-ligar-talhao').addEventListener('change',()=>recLigarLimpar());
  panel.querySelectorAll('.rec-select').forEach(e=>e.addEventListener('change',()=>{recSeq++;recResultado=null;document.getElementById('rec-download').disabled=true;document.getElementById('rec-email-btn').disabled=true;document.getElementById('rec-email-painel').hidden=true;document.getElementById('rec-preview').disabled=false;document.getElementById('rec-message').textContent='Seleção alterada. Calcule a prévia novamente.';document.getElementById('rec-result').innerHTML='';if(recLayer){recLayer.remove();recLayer=null;}}));
 };
@@ -9745,13 +9745,13 @@ async function recPrevia(){
  const camadas=recSelecionadas(),seq=++recSeq,job=recJob;recResultado=null;
  document.getElementById('rec-download').disabled=true;
  document.getElementById('rec-email-btn').disabled=true;document.getElementById('rec-email-painel').hidden=true;
- if(!camadas.length&&!recManualCorte&&!recPoliCorte){document.getElementById('rec-message').textContent='Selecione pelo menos uma camada.';return;}
+ if(!camadas.length&&!recManualCorte&&!recPoliCortes.length){document.getElementById('rec-message').textContent='Selecione pelo menos uma camada.';return;}
  document.getElementById('rec-preview').disabled=true;document.getElementById('rec-message').textContent='Calculando recorte…';
  try{
   if(recManualEtapa){document.getElementById('rec-message').textContent='Conclua os três cliques no mapa ou limpe a linha.';document.getElementById('rec-preview').disabled=false;return;}
-  if(recPoliAtivo){document.getElementById('rec-message').textContent='Feche o desenho da área (ou limpe) antes de calcular.';document.getElementById('rec-preview').disabled=false;return;}
+  if(recPoliAtivo){document.getElementById('rec-message').textContent='Feche o desenho da área em andamento (ou desfaça) antes de calcular.';document.getElementById('rec-preview').disabled=false;return;}
   if(recLigarEtapa){document.getElementById('rec-message').textContent='Conclua os dois cliques da ligação (ou limpe) antes de calcular.';document.getElementById('rec-preview').disabled=false;return;}
-  const r=await api('POST',`/recorte-kml/${job}/previa`,{camadas,corte:recManualCorte,poligono:recPoliCorte,ligacao:recLigarCorte});
+  const r=await api('POST',`/recorte-kml/${job}/previa`,{camadas,corte:recManualCorte,poligonos:recPoliCortes,ligacao:recLigarCorte});
   if(seq!==recSeq||job!==_sobreposicoesModalJobIdAtual)return;
   recResultado={...r,job,nomeArquivo:recNomeArquivo(recNomeCliente)};document.getElementById('rec-message').textContent=r.mensagem;
   document.getElementById('rec-result').innerHTML=`<table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr><th>Talhão</th><th>Original (ha)</th><th>Removida total (ha)</th><th>Adicional pelo fechamento (ha)</th><th>Restante (ha)</th><th>Partes</th><th>Resultado</th></tr></thead><tbody>${r.talhoes.map(t=>`<tr style="border-top:1px solid #ddd;color:${t.estado==='bloqueado'?'#b91c1c':'#193d2d'}"><td>T${recEsc(t.talhao)}</td><td>${recNum(t.original_ha)}</td><td>${recNum(t.removida_ha)}</td><td>${recNum(t.adicional_fechamento_ha||0)}</td><td>${recNum(t.restante_ha)}</td><td>${t.partes}</td><td>${recEsc(t.motivo||({recortado:'Recorte permitido',inalterado:'Sem alteração'}[t.estado]||t.estado))}</td></tr>`).join('')}</tbody></table><p style="font-size:12px">Áreas calculadas sobre o elipsoide WGS84. O limite de 20 ha é verificado antes do arredondamento. Verde no mapa: área restante; vermelho: talhão bloqueado.</p>`;
@@ -9766,7 +9766,7 @@ async function recBaixar(){
  const r=recResultado;if(!r?.liberado)return;
  const seq=recSeq;const button=document.getElementById('rec-download');button.disabled=true;
  try{
-  const res=await fetch(`${BACKEND_URL}/recorte-kml/${r.job}/baixar`,{method:'POST',headers:{Authorization:`Bearer ${TOKEN}`,'Content-Type':'application/json','ngrok-skip-browser-warning':'true'},body:JSON.stringify({camadas:r.camadas,corte:r.corte,poligono:r.poligono,ligacao:r.ligacao,assinatura:r.assinatura})});
+  const res=await fetch(`${BACKEND_URL}/recorte-kml/${r.job}/baixar`,{method:'POST',headers:{Authorization:`Bearer ${TOKEN}`,'Content-Type':'application/json','ngrok-skip-browser-warning':'true'},body:JSON.stringify({camadas:r.camadas,corte:r.corte,poligonos:r.poligonos,ligacao:r.ligacao,assinatura:r.assinatura})});
   if(!res.ok){const err=await res.json();throw new Error(err.detail||'Falha ao gerar KML');}
   const blob=await res.blob();if(seq!==recSeq||r.job!==_sobreposicoesModalJobIdAtual)return;
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=r.nomeArquivo;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);
@@ -9781,7 +9781,7 @@ async function recAbrirEmail(){
  painel.hidden=false;
  document.getElementById('rec-email-status').textContent='Carregando prévia…';
  try{
-  const p=await api('POST',`/recorte-kml/${r.job}/preview-email`,{camadas:r.camadas,corte:r.corte,poligono:r.poligono,ligacao:r.ligacao,assinatura:r.assinatura});
+  const p=await api('POST',`/recorte-kml/${r.job}/preview-email`,{camadas:r.camadas,corte:r.corte,poligonos:r.poligonos,ligacao:r.ligacao,assinatura:r.assinatura});
   document.getElementById('rec-email-assunto').value=p.assunto||'';
   document.getElementById('rec-email-corpo').value=p.corpo||'';
   document.getElementById('rec-email-corretor').value=p.email_corretor||'';
@@ -9798,7 +9798,7 @@ async function recEnviarEmail(){
  const btn=document.getElementById('rec-email-enviar');btn.disabled=true;
  document.getElementById('rec-email-status').textContent='Enviando…';
  try{
-  const res=await api('POST',`/recorte-kml/${r.job}/enviar-email`,{camadas:r.camadas,corte:r.corte,poligono:r.poligono,ligacao:r.ligacao,assinatura:r.assinatura,assunto,corpo,email_corretor});
+  const res=await api('POST',`/recorte-kml/${r.job}/enviar-email`,{camadas:r.camadas,corte:r.corte,poligonos:r.poligonos,ligacao:r.ligacao,assinatura:r.assinatura,assunto,corpo,email_corretor});
   document.getElementById('rec-email-status').textContent='✅ E-mail pronto pra enviar.';
   mostrarEmailParaCopiar(res);
  }catch(e){document.getElementById('rec-email-status').textContent='Erro: '+e.message;}
@@ -9806,7 +9806,13 @@ async function recEnviarEmail(){
 }
 
 let recManualCorte=null,recManualEtapa=0,recManualPontos=[],recManualMapa=null,recManualGrupo=null;
-let recPoliCorte=null,recPoliAtivo=false,recPoliPontos=[],recPoliMapa=null,recPoliGrupo=null,recPoliLinha=null;
+// Área desenhada agora é uma LISTA (recPoliCortes) -- dá pra desenhar várias
+// áreas independentes (cada uma podendo mirar um talhão diferente, ou
+// nenhum) numa mesma sessão, em vez de só uma por vez. recPoliGrupoFinal
+// guarda os contornos já FECHADOS (pra continuarem visíveis no mapa
+// enquanto se desenha a próxima); recPoliGrupoAtivo é só o desenho em
+// andamento.
+let recPoliCortes=[],recPoliAtivo=false,recPoliPontos=[],recPoliMapa=null,recPoliGrupoAtivo=null,recPoliGrupoFinal=null,recPoliLinha=null;
 function recManualInvalidar(){
  recSeq++;recResultado=null;
  const btn=document.getElementById('rec-download');if(btn)btn.disabled=true;
@@ -9825,7 +9831,7 @@ function recManualLimpar(invalidar=true){
 }
 function recManualIniciar(){
  recManualLimpar();
- recPoliLimpar();
+ recPoliCancelarAtual();
  if(!window.L||!_mapaSobreposicoesLeaflet){document.getElementById('rec-manual-status').textContent='Aguarde o mapa carregar.';return;}
  recManualMapa=_mapaSobreposicoesLeaflet;recManualGrupo=L.layerGroup().addTo(recManualMapa);recManualEtapa=1;
  recManualMapa.on('click',recManualClique);
@@ -9852,18 +9858,21 @@ function recManualClique(e){
 }
 
 function recPoliIniciar(){
- recPoliLimpar(false);
+ if(recPoliAtivo)return; // já desenhando -- feche ou desfaça antes de começar outra
  recManualLimpar();
+ recLigarLimpar();
  if(!window.L||!_mapaSobreposicoesLeaflet){document.getElementById('rec-poli-status').textContent='Aguarde o mapa carregar.';return;}
- recPoliMapa=_mapaSobreposicoesLeaflet;recPoliGrupo=L.layerGroup().addTo(recPoliMapa);recPoliAtivo=true;recPoliPontos=[];
+ recPoliMapa=_mapaSobreposicoesLeaflet;
+ if(recPoliGrupoAtivo)recPoliGrupoAtivo.remove();
+ recPoliGrupoAtivo=L.layerGroup().addTo(recPoliMapa);recPoliAtivo=true;recPoliPontos=[];
  recPoliMapa.on('click',recPoliClique);
  document.getElementById('rec-poli-status').textContent='Clique no mapa para marcar os pontos do contorno (mínimo 3). Depois clique em "Fechar desenho".';
  document.getElementById('mapa-sobreposicoes').scrollIntoView({behavior:'smooth',block:'center'});
 }
 function recPoliClique(e){
- if(!recPoliAtivo||recJob!==_sobreposicoesModalJobIdAtual){recPoliLimpar();return;}
+ if(!recPoliAtivo||recJob!==_sobreposicoesModalJobIdAtual){recPoliCancelarAtual();return;}
  recPoliPontos.push([e.latlng.lng,e.latlng.lat]);
- L.circleMarker(e.latlng,{radius:5,color:'#ea580c',fillOpacity:.8,interactive:false}).addTo(recPoliGrupo);
+ L.circleMarker(e.latlng,{radius:5,color:'#ea580c',fillOpacity:.8,interactive:false}).addTo(recPoliGrupoAtivo);
  recPoliAtualizarLinha();
  document.getElementById('rec-poli-status').textContent=`${recPoliPontos.length} ponto(s) marcado(s). Marque mais pontos ou clique em "Fechar desenho" (mínimo 3).`;
 }
@@ -9872,14 +9881,14 @@ function recPoliAtualizarLinha(){
  if(recPoliPontos.length>=2){
   const latlngs=recPoliPontos.map(p=>[p[1],p[0]]);
   if(recPoliPontos.length>=3)latlngs.push(latlngs[0]);
-  recPoliLinha=L.polyline(latlngs,{color:'#ea580c',weight:2,dashArray:'8 6',interactive:false}).addTo(recPoliGrupo);
+  recPoliLinha=L.polyline(latlngs,{color:'#ea580c',weight:2,dashArray:'8 6',interactive:false}).addTo(recPoliGrupoAtivo);
  }
 }
 function recPoliDesfazer(){
  if(!recPoliAtivo||!recPoliPontos.length)return;
  recPoliPontos.pop();
- recPoliGrupo.clearLayers();
- recPoliPontos.forEach(p=>L.circleMarker([p[1],p[0]],{radius:5,color:'#ea580c',fillOpacity:.8,interactive:false}).addTo(recPoliGrupo));
+ recPoliGrupoAtivo.clearLayers();
+ recPoliPontos.forEach(p=>L.circleMarker([p[1],p[0]],{radius:5,color:'#ea580c',fillOpacity:.8,interactive:false}).addTo(recPoliGrupoAtivo));
  recPoliAtualizarLinha();
  document.getElementById('rec-poli-status').textContent=`${recPoliPontos.length} ponto(s) marcado(s).`;
 }
@@ -9888,17 +9897,58 @@ function recPoliFechar(){
  if(recPoliPontos.length<3){document.getElementById('rec-poli-status').textContent='Marque pelo menos 3 pontos antes de fechar o desenho.';return;}
  recPoliAtivo=false;
  if(recPoliMapa)recPoliMapa.off('click',recPoliClique);
+ if(recPoliGrupoAtivo){recPoliGrupoAtivo.remove();recPoliGrupoAtivo=null;}
  const talhao=document.getElementById('rec-poli-talhao').value;
  const modo=document.querySelector('input[name="rec-poli-modo"]:checked')?.value||'remover';
- recPoliCorte={talhao,pontos:recPoliPontos,modo};
+ recPoliCortes.push({talhao,pontos:recPoliPontos,modo});
+ recPoliPontos=[];recPoliLinha=null;
+ recPoliRedesenharFinal();
+ recPoliRenderLista();
  recManualInvalidar();
- document.getElementById('rec-poli-status').textContent='Área desenhada definida. Clique em "Calcular prévia" para conferir.';
+ document.getElementById('rec-poli-status').textContent=`${recPoliCortes.length} área(s) desenhada(s). Clique em "Desenhar área" de novo pra adicionar outra, ou "Calcular prévia" pra conferir.`;
  document.getElementById('rec-preview').scrollIntoView({behavior:'smooth',block:'center'});
 }
-function recPoliLimpar(invalidar=true){
+// Cancela só o desenho EM ANDAMENTO (pontos ainda não fechados), sem mexer
+// nas áreas já fechadas -- usado quando troca de ferramenta (linha/ligação)
+// no meio de um desenho, ou quando o job muda.
+function recPoliCancelarAtual(){
  if(recPoliMapa)recPoliMapa.off('click',recPoliClique);
- if(recPoliGrupo)recPoliGrupo.remove();
- recPoliPontos=[];recPoliMapa=null;recPoliGrupo=null;recPoliAtivo=false;recPoliLinha=null;recPoliCorte=null;
+ if(recPoliGrupoAtivo){recPoliGrupoAtivo.remove();recPoliGrupoAtivo=null;}
+ recPoliAtivo=false;recPoliPontos=[];recPoliLinha=null;
+}
+function recPoliRedesenharFinal(){
+ if(recPoliGrupoFinal){recPoliGrupoFinal.remove();recPoliGrupoFinal=null;}
+ if(!window.L||!_mapaSobreposicoesLeaflet||!recPoliCortes.length)return;
+ recPoliGrupoFinal=L.layerGroup().addTo(_mapaSobreposicoesLeaflet);
+ recPoliCortes.forEach(c=>{
+  const latlngs=c.pontos.map(p=>[p[1],p[0]]);
+  latlngs.push(latlngs[0]);
+  L.polygon(latlngs,{color:'#ea580c',weight:2,fillOpacity:.12,interactive:false}).addTo(recPoliGrupoFinal);
+ });
+}
+function recPoliRenderLista(){
+ const wrap=document.getElementById('rec-poli-lista');
+ if(!wrap)return;
+ if(!recPoliCortes.length){wrap.innerHTML='';return;}
+ wrap.innerHTML='<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">'+recPoliCortes.map((c,i)=>
+  `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;background:#fff;border:1px solid #ddd;border-radius:6px;padding:4px 10px">
+    <span>Área ${i+1}: ${c.talhao?('Talhão '+recEsc(c.talhao)):'Qualquer talhão'} — ${c.modo==='manter'?'manter só o desenho':'remover'} (${c.pontos.length} pontos)</span>
+    <button type="button" class="btn-sm btn-outline" style="padding:2px 8px;font-size:11px" onclick="recPoliRemover(${i})">Remover</button>
+  </div>`
+ ).join('')+'</div>';
+}
+function recPoliRemover(i){
+ recPoliCortes.splice(i,1);
+ recPoliRedesenharFinal();
+ recPoliRenderLista();
+ recManualInvalidar();
+ document.getElementById('rec-poli-status').textContent=recPoliCortes.length?`${recPoliCortes.length} área(s) desenhada(s).`:'Nenhuma área desenhada.';
+}
+function recPoliLimpar(invalidar=true){
+ recPoliCancelarAtual();
+ if(recPoliGrupoFinal){recPoliGrupoFinal.remove();recPoliGrupoFinal=null;}
+ recPoliCortes=[];recPoliMapa=null;
+ recPoliRenderLista();
  if(invalidar)recManualInvalidar();
  const label=document.getElementById('rec-poli-status');if(label)label.textContent='Nenhuma área desenhada.';
 }
@@ -9916,7 +9966,7 @@ function recLigarLimpar(invalidar=true){
  const label=document.getElementById('rec-ligar-status');if(label)label.textContent='Nenhuma ligação definida.';
 }
 function recLigarIniciar(){
- recLigarLimpar();recManualLimpar();recPoliLimpar();
+ recLigarLimpar();recManualLimpar();recPoliCancelarAtual();
  if(!window.L||!_mapaSobreposicoesLeaflet){document.getElementById('rec-ligar-status').textContent='Aguarde o mapa carregar.';return;}
  recLigarMapa=_mapaSobreposicoesLeaflet;recLigarGrupo=L.layerGroup().addTo(recLigarMapa);recLigarEtapa=1;
  recLigarMapa.on('click',recLigarClique);
