@@ -9730,15 +9730,13 @@ renderizarConteudoSobreposicoes=function(job,dados){
  const poli=document.createElement('div');poli.style.cssText='border-top:1px solid #ccd9cf;margin-top:14px;padding-top:12px';
  poli.innerHTML=`<strong>Recortar por área desenhada</strong><p>Escolha o talhão (ou "Qualquer talhão" pra desenhar sem se prender a um só), clique em "Desenhar área" e marque no mapa os pontos do contorno (mínimo 3). Clique em "Fechar desenho" pra concluir essa área -- depois pode clicar em "Desenhar área" de novo quantas vezes quiser pra adicionar outras áreas independentes (em talhões diferentes, ou não), todas serão aplicadas juntas.</p><select id="rec-poli-talhao" class="form-input" style="max-width:220px"><option value="">Qualquer talhão (o que a área tocar)</option>${(dados.poligonos||[]).map(p=>`<option value="${recEsc(p.id)}">Talhão ${recEsc(p.id)}</option>`).join('')}</select> <label style="margin-left:8px"><input type="radio" name="rec-poli-modo" value="remover" checked> Remover área desenhada</label> <label style="margin-left:8px"><input type="radio" name="rec-poli-modo" value="manter"> Manter só a área desenhada</label><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn-sm btn-outline" onclick="recPoliIniciar()">Desenhar área</button><button type="button" class="btn-sm btn-outline" onclick="recPoliFechar()">Fechar desenho</button><button type="button" class="btn-sm btn-outline" onclick="recPoliDesfazer()">Desfazer último ponto</button><button type="button" class="btn-sm btn-outline" onclick="recPoliLimpar()">Limpar tudo</button></div><p id="rec-poli-status" role="status">Nenhuma área desenhada.</p><div id="rec-poli-lista"></div>`;
  const ligar=document.createElement('div');ligar.style.cssText='border-top:1px solid #ccd9cf;margin-top:14px;padding-top:12px';
- ligar.innerHTML=`<strong>🔗 Juntar partes/talhões</strong><p>Pra reconectar pedaços SOLTOS do mesmo talhão (ex: sobreposição cortou o meio): escolha o talhão, deixe "Talhão secundário" em branco. Pra FUNDIR DOIS TALHÕES DIFERENTES num só (ex: os dois sozinhos ficaram abaixo de 20ha, mas juntos passam do limite): escolha o talhão principal e também o secundário -- o secundário vira parte do principal (um só Placemark no KML). Clique em "Marcar ligação", marque dois pontos no mapa (um em cada parte/talhão), e repita quantas vezes precisar -- útil quando um talhão tem 3+ pedaços soltos, ou pra encadear mais de dois talhões (cada ligação nova já enxerga o resultado das anteriores). Calcule a prévia de novo depois.</p><select id="rec-ligar-talhao" class="form-input" style="max-width:200px">${(dados.poligonos||[]).map(p=>`<option value="${recEsc(p.id)}">Talhão ${recEsc(p.id)}</option>`).join('')}</select> <select id="rec-ligar-talhao-secundario" class="form-input" style="max-width:220px"><option value="">Sem talhão secundário (só juntar partes)</option>${(dados.poligonos||[]).map(p=>`<option value="${recEsc(p.id)}">+ fundir com Talhão ${recEsc(p.id)}</option>`).join('')}</select> <label style="margin-left:8px">Largura da faixa (m): <input type="number" id="rec-ligar-largura" value="4" min="1" max="30" style="width:60px"></label><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn-sm btn-outline" onclick="recLigarIniciar()">Marcar ligação no mapa</button><button type="button" class="btn-sm btn-outline" onclick="recLigarLimpar()">Limpar tudo</button></div><p id="rec-ligar-status" role="status">Nenhuma ligação definida.</p><div id="rec-ligar-lista"></div>`;
+ ligar.innerHTML=`<strong>🔗 Juntar partes/talhões</strong><p>Serve tanto pra reconectar pedaços SOLTOS do mesmo talhão (ex: sobreposição cortou o meio) quanto pra FUNDIR DOIS TALHÕES DIFERENTES num só (ex: os dois sozinhos ficaram abaixo de 20ha, mas juntos passam do limite) -- <strong>não precisa escolher o talhão</strong>, o sistema descobre sozinho pelo lugar onde você clica. Clique em "Marcar ligação", marque dois pontos no mapa (um em cada parte/talhão que quer conectar), e repita quantas vezes precisar -- útil quando um talhão tem 3+ pedaços soltos, ou pra encadear mais de dois talhões (cada ligação nova já enxerga o resultado das anteriores). Calcule a prévia de novo depois.</p><label>Largura da faixa (m): <input type="number" id="rec-ligar-largura" value="4" min="1" max="30" style="width:60px"></label><div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn-sm btn-outline" onclick="recLigarIniciar()">Marcar ligação no mapa</button><button type="button" class="btn-sm btn-outline" onclick="recLigarLimpar()">Limpar tudo</button></div><p id="rec-ligar-status" role="status">Nenhuma ligação definida.</p><div id="rec-ligar-lista"></div>`;
  panel.insertBefore(poli,panel.firstChild);
  panel.insertBefore(manual,panel.firstChild);
  panel.appendChild(ligar);
  document.getElementById('sobreposicoes-modal-body').appendChild(panel);
  document.getElementById('rec-talhao').addEventListener('change',()=>recManualLimpar());
  document.getElementById('rec-poli-talhao').addEventListener('change',()=>recPoliCancelarAtual());
- document.getElementById('rec-ligar-talhao').addEventListener('change',()=>recLigarCancelarAtual());
- document.getElementById('rec-ligar-talhao-secundario').addEventListener('change',()=>recLigarCancelarAtual());
  panel.querySelectorAll('.rec-select').forEach(e=>e.addEventListener('change',()=>{recSeq++;recResultado=null;document.getElementById('rec-download').disabled=true;document.getElementById('rec-email-btn').disabled=true;document.getElementById('rec-email-painel').hidden=true;document.getElementById('rec-preview').disabled=false;document.getElementById('rec-message').textContent='Seleção alterada. Calcule a prévia novamente.';document.getElementById('rec-result').innerHTML='';if(recLayer){recLayer.remove();recLayer=null;}}));
 };
 function recSelecionadas(){return [...document.querySelectorAll('#rec-panel .rec-select:checked')].map(e=>e.value);}
@@ -9981,7 +9979,7 @@ function recLigarRenderLista(){
  if(!recLigarCortes.length){wrap.innerHTML='';return;}
  wrap.innerHTML='<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">'+recLigarCortes.map((c,i)=>
   `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;background:#fff;border:1px solid #ddd;border-radius:6px;padding:4px 10px">
-    <span>Ligação ${i+1}: Talhão ${recEsc(c.talhao)}${(c.talhao_secundario&&c.talhao_secundario!==c.talhao)?(' + Talhão '+recEsc(c.talhao_secundario)+' (fundidos)'):' (partes soltas)'} — faixa ${c.largura_m}m</span>
+    <span>Ligação ${i+1} — faixa ${c.largura_m}m (talhão detectado automaticamente pelo clique)</span>
     <button type="button" class="btn-sm btn-outline" style="padding:2px 8px;font-size:11px" onclick="recLigarRemover(${i})">Remover</button>
   </div>`
  ).join('')+'</div>';
@@ -10009,8 +10007,7 @@ function recLigarIniciar(){
  if(recLigarGrupoAtivo)recLigarGrupoAtivo.remove();
  recLigarGrupoAtivo=L.layerGroup().addTo(recLigarMapa);recLigarEtapa=1;recLigarPontos=[];
  recLigarMapa.on('click',recLigarClique);
- const temSecundario=!!document.getElementById('rec-ligar-talhao-secundario').value;
- document.getElementById('rec-ligar-status').textContent=temSecundario?'1/2: clique num ponto dentro (ou perto) do talhão PRINCIPAL.':'1/2: clique num ponto dentro (ou perto) da primeira parte.';
+ document.getElementById('rec-ligar-status').textContent='1/2: clique num ponto dentro (ou perto) da primeira parte/talhão.';
  document.getElementById('mapa-sobreposicoes').scrollIntoView({behavior:'smooth',block:'center'});
 }
 function recLigarClique(e){
@@ -10019,14 +10016,12 @@ function recLigarClique(e){
  recLigarPontos.push(xy);
  L.circleMarker(e.latlng,{radius:6,color:'#0d9488',fillOpacity:.7,interactive:false}).addTo(recLigarGrupoAtivo);
  if(recLigarEtapa===1){
-  const temSecundario=!!document.getElementById('rec-ligar-talhao-secundario').value;
-  recLigarEtapa=2;document.getElementById('rec-ligar-status').textContent=temSecundario?'2/2: clique num ponto dentro (ou perto) do talhão SECUNDÁRIO.':'2/2: clique num ponto dentro (ou perto) da segunda parte.';return;
+  recLigarEtapa=2;document.getElementById('rec-ligar-status').textContent='2/2: clique num ponto dentro (ou perto) da segunda parte/talhão.';return;
  }
  const a=recLigarPontos[0],b=recLigarPontos[1];
  L.polyline([[a[1],a[0]],[b[1],b[0]]],{color:'#0d9488',weight:4,interactive:false}).addTo(recLigarGrupoAtivo);
  const largura=parseFloat(document.getElementById('rec-ligar-largura').value)||4;
- const talhaoSecundario=document.getElementById('rec-ligar-talhao-secundario').value;
- recLigarCortes.push({talhao:document.getElementById('rec-ligar-talhao').value,talhao_secundario:talhaoSecundario,pontos:recLigarPontos,largura_m:largura});
+ recLigarCortes.push({pontos:recLigarPontos,largura_m:largura});
  if(recLigarMapa)recLigarMapa.off('click',recLigarClique);
  if(recLigarGrupoAtivo){recLigarGrupoAtivo.remove();recLigarGrupoAtivo=null;}
  recLigarEtapa=0;recLigarPontos=[];
