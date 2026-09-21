@@ -207,6 +207,11 @@
   .user-row-email{font-size:12px;color:var(--gray400)}
 
   .overflow-x{overflow-x:auto}
+  /* Painel Comercial: tabelas ganharam colunas demais (fase, com quem está,
+     ações) pra caber espremidas em width:100% -- em vez de cortar/esconder
+     colunas, deixa a tabela crescer além do container e usa o scroll
+     horizontal do .overflow-x que já envolve ela. */
+  #page-painel-comercial .jobs-table{width:max-content;min-width:100%}
   ::-webkit-scrollbar{width:6px;height:6px}
   ::-webkit-scrollbar-track{background:transparent}
   ::-webkit-scrollbar-thumb{background:var(--gray200);border-radius:3px}
@@ -3229,11 +3234,11 @@ async function pcAbrirHistorico(jobId) {
       <div><div style="color:var(--gray400);font-size:11px;text-transform:uppercase;letter-spacing:.03em">Tempo total ${h.em_andamento ? '(em andamento)' : 'do processo'}</div><div style="font-weight:600;margin-top:2px">${pcFormatarDias(h.tempo_total_dias)}</div></div>
     </div>`;
     const linhas = (h.eventos || []).map((ev, i) => `
-      <div style="display:flex;gap:12px;padding:10px 0;${i > 0 ? 'border-top:1px solid #eef2f1' : ''}">
-        <div style="width:8px;height:8px;border-radius:50%;background:#1a3a2a;margin-top:6px;flex-shrink:0"></div>
+      <div style="display:flex;gap:12px;padding:10px 0;${i > 0 ? 'border-top:1px solid #eef2f1' : ''}${ev.inferido ? ';opacity:.8' : ''}">
+        <div style="width:8px;height:8px;border-radius:50%;${ev.inferido ? 'background:#fff;border:2px dashed #d97706' : 'background:#1a3a2a'};margin-top:6px;flex-shrink:0"></div>
         <div style="flex:1">
-          <div style="font-weight:600;font-size:13.5px">${escHtml(ev.evento)}</div>
-          <div style="font-size:12px;color:var(--gray600);margin-top:2px">${formatDate(ev.quando)} · ${pcQuemBadge(ev.quem)}</div>
+          <div style="font-weight:600;font-size:13.5px${ev.inferido ? ';font-style:italic;color:#92400e' : ''}">${ev.inferido ? '⚠ ' : ''}${escHtml(ev.evento)}</div>
+          <div style="font-size:12px;color:var(--gray600);margin-top:2px">${ev.quando ? formatDate(ev.quando) : 'Data exata não registrada'} · ${pcQuemBadge(ev.quem)}</div>
           ${ev.detalhe ? `<div style="font-size:12px;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:4px 8px;margin-top:6px;display:inline-block">${escHtml(ev.detalhe)}</div>` : ''}
         </div>
         <div style="text-align:right;font-size:12px;color:var(--gray400);white-space:nowrap;padding-top:2px">
@@ -3246,45 +3251,26 @@ async function pcAbrirHistorico(jobId) {
   }
 }
 
-function pcStatusObsBadge(status, motivoRejeicao) {
-  const mapa = {
-    pendente: { texto: 'Aguardando aprovação (Admin)', bg: '#fefce8', border: '#fde68a', cor: '#92400e' },
-    aprovado: { texto: 'Aprovado e enviado', bg: '#f0fdf4', border: '#86efac', cor: '#166534' },
-    rejeitado: { texto: 'Rejeitado pelo Admin', bg: '#fef2f2', border: '#fca5a5', cor: '#c0392b' },
-  };
-  const s = mapa[status] || { texto: status || '—', bg: '#f3f4f6', border: '#d1d5db', cor: '#374151' };
-  const badge = `<span class="badge" style="background:${s.bg};color:${s.cor};border:1px solid ${s.border}"><span class="badge-dot" style="background:${s.cor}"></span>${escHtml(s.texto)}</span>`;
-  return status === 'rejeitado' && motivoRejeicao
-    ? badge + `<div style="font-size:12px;color:#c0392b;margin-top:4px">Motivo: ${escHtml(motivoRejeicao)}</div>`
-    : badge;
-}
-
 async function pcVerObservacoes(jobId) {
   document.getElementById('modal-job-title').textContent = 'E-mail da observação (somente leitura)';
   document.getElementById('modal-job-body').innerHTML = '<div style="text-align:center;color:var(--gray400);padding:24px">Carregando…</div>';
   openModal('modal-job');
   try {
-    const lista = await api('GET', `/painel-comercial/jobs/${jobId}/observacoes`);
-    if (!lista || !lista.length) {
+    const o = await api('GET', `/painel-comercial/jobs/${jobId}/observacoes`);
+    if (!o) {
       document.getElementById('modal-job-body').innerHTML = '<div style="color:var(--gray400);text-align:center;padding:20px">Nenhuma observação registrada pra esse caso.</div>';
       return;
     }
-    document.getElementById('modal-job-body').innerHTML = lista.map((o, i) => {
-      const ei = o.email_info || {};
-      const dests = [...(ei.destinatarios_internos || []), ...(ei.destinatarios_externos || [])].filter(Boolean);
-      return `<div style="${i > 0 ? 'margin-top:22px;padding-top:18px;border-top:1px solid #e5e7eb' : ''}">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px">
-          <div style="font-size:12px;color:var(--gray600)">${formatDate(o.criado_em)}</div>
-          ${pcStatusObsBadge(o.status, o.motivo_rejeicao)}
-        </div>
-        <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Para</div>
-        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13.5px;color:#374151">${escHtml(dests.join(', ') || '—')}</div>
-        <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Assunto</div>
-        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13.5px;color:#374151">${escHtml(ei.assunto || '—')}</div>
-        <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Corpo</div>
-        <div style="border:1px solid #e5e7eb;border-radius:8px;padding:10px;font-size:13px;line-height:1.6;max-height:340px;overflow-y:auto">${ei.corpo_html || escHtml(ei.corpo_texto || '')}</div>
-      </div>`;
-    }).join('');
+    const ei = o.email_info || {};
+    const dests = [...(ei.destinatarios_internos || []), ...(ei.destinatarios_externos || [])].filter(Boolean);
+    document.getElementById('modal-job-body').innerHTML = `
+      <div style="font-size:12px;color:var(--gray600);margin-bottom:14px">Enviado pela Subscrição em ${formatDate(o.criado_em)}</div>
+      <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Para</div>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13.5px;color:#374151">${escHtml(dests.join(', ') || '—')}</div>
+      <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Assunto</div>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13.5px;color:#374151">${escHtml(ei.assunto || '—')}</div>
+      <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Corpo</div>
+      <div style="border:1px solid #e5e7eb;border-radius:8px;padding:10px;font-size:13px;line-height:1.6;max-height:340px;overflow-y:auto">${ei.corpo_html || escHtml(ei.corpo_texto || '')}</div>`;
   } catch (e) {
     document.getElementById('modal-job-body').innerHTML = `<div style="color:var(--red);padding:16px">Erro ao carregar: ${escHtml(e.message)}</div>`;
   }
