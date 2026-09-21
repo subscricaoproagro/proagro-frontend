@@ -5942,7 +5942,7 @@ async function ativarDraftCE(jobId) {
   try {
     const r = await api('POST', '/condicoes-especiais/' + jobId + '/ativar-draft', { numero_draft: dados.numeroDraft, tipo_regulacao: dados.tipoRegulacao });
     if (r.email) {
-      showToast('Draft ativado.', 'success');
+      showToast(r.aviso_email ? ('Draft ativado. ' + r.aviso_email) : 'Draft ativado.', r.aviso_email ? 'warning' : 'success');
       mostrarEmailParaCopiar(r.email);
     } else {
       showToast('Draft ativado. ' + (r.aviso_email || 'Sem e-mail do corretor pra avisar.'), 'warning');
