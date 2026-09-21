@@ -2941,6 +2941,7 @@ function renderJobsTable(jobs) {
           <button class="btn-sm btn-outline" onclick="verJob('${j.id}')">Detalhes</button>
           ${concluido ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${j.id}')" title="Visualizar relatório completo">📄 Ver</button>` : ''}
           ${concluido ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8" onclick="abrirModalSobreposicoes('${j.id}')" title="Ver sobreposições em mapa (CAR, PRODES, CNFP, INCRA)">🗺️ Sobreposições</button>` : ''}
+          ${renderBadgeObservacao(j)}
           ${renderBadgeScoreSubscricao(j)}
           ${concluido ? `<button class="btn-sm btn-green" onclick="baixarJob('${j.id}')">⬇ Baixar</button>` : ''}
 
@@ -3013,6 +3014,24 @@ function renderBadgeOnedrive(j) {
     return `<span class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;cursor:default" title="Enviado em ${dataEnvio}">✅ Enviado ao OneDrive</span>`;
   }
   return `<span class="btn-sm" style="background:#f9fafb;border:1px solid var(--gray200);color:var(--gray400);cursor:default" title="Ainda não enviado, ou a última tentativa falhou -- use o botão Enviar Arquivos">— Não enviado</span>`;
+}
+
+function renderBadgeObservacao(j) {
+  // Selo direto na lista pro analista ver/enviar o e-mail de observação ou
+  // recusa (CE ou Sistema) sem precisar entrar no relatório -- reaproveita
+  // verUltimaObservacao, que já sabia lidar com os 3 status. Antes só existia
+  // um botão parecido escondido dentro do modal de relatório, e só pra
+  // Sistema -- aqui cobre as duas fases (ver Quinquagésimo nono ajuste).
+  const status = j.observacao_status;
+  if (!status) return '';
+  const cores = {
+    aprovado:  { bg: '#f0fdf4', border: '#86efac', cor: '#166534', icone: '📧', texto: 'Enviar e-mail' },
+    pendente:  { bg: '#fefce8', border: '#fde68a', cor: '#92400e', icone: '⏳', texto: 'Aguardando Admin' },
+    rejeitado: { bg: '#fef2f2', border: '#fca5a5', cor: '#c0392b', icone: '❌', texto: 'Rejeitado — ver' },
+  };
+  const c = cores[status];
+  if (!c) return '';
+  return `<button class="btn-sm" style="background:${c.bg};border:1px solid ${c.border};color:${c.cor}" onclick="verUltimaObservacao('${j.id}')" title="Ver/enviar o e-mail de observação ou recusa dessa proposta">${c.icone} ${c.texto}</button>`;
 }
 
 function renderBadgeScoreSubscricao(j) {
