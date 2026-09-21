@@ -1231,8 +1231,8 @@
     <div class="card-header"><div class="card-title" style="font-size:14px">Condições Especiais</div><span id="pc-ce-contagem" style="font-size:12px;color:var(--gray400)"></span></div>
     <div class="overflow-x">
       <table class="jobs-table">
-        <thead><tr><th>Cliente</th><th>CPF</th><th>Município</th><th>Corretora</th><th>Chegada</th><th>Prêmio estimado</th><th>Fase</th><th>Impedimentos</th><th>Pendências</th><th>Efetivada</th><th>Ações</th></tr></thead>
-        <tbody id="pc-ce-tbody"><tr><td colspan="11" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+        <thead><tr><th>Cliente</th><th>CPF</th><th>Município</th><th>Corretora</th><th>Chegada</th><th>Prêmio estimado</th><th>Fase</th><th>Com quem está</th><th>Impedimentos</th><th>Pendências</th><th>Efetivada</th><th>Ações</th></tr></thead>
+        <tbody id="pc-ce-tbody"><tr><td colspan="12" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -1241,8 +1241,8 @@
     <div class="card-header"><div class="card-title" style="font-size:14px">Propostas do Sistema</div><span id="pc-jobs-contagem" style="font-size:12px;color:var(--gray400)"></span></div>
     <div class="overflow-x">
       <table class="jobs-table">
-        <thead><tr><th>Proposta</th><th>Cliente</th><th>Município</th><th>Cultura</th><th>Corretor</th><th>Status</th><th>Origem</th><th>Chegada</th><th>Finalizado</th><th>Pendências</th></tr></thead>
-        <tbody id="pc-jobs-tbody"><tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr></tbody>
+        <thead><tr><th>Proposta</th><th>Cliente</th><th>Município</th><th>Cultura</th><th>Corretor</th><th>Status</th><th>Fase</th><th>Com quem está</th><th>Origem</th><th>Chegada</th><th>Finalizado</th><th>Pendências</th><th>Ações</th></tr></thead>
+        <tbody id="pc-jobs-tbody"><tr><td colspan="13" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -3053,8 +3053,8 @@ function verScoreSubscricao(jobId) {
 let _pcCEs = [], _pcJobs = [];
 
 async function carregarPainelComercial() {
-  document.getElementById('pc-ce-tbody').innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
-  document.getElementById('pc-jobs-tbody').innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr>';
+  document.getElementById('pc-ce-tbody').innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
+  document.getElementById('pc-jobs-tbody').innerHTML = '<tr><td colspan="13" style="text-align:center;color:var(--gray400);padding:24px">Carregando…</td></tr>';
   try {
     const [ces, jobsSistema] = await Promise.all([
       api('GET', '/painel-comercial/condicoes-especiais'),
@@ -3069,7 +3069,7 @@ async function carregarPainelComercial() {
     _pcCEs.forEach(ce => { window._ceCache[ce.job_id] = ce; });
     renderizarPainelComercial();
   } catch (e) {
-    document.getElementById('pc-ce-tbody').innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--red);padding:24px">Erro: ${escHtml(e.message)}</td></tr>`;
+    document.getElementById('pc-ce-tbody').innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--red);padding:24px">Erro: ${escHtml(e.message)}</td></tr>`;
   }
 }
 
@@ -3111,7 +3111,7 @@ function renderizarPainelComercial() {
 
   const tbody = document.getElementById('pc-ce-tbody');
   tbody.innerHTML = !lista.length
-    ? '<tr><td colspan="11" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada com esses filtros.</td></tr>'
+    ? '<tr><td colspan="12" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada com esses filtros.</td></tr>'
     : lista.map(ce => {
       const cliente = ce.cliente || ce.job?.nome_proponente || '—';
       const cpf = ce.job?.cpf || '—';
@@ -3139,6 +3139,7 @@ function renderizarPainelComercial() {
       const btnReenviarEmail = drSis
         ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#0369a1" onclick="abrirReenvioSimplesCE('${ce.job_id}','${drSis}')">📨 Reenviar Email</button>`
         : '';
+      const btnHistorico = `<button class="btn-sm btn-outline" onclick="pcAbrirHistorico('${ce.job_id}')">📜 Histórico</button>`;
       return `<tr>
         <td>${escHtml(cliente)}</td>
         <td>${escHtml(cpf)}</td>
@@ -3147,10 +3148,11 @@ function renderizarPainelComercial() {
         <td>${chegadaHtml}</td>
         <td>${premio}</td>
         <td>${escHtml(ce.fase || '—')}</td>
+        <td>${pcQuemBadge(ce.quem)}</td>
         <td>${impedimentosHtml}</td>
         <td class="pend-cell" id="pend-cell-ce-${ce.job_id}">${pendInicial(ce.job_id, 'Comercial')}</td>
         <td>${efetivadaHtml}</td>
-        <td style="display:flex;gap:6px;flex-wrap:wrap">${btnPrioridade}${btnInclusao}${btnReenviarEmail}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">${btnPrioridade}${btnInclusao}${btnReenviarEmail}${btnHistorico}</td>
       </tr>`;
     }).join('');
 
@@ -3178,12 +3180,66 @@ function renderizarPainelComercial() {
         <td>${escHtml(j.cultura_desejada || '—')}</td>
         <td>${escHtml(j.corretor || '—')}</td>
         <td>${escHtml(j.status || '—')}${j.cancelada_matriz ? ' <span title="Consta como cancelada na matriz (Gestão de Propostas) -- não alterou a decisão já tomada aqui" style="font-size:11px;background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;border-radius:4px;padding:1px 5px;font-weight:600">⚠ Cancelada na matriz</span>' : ''}</td>
+        <td>${escHtml(j.fase || '—')}</td>
+        <td>${pcQuemBadge(j.quem)}</td>
         <td>${j.via_ce_real ? '⭐ Via CE' : 'Direta'}</td>
         <td>${j.created_at ? formatDate(j.created_at) : '—'}</td>
         <td>${j.concluido_at ? formatDate(j.concluido_at) : '—'}</td>
         <td class="pend-cell" id="pend-cell-jobs-${j.id}">${pendInicial(j.id, 'Comercial')}</td>
+        <td><button class="btn-sm btn-outline" onclick="pcAbrirHistorico('${j.id}')">📜 Histórico</button></td>
       </tr>`).join('')
-    : '<tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:24px">Nenhuma proposta encontrada.</td></tr>';
+    : '<tr><td colspan="13" style="text-align:center;color:var(--gray400);padding:24px">Nenhuma proposta encontrada.</td></tr>';
+}
+
+function pcQuemBadge(quem) {
+  if (!quem || quem === '—') return '<span style="color:var(--gray400)">—</span>';
+  const cores = {
+    'Subscrição (Analista)':      { bg: '#eff6ff', border: '#bfdbfe', cor: '#1d4ed8' },
+    'Área Técnica (Supervisor)':  { bg: '#faf5ff', border: '#d8b4fe', cor: '#7e22ce' },
+    'Corretor/Cliente':           { bg: '#f0fdf4', border: '#86efac', cor: '#166534' },
+  };
+  const c = cores[quem] || { bg: '#f3f4f6', border: '#d1d5db', cor: '#374151' };
+  return `<span class="badge" style="background:${c.bg};color:${c.cor};border:1px solid ${c.border}"><span class="badge-dot" style="background:${c.cor}"></span>${escHtml(quem)}</span>`;
+}
+
+function pcFormatarDias(dias) {
+  if (dias === null || dias === undefined) return '—';
+  if (dias < 1) {
+    const minutos = Math.round(dias * 24 * 60);
+    if (minutos < 60) return `${minutos} min`;
+    return `${Math.round(dias * 24)} h`;
+  }
+  const inteiro = Math.floor(dias);
+  const horas = Math.round((dias - inteiro) * 24);
+  return horas > 0 ? `${inteiro}d ${horas}h` : `${inteiro} dia${inteiro === 1 ? '' : 's'}`;
+}
+
+async function pcAbrirHistorico(jobId) {
+  document.getElementById('modal-job-title').textContent = 'Histórico do processo';
+  document.getElementById('modal-job-body').innerHTML = '<div style="text-align:center;color:var(--gray400);padding:24px">Carregando…</div>';
+  openModal('modal-job');
+  try {
+    const h = await api('GET', `/painel-comercial/jobs/${jobId}/historico`);
+    const resumo = `<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px;padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:13px">
+      <div><div style="color:var(--gray400);font-size:11px;text-transform:uppercase;letter-spacing:.03em">Situação atual</div><div style="font-weight:600;margin-top:2px">${escHtml(h.fase_atual || '—')}</div></div>
+      <div><div style="color:var(--gray400);font-size:11px;text-transform:uppercase;letter-spacing:.03em">Com quem está</div><div style="margin-top:2px">${pcQuemBadge(h.quem_atual)}</div></div>
+      <div><div style="color:var(--gray400);font-size:11px;text-transform:uppercase;letter-spacing:.03em">Tempo total ${h.em_andamento ? '(em andamento)' : 'do processo'}</div><div style="font-weight:600;margin-top:2px">${pcFormatarDias(h.tempo_total_dias)}</div></div>
+    </div>`;
+    const linhas = (h.eventos || []).map((ev, i) => `
+      <div style="display:flex;gap:12px;padding:10px 0;${i > 0 ? 'border-top:1px solid #eef2f1' : ''}">
+        <div style="width:8px;height:8px;border-radius:50%;background:#1a3a2a;margin-top:6px;flex-shrink:0"></div>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:13.5px">${escHtml(ev.evento)}</div>
+          <div style="font-size:12px;color:var(--gray600);margin-top:2px">${formatDate(ev.quando)} · ${pcQuemBadge(ev.quem)}</div>
+        </div>
+        <div style="text-align:right;font-size:12px;color:var(--gray400);white-space:nowrap;padding-top:2px">
+          ${ev.dias_desde_anterior !== null ? '+ ' + pcFormatarDias(ev.dias_desde_anterior) : ''}
+        </div>
+      </div>`).join('');
+    document.getElementById('modal-job-body').innerHTML = resumo + (linhas || '<div style="color:var(--gray400);text-align:center;padding:20px">Nenhum evento registrado ainda.</div>');
+  } catch (e) {
+    document.getElementById('modal-job-body').innerHTML = `<div style="color:var(--red);padding:16px">Erro ao carregar histórico: ${escHtml(e.message)}</div>`;
+  }
 }
 
 async function pcAlternarPrioridade(jobId) {
