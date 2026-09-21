@@ -749,46 +749,77 @@
           <div class="section-title">Condição Especial</div>
           <div class="section-sub">Análises marcadas como condição especial</div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <select class="form-input" id="ce-filter" style="width:auto;padding:8px 12px;font-size:13px" onchange="carregarCondicoesEspeciais()">
-            <option value="">Todas</option>
-            <option value="pendente">⏳ Pendentes de análise</option>
-            <option value="aprovado">✅ CE Aprovadas</option>
-            <option value="balcao">🏦 Balcão</option>
-            <option value="recusado">❌ Recusadas</option>
-            <option value="reavaliacao">🔁 Reavaliação solicitada</option>
-            <optgroup label="Status do draft">
-              <option value="draft_aguardando">⏳ Aguardando corretor</option>
-              <option value="draft_confirmado">🔔 Cliente confirmou</option>
-              <option value="draft_ativado">✓ Draft ativado</option>
-            </optgroup>
-          </select>
-          <input class="form-input" id="ce-filter-uf" placeholder="Filtrar UF…" style="width:90px;padding:8px 10px;font-size:13px" oninput="carregarCondicoesEspeciais()">
-          <input class="form-input" id="ce-filter-broker" placeholder="Filtrar Broker…" style="width:140px;padding:8px 10px;font-size:13px" oninput="carregarCondicoesEspeciais()">
-          <input class="form-input" id="ce-filter-cliente" placeholder="Filtrar Cliente…" style="width:160px;padding:8px 10px;font-size:13px" oninput="carregarCondicoesEspeciais()">
-          <button class="btn-sm btn-outline" onclick="carregarCondicoesEspeciais()">↻ Atualizar</button>
+      </div>
+
+      <div style="display:flex;gap:4px;margin-bottom:16px">
+        <button id="ce-aba-normal" onclick="ceSetAba('normal')"
+          style="padding:8px 20px;border-radius:8px 8px 0 0;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #d97706;background:#d97706;color:#fff">
+          ⭐ Condição Especial
+        </button>
+        <button id="ce-aba-apedido" onclick="ceSetAba('apedido')"
+          style="padding:8px 20px;border-radius:8px 8px 0 0;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #1a3a2a;background:#fff;color:#1a3a2a">
+          📋 A Pedido (Cooperativas/Lote)
+        </button>
+      </div>
+
+      <div id="ce-painel-normal">
+        <div class="section-header" style="display:flex;align-items:flex-start;justify-content:flex-end;flex-wrap:wrap;gap:12px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <select class="form-input" id="ce-filter" style="width:auto;padding:8px 12px;font-size:13px" onchange="carregarCondicoesEspeciais()">
+              <option value="">Todas</option>
+              <option value="pendente">⏳ Pendentes de análise</option>
+              <option value="aprovado">✅ CE Aprovadas</option>
+              <option value="balcao">🏦 Balcão</option>
+              <option value="recusado">❌ Recusadas</option>
+              <option value="reavaliacao">🔁 Reavaliação solicitada</option>
+              <optgroup label="Status do draft">
+                <option value="draft_aguardando">⏳ Aguardando corretor</option>
+                <option value="draft_confirmado">🔔 Cliente confirmou</option>
+                <option value="draft_ativado">✓ Draft ativado</option>
+              </optgroup>
+            </select>
+            <input class="form-input" id="ce-filter-uf" placeholder="Filtrar UF…" style="width:90px;padding:8px 10px;font-size:13px" oninput="carregarCondicoesEspeciais()">
+            <input class="form-input" id="ce-filter-broker" placeholder="Filtrar Broker…" style="width:140px;padding:8px 10px;font-size:13px" oninput="carregarCondicoesEspeciais()">
+            <input class="form-input" id="ce-filter-cliente" placeholder="Filtrar Cliente…" style="width:160px;padding:8px 10px;font-size:13px" oninput="carregarCondicoesEspeciais()">
+            <button class="btn-sm btn-outline" onclick="carregarCondicoesEspeciais()">↻ Atualizar</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+          <div id="ce-count-pendente" onclick="document.getElementById('ce-filter').value='pendente';carregarCondicoesEspeciais()" style="cursor:pointer;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#92400e">⏳ Pendentes: <span id="ce-n-pendente">—</span></div>
+          <div id="ce-count-aprovado" onclick="document.getElementById('ce-filter').value='aprovado';carregarCondicoesEspeciais()" style="cursor:pointer;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#166534">✅ Aprovadas: <span id="ce-n-aprovado">—</span></div>
+          <div id="ce-count-balcao" onclick="document.getElementById('ce-filter').value='balcao';carregarCondicoesEspeciais()" style="cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#1d4ed8">🏦 Balcão: <span id="ce-n-balcao">—</span></div>
+          <div id="ce-count-recusado" onclick="document.getElementById('ce-filter').value='recusado';carregarCondicoesEspeciais()" style="cursor:pointer;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#c0392b">❌ Recusadas: <span id="ce-n-recusado">—</span></div>
+          <div id="ce-count-draft" onclick="document.getElementById('ce-filter').value='draft_confirmado';carregarCondicoesEspeciais()" style="cursor:pointer;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#b45309">📝 Drafts para ativar: <span id="ce-n-draft">—</span></div>
+          <div id="ce-count-reavaliacao" onclick="document.getElementById('ce-filter').value='reavaliacao';carregarCondicoesEspeciais()" style="cursor:pointer;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#6d28d9">🔁 Reavaliação solicitada: <span id="ce-n-reavaliacao">—</span></div>
+          <!-- Card de média de tempo de resposta -->
+          <div style="margin-left:auto;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:8px 20px;display:flex;flex-direction:column;align-items:center;min-width:160px">
+            <div style="font-size:10px;font-weight:600;color:#6d28d9;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">⏱ Média de Resposta</div>
+            <div id="ce-media-tempo" style="font-size:22px;font-weight:800;color:#4c1d95;line-height:1.2">—</div>
+            <div id="ce-media-base" style="font-size:10px;color:#7c3aed;margin-top:1px">calculando…</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="overflow-x">
+            <table class="jobs-table">
+              <thead><tr><th>Cultura</th><th>Local</th><th>Broker</th><th>Cliente</th><th>Decidido por</th><th>Prêmio</th><th>Chegada</th><th>Tempo Resp.</th><th>Status draft</th><th>Ações</th></tr></thead>
+              <tbody id="ce-tbody"><tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+            </table>
+          </div>
         </div>
       </div>
-      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-        <div id="ce-count-pendente" onclick="document.getElementById('ce-filter').value='pendente';carregarCondicoesEspeciais()" style="cursor:pointer;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#92400e">⏳ Pendentes: <span id="ce-n-pendente">—</span></div>
-        <div id="ce-count-aprovado" onclick="document.getElementById('ce-filter').value='aprovado';carregarCondicoesEspeciais()" style="cursor:pointer;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#166534">✅ Aprovadas: <span id="ce-n-aprovado">—</span></div>
-        <div id="ce-count-balcao" onclick="document.getElementById('ce-filter').value='balcao';carregarCondicoesEspeciais()" style="cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#1d4ed8">🏦 Balcão: <span id="ce-n-balcao">—</span></div>
-        <div id="ce-count-recusado" onclick="document.getElementById('ce-filter').value='recusado';carregarCondicoesEspeciais()" style="cursor:pointer;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#c0392b">❌ Recusadas: <span id="ce-n-recusado">—</span></div>
-        <div id="ce-count-draft" onclick="document.getElementById('ce-filter').value='draft_confirmado';carregarCondicoesEspeciais()" style="cursor:pointer;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#b45309">📝 Drafts para ativar: <span id="ce-n-draft">—</span></div>
-        <div id="ce-count-reavaliacao" onclick="document.getElementById('ce-filter').value='reavaliacao';carregarCondicoesEspeciais()" style="cursor:pointer;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#6d28d9">🔁 Reavaliação solicitada: <span id="ce-n-reavaliacao">—</span></div>
-        <!-- Card de média de tempo de resposta -->
-        <div style="margin-left:auto;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:8px 20px;display:flex;flex-direction:column;align-items:center;min-width:160px">
-          <div style="font-size:10px;font-weight:600;color:#6d28d9;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">⏱ Média de Resposta</div>
-          <div id="ce-media-tempo" style="font-size:22px;font-weight:800;color:#4c1d95;line-height:1.2">—</div>
-          <div id="ce-media-base" style="font-size:10px;color:#7c3aed;margin-top:1px">calculando…</div>
+
+      <div id="ce-painel-apedido" style="display:none">
+        <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div class="section-sub" style="max-width:520px">Condições especiais já negociadas diretamente pelo supervisor com uma cooperativa ou lote de clientes — sem passar pela análise automática nem pela fila normal de decisão de risco. Um registro por cliente.</div>
+          <button class="btn btn-primary" onclick="abrirModalNovaCEAPedido()">+ Nova Condição Especial a Pedido</button>
         </div>
-      </div>
-      <div class="card">
-        <div class="overflow-x">
-          <table class="jobs-table">
-            <thead><tr><th>Cultura</th><th>Local</th><th>Broker</th><th>Cliente</th><th>Decidido por</th><th>Prêmio</th><th>Chegada</th><th>Tempo Resp.</th><th>Status draft</th><th>Ações</th></tr></thead>
-            <tbody id="ce-tbody"><tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
-          </table>
+        <div class="card">
+          <div class="overflow-x">
+            <table class="jobs-table">
+              <thead><tr><th>Cliente</th><th>CPF/CNPJ</th><th>Município/UF</th><th>Corretora</th><th>Taxa</th><th>Prod. garantida</th><th>Criado por</th><th>Chegada</th><th>Draft</th><th>Ações</th></tr></thead>
+              <tbody id="ce-apedido-tbody"><tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -5187,6 +5218,9 @@ async function carregarCondicoesEspeciais() {
     const listaSemSistema = lista.filter(ce => {
       if (!ce.job) return true;
       if (ce.job.tipo_analise === 'sistema') return false;
+      // "A Pedido" (cooperativas/lote) tem aba própria -- não mistura com a
+      // fila normal, senão apareceria duplicada nas duas.
+      if (ce.job.tipo_analise === 'condicao_especial_lote') return false;
       const idP = String(ce.job.id_proposta || '0').trim();
       if (idP !== '0' && idP !== '') return false;
       if (!ce.cliente && !ce.municipio) return false;
@@ -5327,6 +5361,139 @@ async function carregarCondicoesEspeciais() {
     }).join('');
   } catch(e) {
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--red);padding:40px">Erro ao carregar.</td></tr>';
+  }
+}
+
+// ══════════════════════════════════════════
+// CONDIÇÃO ESPECIAL A PEDIDO (cooperativas/lote) — Sexagésimo primeiro ajuste
+// Criada direto pelo supervisor, sem passar pela fila normal de CE.
+// ══════════════════════════════════════════
+function ceSetAba(aba) {
+  const btnNormal = document.getElementById('ce-aba-normal');
+  const btnApedido = document.getElementById('ce-aba-apedido');
+  const painelNormal = document.getElementById('ce-painel-normal');
+  const painelApedido = document.getElementById('ce-painel-apedido');
+  if (aba === 'normal') {
+    btnNormal.style.background = '#d97706'; btnNormal.style.color = '#fff';
+    btnApedido.style.background = '#fff';   btnApedido.style.color = '#1a3a2a';
+    painelNormal.style.display = ''; painelApedido.style.display = 'none';
+  } else {
+    btnApedido.style.background = '#1a3a2a'; btnApedido.style.color = '#fff';
+    btnNormal.style.background = '#fff';     btnNormal.style.color = '#d97706';
+    painelApedido.style.display = ''; painelNormal.style.display = 'none';
+    carregarCEAPedido();
+  }
+}
+
+function abrirModalNovaCEAPedido() {
+  const ov = document.createElement('div');
+  ov.id = 'ov-nova-ce-apedido';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  const campo = (id, label, placeholder, tipo) => `
+    <div style="margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">${label}</div>
+      <input type="${tipo || 'text'}" id="${id}" placeholder="${placeholder || ''}" style="width:100%;box-sizing:border-box;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:14px;color:#374151">
+    </div>`;
+  ov.innerHTML =
+    '<div style="background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;font-family:inherit">'
+    + '<div style="background:#1a3a2a;color:#fff;padding:16px 20px;font-weight:700;font-size:15px">📋 Nova Condição Especial a Pedido</div>'
+    + '<div style="padding:20px;overflow-y:auto;font-size:14px;color:#374151;line-height:1.6">'
+    + '<div style="font-size:12.5px;color:#6b7280;margin-bottom:16px">Pra acordos já negociados com uma cooperativa ou lote de clientes — cadastre um registro por cliente. Fica pronta direto em "Aguardando ativação do draft", sem passar pelo aceite do corretor.</div>'
+    + campo('nce-cliente', 'Cliente *', 'Nome do cliente ou cooperado')
+    + campo('nce-cpf', 'CPF/CNPJ', '000.000.000-00')
+    + '<div style="display:grid;grid-template-columns:2fr 1fr;gap:10px">' + campo('nce-municipio2', 'Município', 'Ex: Naviraí') + campo('nce-uf', 'UF', 'PR') + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + campo('nce-broker', 'Corretora', 'Nome da corretora') + campo('nce-email-corretor', 'E-mail do corretor', 'corretor@exemplo.com', 'email') + '</div>'
+    + campo('nce-cultivo', 'Cultivo', 'Ex: Soja')
+    + '<hr style="border:none;border-top:1px solid #e5e7eb;margin:14px 0">'
+    + '<div style="font-size:12.5px;font-weight:700;color:#1a3a2a;margin-bottom:10px">Termos negociados</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + campo('nce-taxa', 'Taxa aprovada (%)', 'Ex: 7,5') + campo('nce-cobertura', 'Nível de cobertura (%)', 'Ex: 70 (opcional)') + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + campo('nce-prod-bruta', 'Produtividade estimada bruta (kg/ha)', 'Ex: 4000') + campo('nce-prod-garantida', 'Produtividade garantida (kg/ha)', 'Ex: 2800') + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Replantio</div>'
+    + '<select id="nce-replantio" style="width:100%;box-sizing:border-box;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:14px;color:#374151"><option value="">—</option><option value="Sim">Sim</option><option value="Não">Não</option></select></div>'
+    + '<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Regulação</div>'
+    + '<select id="nce-regulacao" style="width:100%;box-sizing:border-box;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-family:inherit;font-size:14px;color:#374151"><option value="">—</option><option value="Talhão">Talhão</option><option value="Área total">Área total</option></select></div>'
+    + '</div>'
+    + campo('nce-obs', 'Observações', 'Ex: lote de 20 cooperados da Cooperativa X')
+    + '</div>'
+    + '<div style="padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px">'
+    + '<button class="btn-sm btn-outline" onclick="document.getElementById(\'ov-nova-ce-apedido\').remove()">Cancelar</button>'
+    + '<button class="btn-sm btn-primary" onclick="criarCEAPedido()">Criar</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+}
+
+async function criarCEAPedido() {
+  const v = (id) => (document.getElementById(id)?.value || '').trim();
+  const cliente = v('nce-cliente');
+  if (!cliente) { showToast('Informe o cliente.', 'error'); return; }
+  try {
+    await api('POST', '/condicoes-especiais/nova-a-pedido', {
+      cliente,
+      cpf: v('nce-cpf'),
+      municipio: v('nce-municipio2'),
+      uf: v('nce-uf'),
+      broker: v('nce-broker'),
+      email_corretora: v('nce-email-corretor'),
+      cultivo: v('nce-cultivo'),
+      taxa_aprovada: v('nce-taxa'),
+      nivel_cobertura_aprovado: v('nce-cobertura'),
+      prod_bruta_aprovada: v('nce-prod-bruta'),
+      prod_garantida: v('nce-prod-garantida'),
+      replantio_aprovado: v('nce-replantio'),
+      tipo_regulacao: v('nce-regulacao'),
+      observacoes: v('nce-obs'),
+    });
+    document.getElementById('ov-nova-ce-apedido')?.remove();
+    showToast('Condição Especial a Pedido criada.', 'success');
+    carregarCEAPedido();
+  } catch (e) {
+    showToast('Erro ao criar: ' + e.message, 'error');
+  }
+}
+
+async function carregarCEAPedido() {
+  const tbody = document.getElementById('ce-apedido-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
+  try {
+    const lista = await api('GET', '/condicoes-especiais/a-pedido');
+    if (!lista.length) {
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma Condição Especial a Pedido criada ainda.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = lista.map(ce => {
+      const job = ce.job || {};
+      const draftHtml = ce.draft_ativado
+        ? `<span style="font-size:12px;font-weight:600;color:#166534">✓ Draft ativado${ce.numero_draft ? ' nº ' + escHtml(ce.numero_draft) : ''}</span>`
+        : `<button class="btn-sm" style="background:#166534;color:#fff;font-size:11px;padding:3px 8px" onclick="ativarDraftCE('${ce.job_id}')">✓ Marcar draft ativado</button>`;
+      return `<tr>
+        <td>${escHtml(ce.cliente || job.nome_proponente || '—')}</td>
+        <td>${escHtml(job.cpf || '—')}</td>
+        <td>${escHtml(ce.municipio || '—')}${ce.uf ? '/' + escHtml(ce.uf) : ''}</td>
+        <td>${escHtml(ce.broker || '—')}</td>
+        <td>${ce.taxa_aprovada ? escHtml(String(ce.taxa_aprovada).replace('%','')) + '%' : '—'}</td>
+        <td>${ce.prod_garantida ? escHtml(String(ce.prod_garantida)) + ' kg/ha' : '—'}</td>
+        <td style="font-size:12px;color:var(--gray400)">${escHtml(ce.criado_por || '—')}</td>
+        <td style="font-size:12px;color:var(--gray400)">${ce.criado_em ? formatDate(ce.criado_em) : '—'}</td>
+        <td>${draftHtml}</td>
+        <td><button class="btn-sm btn-danger" onclick="excluirCEAPedido('${ce.job_id}')" title="Excluir">🗑</button></td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--red);padding:40px">Erro ao carregar: ${escHtml(e.message)}</td></tr>`;
+  }
+}
+
+async function excluirCEAPedido(jobId) {
+  if (!confirm('Excluir esta Condição Especial a Pedido? Essa ação não pode ser desfeita.')) return;
+  try {
+    await api('DELETE', '/condicoes-especiais/' + jobId + '/a-pedido');
+    showToast('Excluída.', 'success');
+    carregarCEAPedido();
+  } catch (e) {
+    showToast('Erro ao excluir: ' + e.message, 'error');
   }
 }
 
@@ -5966,7 +6133,10 @@ async function ativarDraftCE(jobId) {
     } else {
       showToast('Draft ativado. ' + (r.aviso_email || 'Sem e-mail do corretor pra avisar.'), 'warning');
     }
-    carregarCondicoesEspeciais();
+    // Esse botão é usado tanto na fila normal quanto na aba "A Pedido" --
+    // atualiza a que estiver visível (ambas são baratas de recarregar).
+    if (document.getElementById('ce-painel-apedido')?.style.display !== 'none') carregarCEAPedido();
+    else carregarCondicoesEspeciais();
   } catch(e) { showToast('Erro ao ativar draft: ' + e.message, 'error'); }
 }
 
