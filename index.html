@@ -210,8 +210,13 @@
   /* Painel Comercial: tabelas ganharam colunas demais (fase, com quem está,
      ações) pra caber espremidas em width:100% -- em vez de cortar/esconder
      colunas, deixa a tabela crescer além do container e usa o scroll
-     horizontal do .overflow-x que já envolve ela. */
-  #page-painel-comercial .jobs-table{width:max-content;min-width:100%}
+     horizontal do .overflow-x que já envolve ela. (width:max-content
+     quebrava o layout -- o navegador colapsava quase todas as colunas.
+     table-layout:auto padrão + white-space:nowrap nas células é o jeito
+     robusto de forçar a largura natural do conteúdo sem espremer nada.) */
+  #page-painel-comercial .jobs-table{width:auto;min-width:100%}
+  #page-painel-comercial .jobs-table th,
+  #page-painel-comercial .jobs-table td{white-space:nowrap}
   ::-webkit-scrollbar{width:6px;height:6px}
   ::-webkit-scrollbar-track{background:transparent}
   ::-webkit-scrollbar-thumb{background:var(--gray200);border-radius:3px}
