@@ -3140,6 +3140,9 @@ function renderizarPainelComercial() {
         ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#0369a1" onclick="abrirReenvioSimplesCE('${ce.job_id}','${drSis}')">📨 Reenviar Email</button>`
         : '';
       const btnHistorico = `<button class="btn-sm btn-outline" onclick="pcAbrirHistorico('${ce.job_id}')">📜 Histórico</button>`;
+      const btnVerObs = ce.tem_observacao
+        ? `<button class="btn-sm btn-outline" onclick="pcVerObservacoes('${ce.job_id}')">👁 Ver e-mail</button>`
+        : '';
       return `<tr>
         <td>${escHtml(cliente)}</td>
         <td>${escHtml(cpf)}</td>
@@ -3152,7 +3155,7 @@ function renderizarPainelComercial() {
         <td>${impedimentosHtml}</td>
         <td class="pend-cell" id="pend-cell-ce-${ce.job_id}">${pendInicial(ce.job_id, 'Comercial')}</td>
         <td>${efetivadaHtml}</td>
-        <td style="display:flex;gap:6px;flex-wrap:wrap">${btnPrioridade}${btnInclusao}${btnReenviarEmail}${btnHistorico}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">${btnPrioridade}${btnInclusao}${btnReenviarEmail}${btnHistorico}${btnVerObs}</td>
       </tr>`;
     }).join('');
 
@@ -3186,7 +3189,7 @@ function renderizarPainelComercial() {
         <td>${j.created_at ? formatDate(j.created_at) : '—'}</td>
         <td>${j.concluido_at ? formatDate(j.concluido_at) : '—'}</td>
         <td class="pend-cell" id="pend-cell-jobs-${j.id}">${pendInicial(j.id, 'Comercial')}</td>
-        <td><button class="btn-sm btn-outline" onclick="pcAbrirHistorico('${j.id}')">📜 Histórico</button></td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn-sm btn-outline" onclick="pcAbrirHistorico('${j.id}')">📜 Histórico</button>${j.tem_observacao ? `<button class="btn-sm btn-outline" onclick="pcVerObservacoes('${j.id}')">👁 Ver e-mail</button>` : ''}</td>
       </tr>`).join('')
     : '<tr><td colspan="13" style="text-align:center;color:var(--gray400);padding:24px">Nenhuma proposta encontrada.</td></tr>';
 }
@@ -3231,6 +3234,7 @@ async function pcAbrirHistorico(jobId) {
         <div style="flex:1">
           <div style="font-weight:600;font-size:13.5px">${escHtml(ev.evento)}</div>
           <div style="font-size:12px;color:var(--gray600);margin-top:2px">${formatDate(ev.quando)} · ${pcQuemBadge(ev.quem)}</div>
+          ${ev.detalhe ? `<div style="font-size:12px;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:4px 8px;margin-top:6px;display:inline-block">${escHtml(ev.detalhe)}</div>` : ''}
         </div>
         <div style="text-align:right;font-size:12px;color:var(--gray400);white-space:nowrap;padding-top:2px">
           ${ev.dias_desde_anterior !== null ? '+ ' + pcFormatarDias(ev.dias_desde_anterior) : ''}
@@ -3239,6 +3243,50 @@ async function pcAbrirHistorico(jobId) {
     document.getElementById('modal-job-body').innerHTML = resumo + (linhas || '<div style="color:var(--gray400);text-align:center;padding:20px">Nenhum evento registrado ainda.</div>');
   } catch (e) {
     document.getElementById('modal-job-body').innerHTML = `<div style="color:var(--red);padding:16px">Erro ao carregar histórico: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function pcStatusObsBadge(status, motivoRejeicao) {
+  const mapa = {
+    pendente: { texto: 'Aguardando aprovação (Admin)', bg: '#fefce8', border: '#fde68a', cor: '#92400e' },
+    aprovado: { texto: 'Aprovado e enviado', bg: '#f0fdf4', border: '#86efac', cor: '#166534' },
+    rejeitado: { texto: 'Rejeitado pelo Admin', bg: '#fef2f2', border: '#fca5a5', cor: '#c0392b' },
+  };
+  const s = mapa[status] || { texto: status || '—', bg: '#f3f4f6', border: '#d1d5db', cor: '#374151' };
+  const badge = `<span class="badge" style="background:${s.bg};color:${s.cor};border:1px solid ${s.border}"><span class="badge-dot" style="background:${s.cor}"></span>${escHtml(s.texto)}</span>`;
+  return status === 'rejeitado' && motivoRejeicao
+    ? badge + `<div style="font-size:12px;color:#c0392b;margin-top:4px">Motivo: ${escHtml(motivoRejeicao)}</div>`
+    : badge;
+}
+
+async function pcVerObservacoes(jobId) {
+  document.getElementById('modal-job-title').textContent = 'E-mail da observação (somente leitura)';
+  document.getElementById('modal-job-body').innerHTML = '<div style="text-align:center;color:var(--gray400);padding:24px">Carregando…</div>';
+  openModal('modal-job');
+  try {
+    const lista = await api('GET', `/painel-comercial/jobs/${jobId}/observacoes`);
+    if (!lista || !lista.length) {
+      document.getElementById('modal-job-body').innerHTML = '<div style="color:var(--gray400);text-align:center;padding:20px">Nenhuma observação registrada pra esse caso.</div>';
+      return;
+    }
+    document.getElementById('modal-job-body').innerHTML = lista.map((o, i) => {
+      const ei = o.email_info || {};
+      const dests = [...(ei.destinatarios_internos || []), ...(ei.destinatarios_externos || [])].filter(Boolean);
+      return `<div style="${i > 0 ? 'margin-top:22px;padding-top:18px;border-top:1px solid #e5e7eb' : ''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px">
+          <div style="font-size:12px;color:var(--gray600)">${formatDate(o.criado_em)}</div>
+          ${pcStatusObsBadge(o.status, o.motivo_rejeicao)}
+        </div>
+        <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Para</div>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13.5px;color:#374151">${escHtml(dests.join(', ') || '—')}</div>
+        <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Assunto</div>
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13.5px;color:#374151">${escHtml(ei.assunto || '—')}</div>
+        <div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Corpo</div>
+        <div style="border:1px solid #e5e7eb;border-radius:8px;padding:10px;font-size:13px;line-height:1.6;max-height:340px;overflow-y:auto">${ei.corpo_html || escHtml(ei.corpo_texto || '')}</div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    document.getElementById('modal-job-body').innerHTML = `<div style="color:var(--red);padding:16px">Erro ao carregar: ${escHtml(e.message)}</div>`;
   }
 }
 
