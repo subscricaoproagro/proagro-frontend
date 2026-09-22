@@ -2984,6 +2984,7 @@ function renderJobsTable(jobs) {
           ${concluido && (j.tipo_analise==='sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '')) && j.decisao === 'aprovado' ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="window.open('https://brasil.proagroinsur.tech','_blank')">🖥️ Acessar Sistema</button>` : ''}
           ${concluido && (j.tipo_analise==='sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '')) && j.decisao === 'aprovado' ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="abrirUploadSistema('${j.id}')">📁 Enviar Arquivos</button>` : ''}
           ${renderBadgeOnedrive(j)}
+          ${renderBadgeSemeadura(j)}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="verDecisaoAR('${j.id}')">👁 Ver Decisão AR</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="reavaliarCE('${j.id}')">🔄 Reavaliar</button>` : ''}
           ${concluido && j.decisao === 'recusado' ? `<button class="btn-sm" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c" onclick="abrirReenvioEditavel('${j.id}','sistema')">📧 Reenviar Email</button>` : ''}
@@ -3045,6 +3046,18 @@ function renderBadgeOnedrive(j) {
     return `<span class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;cursor:default" title="Enviado em ${dataEnvio}">✅ Enviado ao OneDrive</span>`;
   }
   return `<span class="btn-sm" style="background:#f9fafb;border:1px solid var(--gray200);color:var(--gray400);cursor:default" title="Ainda não enviado, ou a última tentativa falhou -- use o botão Enviar Arquivos">— Não enviado</span>`;
+}
+
+function renderBadgeSemeadura(j) {
+  if (!j.data_semeadura) return '';
+  const dataFmt = formatDate(j.data_semeadura);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const dtSem = new Date(j.data_semeadura + 'T00:00:00');
+  const passada = dtSem < hoje;
+  if (passada) {
+    return `<span class="btn-sm" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c;cursor:default" title="Data de semeadura já passada -- gera e-mail de vistoria prévia ao confirmar em Enviar Arquivos">🌱 Semeadura ${dataFmt} (passada)</span>`;
+  }
+  return `<span class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;cursor:default" title="Data de semeadura registrada">🌱 Semeadura ${dataFmt}</span>`;
 }
 
 function renderBadgeObservacao(j) {
@@ -4226,27 +4239,24 @@ let _uploadSistemaJobId = null;
 
 function abrirUploadSistema(jobId) {
   _uploadSistemaJobId = jobId;
-  // Limpa campos
-  document.getElementById('upload-proposta').value = '';
+  // Limpa campos -- Proposta e KML não são mais upload manual (buscados
+  // sozinhos da plataforma externa), só o Draft continua.
   document.getElementById('upload-draft').value = '';
-  document.getElementById('upload-kml').value = '';
+  document.getElementById('upload-numero-draft').value = '';
   document.getElementById('upload-sistema-error').style.display = 'none';
   document.getElementById('upload-sistema-obs').value = '';
   openModal('modal-upload-sistema');
 }
 
 async function confirmarUploadSistema() {
-  const proposta = document.getElementById('upload-proposta').files[0];
   const draft    = document.getElementById('upload-draft').files[0];
-  const kml      = document.getElementById('upload-kml').files[0];
+  const numeroDraft = document.getElementById('upload-numero-draft').value.trim();
   const obs      = document.getElementById('upload-sistema-obs').value.trim();
   const errEl    = document.getElementById('upload-sistema-error');
   errEl.style.display = 'none';
 
   const dataSemeadura = document.getElementById('upload-data-semeadura').value;
-  if (!proposta)       { errEl.textContent = 'Selecione o arquivo da Proposta.';   errEl.style.display = 'block'; return; }
   if (!draft)          { errEl.textContent = 'Selecione o arquivo do Draft.';      errEl.style.display = 'block'; return; }
-  if (!kml)            { errEl.textContent = 'Selecione o arquivo KML.';           errEl.style.display = 'block'; return; }
   if (!dataSemeadura)  { errEl.textContent = 'Informe a data de semeadura.';       errEl.style.display = 'block'; return; }
 
   const btn = document.getElementById('btn-confirmar-upload-sistema');
@@ -4255,9 +4265,8 @@ async function confirmarUploadSistema() {
 
   try {
     const form = new FormData();
-    form.append('proposta', proposta);
     form.append('draft', draft);
-    form.append('kml', kml);
+    form.append('numero_draft', numeroDraft);
     form.append('obs', obs);
     form.append('decisao', 'aprovado');
     form.append('justificativa', obs);
@@ -4278,10 +4287,17 @@ async function confirmarUploadSistema() {
     const data = await resp.json();
     closeModal('modal-upload-sistema');
 
+    // Proposta/Proposta Assinada/KML agora são buscados sozinhos da
+    // plataforma -- se algum não foi encontrado, mostra o aviso específico
+    // em vez de só dizer "sucesso" (o analista precisa saber se falta
+    // anexar algo manualmente depois).
+    if (data.avisos_busca && data.avisos_busca.length) {
+      showToast('⚠️ ' + data.avisos_busca.join(' · '), 'warning');
+    }
     if (data.vistoria_previa) {
       showToast('⚠️ Proposta aprovada. Data de semeadura já passou — copie e envie o e-mail de vistoria prévia.', 'warning');
       if (data.email_vistoria) mostrarEmailParaCopiar(data.email_vistoria);
-    } else {
+    } else if (!(data.avisos_busca && data.avisos_busca.length)) {
       showToast('✅ Proposta aprovada e arquivos enviados com sucesso!', 'success');
     }
     carregarJobs();
@@ -9000,19 +9016,17 @@ function renderizarMapaSobreposicoes(dados) {
     </div>
     <div class="modal-body">
       <div style="background:var(--gray50);border-radius:var(--r-sm);padding:12px;margin-bottom:16px;font-size:13px;color:var(--gray600)">
-        Faça o upload dos arquivos obrigatórios. O relatório de subscrição será incluído automaticamente. Os arquivos serão salvos na pasta <strong>Poligonos_sistema</strong> do OneDrive.
-      </div>
-      <div style="margin-bottom:14px">
-        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Proposta *</label>
-        <input type="file" id="upload-proposta" accept=".pdf,.docx,.xlsx,.xls" style="width:100%;font-size:13px;padding:6px;border:1px solid var(--gray200);border-radius:var(--r-sm);background:#fff">
+        Proposta, Proposta Assinada, KML e o relatório de subscrição são buscados/incluídos automaticamente. Só o <strong>Draft</strong> precisa de upload manual. Tudo é salvo na pasta <strong>Poligonos_sistema</strong> do OneDrive, numa pasta com o número da proposta.
       </div>
       <div style="margin-bottom:14px">
         <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Draft *</label>
         <input type="file" id="upload-draft" accept=".pdf,.docx,.xlsx,.xls" style="width:100%;font-size:13px;padding:6px;border:1px solid var(--gray200);border-radius:var(--r-sm);background:#fff">
+        <span style="font-size:11px;color:var(--gray500);margin-top:4px;display:block">Proposta, Proposta Assinada e KML são buscados automaticamente da plataforma -- só o Draft precisa ser anexado aqui.</span>
       </div>
       <div style="margin-bottom:14px">
-        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">KML *</label>
-        <input type="file" id="upload-kml" accept=".kml,.kmz" style="width:100%;font-size:13px;padding:6px;border:1px solid var(--gray200);border-radius:var(--r-sm);background:#fff">
+        <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Número do Draft (opcional)</label>
+        <input type="text" id="upload-numero-draft" placeholder="Ex: 20294476" style="width:100%;font-size:13px;padding:6px;border:1px solid var(--gray200);border-radius:var(--r-sm);background:#fff">
+        <span style="font-size:11px;color:var(--gray500);margin-top:4px;display:block">Número impresso no topo do PDF do Draft -- entra no nome do arquivo salvo, se preenchido.</span>
       </div>
       <div style="margin-bottom:14px">
         <label style="font-size:13px;font-weight:600;color:var(--gray700);display:block;margin-bottom:6px">Data de Semeadura *</label>
