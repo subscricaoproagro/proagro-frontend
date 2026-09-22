@@ -4279,7 +4279,8 @@ async function confirmarUploadSistema() {
     closeModal('modal-upload-sistema');
 
     if (data.vistoria_previa) {
-      showToast('⚠️ Proposta aprovada. Email de vistoria prévia enviado!', 'warning');
+      showToast('⚠️ Proposta aprovada. Data de semeadura já passou — copie e envie o e-mail de vistoria prévia.', 'warning');
+      if (data.email_vistoria) mostrarEmailParaCopiar(data.email_vistoria);
     } else {
       showToast('✅ Proposta aprovada e arquivos enviados com sucesso!', 'success');
     }
