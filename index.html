@@ -3055,9 +3055,27 @@ function renderBadgeSemeadura(j) {
   const dtSem = new Date(j.data_semeadura + 'T00:00:00');
   const passada = dtSem < hoje;
   if (passada) {
-    return `<span class="btn-sm" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c;cursor:default" title="Data de semeadura já passada -- gera e-mail de vistoria prévia ao confirmar em Enviar Arquivos">🌱 Semeadura ${dataFmt} (passada)</span>`;
+    return `<span class="btn-sm" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c;cursor:pointer" title="Clique pra abrir/reenviar o e-mail de vistoria prévia" onclick="abrirEmailVistoriaPrevia('${j.id}')">🌱 Semeadura ${dataFmt} (passada)</span>`;
   }
   return `<span class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;cursor:default" title="Data de semeadura registrada">🌱 Semeadura ${dataFmt}</span>`;
+}
+
+async function abrirEmailVistoriaPrevia(jobId) {
+  try {
+    const token = sessionStorage.getItem('pa_token');
+    const resp = await fetch(BACKEND_URL + '/jobs/' + jobId + '/email-vistoria-previa', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      showToast('⚠️ ' + (data.detail || 'Erro ao gerar e-mail de vistoria prévia'), 'warning');
+      return;
+    }
+    mostrarEmailParaCopiar(data.email);
+  } catch (e) {
+    showToast('⚠️ Erro ao gerar e-mail de vistoria prévia: ' + e.message, 'warning');
+  }
 }
 
 function renderBadgeObservacao(j) {
