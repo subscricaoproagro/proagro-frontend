@@ -4263,6 +4263,11 @@ function abrirUploadSistema(jobId) {
   document.getElementById('upload-numero-draft').value = '';
   document.getElementById('upload-sistema-error').style.display = 'none';
   document.getElementById('upload-sistema-obs').value = '';
+  // Data de semeadura já pode ter vindo sozinha da API (ver ajuste que
+  // automatizou isso) -- pré-preenche em vez de deixar o analista digitar
+  // de novo à toa.
+  const job = (typeof allJobs !== 'undefined') ? allJobs.find(j => j.id === jobId) : null;
+  document.getElementById('upload-data-semeadura').value = (job && job.data_semeadura) ? job.data_semeadura : '';
   openModal('modal-upload-sistema');
 }
 
