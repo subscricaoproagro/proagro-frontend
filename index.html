@@ -632,6 +632,7 @@
             <option value="aguardando">⏳ Aguardando processamento</option>
             <option value="processando">🔄 Em execução</option>
             <option value="aguardando_analise">🟡 Aguardando Análise</option>
+            <option value="aguardando_preenchimento_ce">📝 Aguardando Preenchimento CE</option>
             <option value="concluido_simples">✅ Concluído</option>
             <option value="ce_aprovada">⭐ CE Aprovada</option>
             <option value="balcao">🏦 Balcão</option>
@@ -652,6 +653,7 @@
         <div onclick="document.getElementById('hist-filter').value='aguardando';carregarJobs()" style="cursor:pointer;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#92400e">⏳ Aguardando: <span id="hcount-aguardando">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='processando';carregarJobs()" style="cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#1d4ed8">🔄 Em execução: <span id="hcount-processando">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='aguardando_analise';carregarJobs()" style="cursor:pointer;background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#92400e">🟡 Aguardando Análise: <span id="hcount-aguardando-analise">—</span></div>
+        <div onclick="document.getElementById('hist-filter').value='aguardando_preenchimento_ce';carregarJobs()" title="Decisão já aprovada (ou observação aprovada), mas o analista ainda não preencheu os dados da Condição Especial nem mandou pro supervisor" style="cursor:pointer;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#c2410c">📝 Aguardando Preenchimento CE: <span id="hcount-aguardando-preenchimento-ce">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='concluido_simples';carregarJobs()" style="cursor:pointer;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#166534">✅ Concluído: <span id="hcount-concluido">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='ce_aprovada';carregarJobs()" style="cursor:pointer;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#92400e">⭐ CE Aprovada: <span id="hcount-ce">—</span></div>
         <div onclick="document.getElementById('hist-filter').value='balcao';carregarJobs()" style="cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#1d4ed8">🏦 Balcão: <span id="hcount-balcao">—</span></div>
@@ -2646,6 +2648,7 @@ async function excluirJobsPorStatus() {
   const labelFiltro = filtro === 'aguardando' ? 'Aguardando processamento'
     : filtro === 'processando' ? 'Em execução'
     : filtro === 'aguardando_analise' ? 'Aguardando Análise'
+    : filtro === 'aguardando_preenchimento_ce' ? 'Aguardando Preenchimento CE'
     : filtro === 'concluido_simples' ? 'Concluído'
     : filtro === 'ce_aprovada' ? 'CE Aprovada'
     : filtro === 'recusada' ? 'Recusada'
@@ -2663,6 +2666,10 @@ async function excluirJobsPorStatus() {
     if (filtro === 'aguardando')     return j.status === 'aguardando';
     if (filtro === 'processando')    return j.status === 'processando';
     if (filtro === 'aguardando_analise') return j.status === 'concluido' && !j.decisao && !j.decisao_risco;
+    if (filtro === 'aguardando_preenchimento_ce') {
+      const idpVazio = !j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '';
+      return idpVazio && j.decisao === 'aprovado' && !j.decisao_risco && _ceVaziaJobIds.has(j.id);
+    }
     if (filtro === 'concluido_simples') {
       const isSistema = j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '';
       if (isSistema) return j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco;
@@ -2792,6 +2799,11 @@ async function carregarJobs() {
     if (cesResult) {
       const ces = cesResult;
       _ceJobIds = new Set(ces.filter(ce => ce.cliente || ce.municipio).map(ce => ce.job_id));
+      // CE existe mas ainda está vazia (sem cliente/município) -- usado pro
+      // card "Aguardando Preenchimento CE": decisão já aprovada (ou
+      // observação aprovada, que sempre vem junto de decisão aprovada),
+      // mas o analista ainda não preencheu os dados nem mandou pro supervisor.
+      _ceVaziaJobIds = new Set(ces.filter(ce => !(ce.cliente || ce.municipio)).map(ce => ce.job_id));
       _cePrioridade = new Set(ces.filter(ce => ce.prioridade).map(ce => ce.job_id));
       ces.forEach(ce => { if (ce.job_id && ce.email_corretora) _ceEmailByJob[ce.job_id] = ce.email_corretora; });
     }
@@ -2812,19 +2824,32 @@ async function carregarJobs() {
     // Contadores usam o /jobs/resumo (sempre o histórico INTEIRO, leve) — não
     // o allJobs, que agora pode ser só uma página. Se o resumo falhar por
     // algum motivo, cai pra allJobs (menos preciso, mas não quebra a tela).
-    const dadosContagem = resumo || allJobs;
+    //
+    // Filtrados pela ABA ativa (Sistema/Condição Especial) ANTES de contar --
+    // antes os cards somavam as duas abas juntas (ex.: "Aguardando Análise: 15"
+    // combinando 8 de Sistema + 7 de CE), o que não batia com a tabela, que
+    // só mostra uma aba por vez. Mesmo critério de aba já usado no resto da
+    // tela (`isSistema`/`isCE` em renderJobsTable): id_proposta presente = Sistema.
+    const _isSistemaContagem = j => j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '';
+    const dadosContagemTotal = resumo || allJobs;
+    const dadosContagem = dadosContagemTotal.filter(j => _histAba === 'sistema' ? _isSistemaContagem(j) : !_isSistemaContagem(j));
     const setCount = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
     setCount('hcount-aguardando',  dadosContagem.filter(j => j.status === 'aguardando').length);
     setCount('hcount-processando', dadosContagem.filter(j => j.status === 'processando').length);
     setCount('hcount-aguardando-analise', dadosContagem.filter(j => j.status === 'concluido' && !j.decisao && !j.decisao_risco).length);
+    setCount('hcount-aguardando-preenchimento-ce', dadosContagem.filter(j => {
+      const idpVazio = !j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '';
+      return idpVazio && j.decisao === 'aprovado' && !j.decisao_risco && _ceVaziaJobIds.has(j.id);
+    }).length);
     setCount('hcount-concluido',   dadosContagem.filter(j => j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco).length);
     setCount('hcount-ce',          dadosContagem.filter(j => j.status === 'concluido' && (j.decisao_risco === 'aprovado' || j.decisao_risco === 'aprovado_diferente')).length);
     setCount('hcount-balcao',      dadosContagem.filter(j => j.status === 'concluido' && j.decisao_risco === 'balcao').length);
     setCount('hcount-recusada',    dadosContagem.filter(j => j.status === 'concluido' && j.decisao === 'recusado').length);
     setCount('hcount-erro',        dadosContagem.filter(j => j.status === 'erro' || j.status === 'cancelado').length);
 
-    // Média de tempo de avaliação — sistema + CE juntos (somente onde analista decidiu)
-    const _concluidos = dadosContagem.filter(j => j.concluido_at && j.created_at && !!(j.decisao || j.decisao_risco));
+    // Média de tempo de avaliação — sistema + CE juntos (somente onde analista decidiu),
+    // de propósito NÃO filtrado por aba (usa dadosContagemTotal, não dadosContagem)
+    const _concluidos = dadosContagemTotal.filter(j => j.concluido_at && j.created_at && !!(j.decisao || j.decisao_risco));
     const elHM = document.getElementById('hist-media-tempo');
     const elHB = document.getElementById('hist-media-base');
     if (elHM && _concluidos.length) {
@@ -2903,6 +2928,10 @@ function _computarJobsFiltrados() {
     if (filter === 'aguardando')     return j.status === 'aguardando';
     if (filter === 'processando')    return j.status === 'processando';
     if (filter === 'aguardando_analise') return j.status === 'concluido' && !j.decisao && !j.decisao_risco;
+    if (filter === 'aguardando_preenchimento_ce') {
+      const idpVazio = !j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '';
+      return idpVazio && j.decisao === 'aprovado' && !j.decisao_risco && _ceVaziaJobIds.has(j.id);
+    }
     if (filter === 'concluido_simples') {
       const isSistema = j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '';
       if (isSistema) return j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco;
@@ -4684,6 +4713,7 @@ function setStatus(itemId, status) {
 // ══════════════════════════════════════════
 let _ceJobId = null;
 let _ceJobIds = new Set(); // job_ids que já têm CE salva
+let _ceVaziaJobIds = new Set(); // job_ids com CE criada mas ainda vazia (sem cliente/município)
 let _ceEmailByJob = {}; // job_id -> email do corretor (da CE), para pré-carregar no modal de recusa
 
 function abrirTipoAnalise(jobId) {
