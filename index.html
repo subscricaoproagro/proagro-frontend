@@ -2803,7 +2803,10 @@ async function carregarJobs() {
       // card "Aguardando Preenchimento CE": decisão já aprovada (ou
       // observação aprovada, que sempre vem junto de decisão aprovada),
       // mas o analista ainda não preencheu os dados nem mandou pro supervisor.
-      _ceVaziaJobIds = new Set(ces.filter(ce => !(ce.cliente || ce.municipio)).map(ce => ce.job_id));
+      _ceVaziaJobIds = new Set(ces.filter(ce => !(ce.cliente || ce.municipio) && !ce.resolvido_manualmente).map(ce => ce.job_id));
+      // CE vazia mas já marcada como "resolvida manualmente" -- mostra badge
+      // em vez do botão de marcar, na lista "Aguardando Preenchimento CE".
+      _ceResolvidaVaziaJobIds = new Set(ces.filter(ce => !(ce.cliente || ce.municipio) && ce.resolvido_manualmente).map(ce => ce.job_id));
       _cePrioridade = new Set(ces.filter(ce => ce.prioridade).map(ce => ce.job_id));
       ces.forEach(ce => { if (ce.job_id && ce.email_corretora) _ceEmailByJob[ce.job_id] = ce.email_corretora; });
     }
@@ -3008,6 +3011,8 @@ function renderJobsTable(jobs) {
 
           ${concluido && (j.tipo_analise==='condicao_especial' || _histAba==='ce') && !j.decisao && !j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirEdicaoCE('${j.id}', '${(j.nome_proponente||'').replace(/'/g,"\\'")}', '${(j.cpf||'').replace(/'/g,"\\'")}')">📋 Preencher CE</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && (!j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '') && !j.decisao_risco && j.decisao === 'aprovado' && !_ceJobIds.has(j.id) ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirPreencherCE('${j.id}')">📋 Preencher Dados CE</button>` : ''}
+          ${concluido && j.tipo_analise==='condicao_especial' && (!j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '') && !j.decisao_risco && j.decisao === 'aprovado' && _ceVaziaJobIds.has(j.id) ? `<button class="btn-sm" style="background:#f9fafb;border:1px solid #e5e7eb;color:#374151" onclick="marcarResolvidoCEHistorico('${j.id}')" title="Use quando já foi tratado de verdade fora do sistema, mesmo sem os dados da CE preenchidos aqui">✅ Já Resolvido</button>` : ''}
+          ${concluido && j.tipo_analise==='condicao_especial' && (!j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '') && !j.decisao_risco && j.decisao === 'aprovado' && _ceResolvidaVaziaJobIds.has(j.id) ? `<span class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;cursor:default">✅ Resolvido manualmente</span> <button class="btn-sm btn-outline" onclick="desmarcarResolvidoCEHistorico('${j.id}')">Desmarcar</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) ? `<span class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;cursor:default">📨 Enviado para AR</span>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="reavaliarCEAnalista('${j.id}')">🔄 Reavaliar</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) ? `<button class="btn-sm" style="background:${_cePrioridade.has(j.id)?'#fef2f2;border:1px solid #fca5a5;color:#b91c1c':'#fff7ed;border:1px solid #fed7aa;color:#c2410c'}" onclick="pedirPrioridadeCE('${j.id}')" title="Solicitar avaliação prioritária">${_cePrioridade.has(j.id)?'🔴 Prioritário':'🔔 Pedir Prioridade'}</button>` : ''}
@@ -4714,6 +4719,7 @@ function setStatus(itemId, status) {
 let _ceJobId = null;
 let _ceJobIds = new Set(); // job_ids que já têm CE salva
 let _ceVaziaJobIds = new Set(); // job_ids com CE criada mas ainda vazia (sem cliente/município)
+let _ceResolvidaVaziaJobIds = new Set(); // job_ids com CE vazia mas já marcada como resolvida manualmente
 let _ceEmailByJob = {}; // job_id -> email do corretor (da CE), para pré-carregar no modal de recusa
 
 function abrirTipoAnalise(jobId) {
@@ -5954,6 +5960,27 @@ async function desmarcarResolvidoCE(jobId) {
     await api('POST', '/condicoes-especiais/' + jobId + '/desmarcar-resolvido');
     showToast('Desmarcado.', 'success');
     await carregarCondicoesEspeciais();
+  } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+// Mesmos endpoints de "Já Resolvido", só que chamados da lista "Aguardando
+// Preenchimento CE" do Histórico -- atualiza carregarJobs() em vez de
+// carregarCondicoesEspeciais() (páginas diferentes).
+async function marcarResolvidoCEHistorico(jobId) {
+  if (!confirm('Marcar esta condição especial como já resolvida? Ela sai da lista de "Aguardando Preenchimento CE".')) return;
+  try {
+    await api('POST', '/condicoes-especiais/' + jobId + '/marcar-resolvido');
+    showToast('Marcado como resolvido.', 'success');
+    await carregarJobs();
+  } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function desmarcarResolvidoCEHistorico(jobId) {
+  if (!confirm('Desmarcar como resolvido? Volta a aparecer como pendente.')) return;
+  try {
+    await api('POST', '/condicoes-especiais/' + jobId + '/desmarcar-resolvido');
+    showToast('Desmarcado.', 'success');
+    await carregarJobs();
   } catch (e) { showToast('Erro: ' + e.message, 'error'); }
 }
 
