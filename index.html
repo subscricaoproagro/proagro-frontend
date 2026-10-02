@@ -811,6 +811,20 @@
       </div>
 
       <div id="ce-painel-apedido" style="display:none">
+        <div id="ce-apedido-pendentes-wrap" style="display:none;margin-bottom:20px">
+          <div class="section-header" style="padding-bottom:0">
+            <div class="section-title" style="font-size:15px">📧 E-mails detectados aguardando criação</div>
+            <div class="section-sub" style="font-size:12px">Citam Coasul ou uma cooperativa "Grupo +" (ex.: COCAMAR+) no assunto — detectados automaticamente, mas a taxa/produtividade negociada não vem estruturada em nenhum lugar, então precisa confirmar e completar aqui.</div>
+          </div>
+          <div class="card">
+            <div class="overflow-x">
+              <table class="jobs-table">
+                <thead><tr><th>Chegada</th><th>Cliente (detectado)</th><th>CPF (detectado)</th><th>Corretora (detectada)</th><th>Assunto</th><th>Ações</th></tr></thead>
+                <tbody id="ce-apedido-pendentes-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
         <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
           <div class="section-sub" style="max-width:520px">Condições especiais já negociadas diretamente pelo supervisor com uma cooperativa ou lote de clientes — sem passar pela análise automática nem pela fila normal de decisão de risco. Um registro por cliente.</div>
           <button class="btn btn-primary" onclick="abrirModalNovaCEAPedido()">+ Nova Condição Especial a Pedido</button>
@@ -1251,6 +1265,7 @@
       <input class="form-input" id="pc-filtro-busca" placeholder="Cliente ou corretora" style="width:220px;padding:8px 12px" oninput="renderizarPainelComercial()">
       <select class="form-input" id="pc-filtro-fase" style="width:auto;padding:8px 12px" onchange="renderizarPainelComercial()">
         <option value="">Todas as fases</option>
+        <option value="Aguardando decisão">Aguardando decisão (Sistema, com o analista)</option>
         <option value="Aguardando preenchimento dos dados">Aguardando preenchimento dos dados</option>
         <option value="Aguardando decisão de risco">Aguardando decisão de risco</option>
         <option value="Aguardando aceite do corretor">Aguardando aceite do corretor</option>
@@ -3312,6 +3327,11 @@ function renderizarPainelComercial() {
     const ehSistema = j.tipo_analise === 'sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '');
     if (!ehSistema) return false;
     if (busca && !(j.nome_proponente || '').toLowerCase().includes(busca)) return false;
+    // Mesmo filtro de fase já usado na aba Condição Especial (dropdown
+    // "pc-filtro-fase") -- antes só filtrava a CE, deixando difícil achar
+    // as poucas propostas de Sistema "Aguardando decisão" (com o analista)
+    // no meio de centenas de "Finalizado".
+    if (fase && j.fase !== fase) return false;
     if (filtroStatusSistema && j.status !== filtroStatusSistema) return false;
     if (filtroOrigem === 'ce' && !j.via_ce_real) return false;
     if (filtroOrigem === 'direta' && j.via_ce_real) return false;
@@ -3468,10 +3488,22 @@ function renderStatusBadge(j) {
     if (isSistema && j.decisao === 'aprovado') {
       return `<span class="badge" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe"><span class="badge-dot" style="background:#1d4ed8"></span>Aprovado (Sistema)</span>`;
     }
-    if (j.tipo_analise === 'condicao_especial' && j.decisao_risco === 'aprovado') {
+    // `condicao_especial_lote` = track "CE a Pedido" (cooperativas/lote,
+    // ajuste 61) -- tratado igual `condicao_especial` aqui. Sem isso, essas
+    // propostas caíam sempre no "Aguardando Análise" por padrão, mesmo já
+    // decididas (decisao_risco setado), porque nenhum dos checks abaixo
+    // reconhecia esse tipo.
+    const ehCE = j.tipo_analise === 'condicao_especial' || j.tipo_analise === 'condicao_especial_lote';
+    if (ehCE && (j.decisao_risco === 'aprovado' || j.decisao_risco === 'aprovado_diferente')) {
       return `<span class="badge" style="background:#f0fdf4;color:#166534;border:1px solid #86efac"><span class="badge-dot" style="background:#166534"></span>CE Aprovada</span>`;
     }
-    if (j.tipo_analise === 'condicao_especial' && _ceJobIds.has(j.id)) {
+    if (ehCE && j.decisao_risco === 'balcao') {
+      return `<span class="badge" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe"><span class="badge-dot" style="background:#1d4ed8"></span>Balcão</span>`;
+    }
+    if (ehCE && j.decisao_risco === 'recusado') {
+      return `<span class="badge" style="background:#fef2f2;color:#c0392b;border:1px solid #fca5a5"><span class="badge-dot" style="background:#c0392b"></span>CE Recusada</span>`;
+    }
+    if (ehCE && _ceJobIds.has(j.id)) {
       return `<span class="badge badge-success"><span class="badge-dot"></span>Concluído</span>`;
     }
     return `<span class="badge" style="background:#fefce8;color:#92400e;border:1px solid #fde68a"><span class="badge-dot" style="background:#92400e"></span>Aguardando Análise</span>`;
@@ -5459,10 +5491,14 @@ function ceSetAba(aba) {
     btnNormal.style.background = '#fff';     btnNormal.style.color = '#d97706';
     painelApedido.style.display = ''; painelNormal.style.display = 'none';
     carregarCEAPedido();
+    carregarAvisosPendentesAPedido();
   }
 }
 
-function abrirModalNovaCEAPedido() {
+let _ceApedidoAvisoOrigemId = null;
+
+function abrirModalNovaCEAPedido(prefill) {
+  _ceApedidoAvisoOrigemId = prefill?.avisoId || null;
   const ov = document.createElement('div');
   ov.id = 'ov-nova-ce-apedido';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
@@ -5499,6 +5535,12 @@ function abrirModalNovaCEAPedido() {
     + '<button class="btn-sm btn-primary" onclick="criarCEAPedido()">Criar</button>'
     + '</div></div>';
   document.body.appendChild(ov);
+  if (prefill) {
+    const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+    set('nce-cliente', prefill.cliente);
+    set('nce-cpf', prefill.cpf);
+    set('nce-broker', prefill.broker);
+  }
 }
 
 async function criarCEAPedido() {
@@ -5524,9 +5566,44 @@ async function criarCEAPedido() {
     });
     document.getElementById('ov-nova-ce-apedido')?.remove();
     showToast('Condição Especial a Pedido criada.', 'success');
+    if (_ceApedidoAvisoOrigemId) {
+      // Marca o e-mail de origem como tratado -- some do bloco "aguardando criação".
+      try { await api('POST', `/avisos-ce-email/${_ceApedidoAvisoOrigemId}/marcar-revisado`, {}); } catch (e) {}
+      _ceApedidoAvisoOrigemId = null;
+      carregarAvisosPendentesAPedido();
+    }
     carregarCEAPedido();
   } catch (e) {
     showToast('Erro ao criar: ' + e.message, 'error');
+  }
+}
+
+async function carregarAvisosPendentesAPedido() {
+  const wrap = document.getElementById('ce-apedido-pendentes-wrap');
+  const tbody = document.getElementById('ce-apedido-pendentes-tbody');
+  if (!wrap || !tbody) return;
+  try {
+    const lista = await api('GET', '/condicoes-especiais/a-pedido/avisos-pendentes');
+    if (!lista.length) { wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+    tbody.innerHTML = lista.map(a => {
+      const dataFmt = a.recebido_em ? new Date(a.recebido_em).toLocaleString('pt-BR') : '—';
+      const prefill = { avisoId: a.id, cliente: a.cliente_detectado || '', cpf: a.cpf_detectado || '', broker: a.corretora_detectada || '' };
+      const prefillAttr = escHtml(JSON.stringify(prefill));
+      return `<tr>
+        <td style="font-size:12px;color:var(--gray400)">${dataFmt}</td>
+        <td>${escHtml(a.cliente_detectado || '—')}</td>
+        <td>${escHtml(a.cpf_detectado || '—')}</td>
+        <td>${escHtml(a.corretora_detectada || '—')}</td>
+        <td style="font-size:12px;color:#555;max-width:320px">${escHtml(a.assunto || '—')}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn-sm btn-primary" data-prefill='${prefillAttr}' onclick="abrirModalNovaCEAPedido(JSON.parse(this.dataset.prefill))">Criar condição</button>
+          <button class="btn-sm btn-outline" onclick="marcarAvisoCeEmailRevisado('${a.id}');carregarAvisosPendentesAPedido()">Dispensar</button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    wrap.style.display = 'none';
   }
 }
 
