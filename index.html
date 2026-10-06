@@ -1177,6 +1177,10 @@
                     <select class="form-input" id="dz-manejo"></select>
                   </div>
                 </div>
+                <div class="form-group" style="margin-bottom:14px">
+                  <label class="form-label">Gerar como safra <span style="color:var(--gray400);font-weight:400">(opcional -- relabela a safra de saída, ex.: "2027/2028", mantendo as mesmas janelas de decêndio do arquivo. Deixe vazio pra usar a safra do próprio arquivo)</span></label>
+                  <input type="text" class="form-input" id="dz-safra-destino" placeholder="Ex: 2027/2028">
+                </div>
                 <div class="form-group" id="dz-nivel-wrap" style="margin-bottom:14px;display:none">
                   <label class="form-label">Nível de Manejo <span style="color:var(--gray400);font-weight:400">(pode marcar mais de um)</span></label>
                   <div id="dz-niveis" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:4px"></div>
@@ -9927,12 +9931,14 @@ async function dzGerar() {
     nivel = (marcados.length === chks.length) ? '__todos__' : marcados.join(',');
   }
 
+  const safraDestino = document.getElementById('dz-safra-destino').value.trim();
   const label = safra === '__todas__' ? 'todas as safras' : safra;
   const labelM = (manejo && manejo !== '__todos__') ? ` · manejo ${manejo}` : '';
+  const labelD = safraDestino ? ` (gerando como ${safraDestino})` : '';
   btn.disabled = true;
   const _txt = btn.textContent;
   btn.textContent = '⏳ Gerando…';
-  dzStatus(`⏳ Processando ${label}${labelM}. Bases grandes podem levar de alguns segundos a 1–2 minutos…`, 'load');
+  dzStatus(`⏳ Processando ${label}${labelM}${labelD}. Bases grandes podem levar de alguns segundos a 1–2 minutos…`, 'load');
   try {
     const form = new FormData();
     form.append('token', _dzToken);
@@ -9940,6 +9946,7 @@ async function dzGerar() {
     form.append('manejo', manejo);
     form.append('agrupar', document.getElementById('dz-agrupar').checked ? 'true' : 'false');
     form.append('nivel', nivel);
+    form.append('safra_destino', safraDestino);
     const res = await fetch(`${BACKEND_URL}/datas-zarc/gerar`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${TOKEN}`, 'ngrok-skip-browser-warning': 'true' },
