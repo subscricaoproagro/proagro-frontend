@@ -1101,9 +1101,11 @@
         <div class="card-header"><div class="card-title" style="font-size:14px">5. Condições Especiais (Power BI)</div></div>
         <div class="card-body">
           <p style="color:var(--gray400);font-size:13px;margin-bottom:14px">
-            Baixa a mesma view usada no Power BI (<code>vw_condicoes_especiais_bi</code>), já em CSV.
+            Baixa a mesma view usada no Power BI (<code>vw_condicoes_especiais_bi</code>), em Excel já tratado:
+            só as CEs que não são proposta de Sistema, Safra recalculada pela data de plantio e uma coluna
+            indicando se já efetivou no sistema.
           </p>
-          <button class="btn-sm btn-green" onclick="gpBaixarCsvConditoesEspeciaisBi()" style="padding:10px 20px">⬇ Baixar CSV</button>
+          <button class="btn-sm btn-green" onclick="gpBaixarExcelConditoesEspeciaisBi()" style="padding:10px 20px">⬇ Baixar Excel</button>
         </div>
       </div>
     </div>
@@ -2041,25 +2043,25 @@ async function gpHistoricoDeletar(arquivo) {
   } catch (e) { showToast('Erro: ' + e.message, 'error'); }
 }
 
-async function gpBaixarCsvConditoesEspeciaisBi() {
+async function gpBaixarExcelConditoesEspeciaisBi() {
   const btn = event?.target;
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando...'; }
   try {
-    const res = await fetch(`${BACKEND_URL}/gestao-propostas/condicoes-especiais-bi/csv`, {
+    const res = await fetch(`${BACKEND_URL}/gestao-propostas/condicoes-especiais-bi/excel`, {
       headers: { 'Authorization': `Bearer ${TOKEN}` }
     });
     if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail || 'Erro'); }
     const blob = await res.blob();
     const cd = res.headers.get('Content-Disposition') || '';
-    const nome = (cd.match(/filename=([^;]+)/) || [])[1] || 'condicoes_especiais_bi.csv';
+    const nome = (cd.match(/filename=([^;]+)/) || [])[1] || 'condicoes_especiais_tratada.xlsx';
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = nome; a.click();
     URL.revokeObjectURL(url);
-    showToast('CSV baixado com sucesso!', 'success');
+    showToast('Excel baixado com sucesso!', 'success');
   } catch (e) {
-    showToast('Erro ao baixar CSV: ' + e.message, 'error');
+    showToast('Erro ao baixar Excel: ' + e.message, 'error');
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '⬇ Baixar CSV'; }
+    if (btn) { btn.disabled = false; btn.textContent = '⬇ Baixar Excel'; }
   }
 }
 
