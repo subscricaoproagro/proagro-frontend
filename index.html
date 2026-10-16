@@ -1090,10 +1090,20 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" style="margin-bottom:20px">
         <div class="card-header"><div class="card-title" style="font-size:14px">4. Versões geradas</div></div>
         <div class="card-body">
           <div id="gp-historico-lista" style="font-size:13px">Carregando…</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title" style="font-size:14px">5. Condições Especiais (Power BI)</div></div>
+        <div class="card-body">
+          <p style="color:var(--gray400);font-size:13px;margin-bottom:14px">
+            Baixa a mesma view usada no Power BI (<code>vw_condicoes_especiais_bi</code>), já em CSV.
+          </p>
+          <button class="btn-sm btn-green" onclick="gpBaixarCsvConditoesEspeciaisBi()" style="padding:10px 20px">⬇ Baixar CSV</button>
         </div>
       </div>
     </div>
@@ -2029,6 +2039,28 @@ async function gpHistoricoDeletar(arquivo) {
     showToast('Versão excluída.', 'success');
     carregarGpHistorico();
   } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function gpBaixarCsvConditoesEspeciaisBi() {
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando...'; }
+  try {
+    const res = await fetch(`${BACKEND_URL}/gestao-propostas/condicoes-especiais-bi/csv`, {
+      headers: { 'Authorization': `Bearer ${TOKEN}` }
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail || 'Erro'); }
+    const blob = await res.blob();
+    const cd = res.headers.get('Content-Disposition') || '';
+    const nome = (cd.match(/filename=([^;]+)/) || [])[1] || 'condicoes_especiais_bi.csv';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = nome; a.click();
+    URL.revokeObjectURL(url);
+    showToast('CSV baixado com sucesso!', 'success');
+  } catch (e) {
+    showToast('Erro ao baixar CSV: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⬇ Baixar CSV'; }
+  }
 }
 
 
