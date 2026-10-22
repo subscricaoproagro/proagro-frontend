@@ -1113,24 +1113,34 @@
         <div class="card-header"><div class="card-title" style="font-size:14px">6. Checar Folios (Drafts ativo/inativo)</div></div>
         <div class="card-body">
           <p style="color:var(--gray400);font-size:13px;margin-bottom:14px">
-            A tela de Drafts da matriz (<code>/Drafts/Index</code>) exige login de sessão completo — não dá pra
-            consultar direto pela API. Exporte a lista por lá e suba o arquivo aqui pra manter a base atualizada;
-            depois cole os Folios que quiser checar.
+            Consulta ao vivo na matriz (<code>/Drafts/Read</code>), folio por folio. Cole os Folios abaixo e clique
+            em Checar.
           </p>
-          <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:16px">
-            <div style="flex:1;min-width:260px">
-              <label class="form-label" style="font-size:12px;color:var(--gray600)">1. Subir export da tela de Drafts (.xlsx)</label>
-              <input type="file" id="gp-drafts-arquivo" accept=".xlsx" class="form-input" style="width:100%;margin-top:4px">
-              <button class="btn-sm" style="margin-top:8px" onclick="gpDraftsUpload()">Atualizar base de Folios</button>
-              <div id="gp-drafts-status" style="margin-top:8px;font-size:12px;color:var(--gray400)">Carregando status…</div>
-            </div>
-            <div style="flex:1;min-width:260px">
-              <label class="form-label" style="font-size:12px;color:var(--gray600)">2. Colar Folios a checar (vírgula, espaço ou um por linha)</label>
-              <textarea id="gp-drafts-folios" class="form-input" rows="3" style="width:100%;margin-top:4px" placeholder="20299590, 20299588&#10;20299585"></textarea>
-              <button class="btn-sm btn-green" style="margin-top:8px" onclick="gpDraftsChecar()">Checar</button>
-            </div>
+          <div style="margin-bottom:16px">
+            <label class="form-label" style="font-size:12px;color:var(--gray600)">Colar Folios a checar (vírgula, espaço ou um por linha)</label>
+            <textarea id="gp-drafts-folios" class="form-input" rows="3" style="width:100%;margin-top:4px" placeholder="20299590, 20299588&#10;20299585"></textarea>
+            <button class="btn-sm btn-green" style="margin-top:8px" onclick="gpDraftsChecar()">Checar</button>
           </div>
           <div id="gp-drafts-resultado" style="font-size:13px"></div>
+
+          <hr style="border:none;border-top:1px solid var(--gray100);margin:20px 0">
+
+          <label class="form-label" style="font-size:12px;color:var(--gray600)">Ou conferir uma planilha inteira (ex.: condições comerciais) -- acha sozinho as colunas de Folio/Draft</label>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:4px;flex-wrap:wrap">
+            <input type="file" id="gp-conferir-arquivo" accept=".xlsx,.xlsm" class="form-input" style="flex:1;min-width:220px">
+            <button class="btn-sm btn-green" id="gp-conferir-btn" onclick="gpConferirPlanilha()">Conferir planilha</button>
+          </div>
+          <div id="gp-conferir-progress" style="display:none;margin-top:14px">
+            <div style="background:var(--gray100);border-radius:999px;height:10px;overflow:hidden">
+              <div id="gp-conferir-bar" style="background:var(--g600);height:100%;width:0%;transition:width .4s"></div>
+            </div>
+            <div style="font-size:13px;color:var(--gray600);margin-top:8px">
+              <span id="gp-conferir-status-txt"></span> <span id="gp-conferir-count"></span>
+            </div>
+          </div>
+          <div id="gp-conferir-done" style="display:none;margin-top:14px">
+            <button class="btn-sm btn-green" onclick="gpConferirDownload()">⬇ Baixar resultado</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1890,7 +1900,6 @@ async function gpVerificarEmAndamento() {
 async function gpAoAbrirPagina() {
   const banner = document.getElementById('gp-auto-banner');
   carregarGpHistorico();
-  carregarGpDraftsStatus();
   await gpVerificarEmAndamento();
   if (!banner) return;
   try {
@@ -2091,41 +2100,6 @@ async function gpBaixarExcelConditoesEspeciaisBi() {
   }
 }
 
-async function carregarGpDraftsStatus() {
-  const el = document.getElementById('gp-drafts-status');
-  if (!el) return;
-  try {
-    const s = await api('GET', '/gestao-propostas/drafts');
-    if (!s.total_folios) {
-      el.textContent = 'Nenhuma base importada ainda — suba o export da tela de Drafts.';
-    } else {
-      const data = s.atualizado_em ? new Date(s.atualizado_em).toLocaleString('pt-BR') : '—';
-      el.textContent = `${s.total_folios.toLocaleString('pt-BR')} folios na base, atualizada em ${data}.`;
-    }
-  } catch (e) {
-    el.textContent = 'Erro ao checar status da base de Folios.';
-  }
-}
-
-async function gpDraftsUpload() {
-  const input = document.getElementById('gp-drafts-arquivo');
-  if (!input.files.length) { showToast('Selecione o arquivo exportado primeiro.', 'error'); return; }
-  const btn = event?.target;
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Subindo...'; }
-  try {
-    const fd = new FormData();
-    fd.append('arquivo', input.files[0]);
-    const r = await api('POST', '/gestao-propostas/drafts/upload-xlsx', fd, true);
-    showToast(`Base atualizada: ${r.total_folios} folios.`, 'success');
-    input.value = '';
-    carregarGpDraftsStatus();
-  } catch (e) {
-    showToast('Erro: ' + e.message, 'error');
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Atualizar base de Folios'; }
-  }
-}
-
 async function gpDraftsChecar() {
   const texto = document.getElementById('gp-drafts-folios').value.trim();
   const out = document.getElementById('gp-drafts-resultado');
@@ -2136,7 +2110,7 @@ async function gpDraftsChecar() {
     const r = await api('POST', '/gestao-propostas/drafts/checar', { texto });
     const cor = s => s === 'ativo' ? 'var(--green)' : s === 'inativo' ? 'var(--red)' : 'var(--gray400)';
     out.innerHTML = `
-      <div style="margin-bottom:8px;color:var(--gray400);font-size:12px">Base atualizada em ${r.base_atualizada_em ? new Date(r.base_atualizada_em).toLocaleString('pt-BR') : '—'}</div>
+      <div style="margin-bottom:8px;color:var(--gray400);font-size:12px">Consulta ao vivo na matriz · ${r.total} folio(s)</div>
       <table style="width:100%;border-collapse:collapse">
         <thead><tr style="text-align:left;font-size:11px;color:var(--gray400);text-transform:uppercase">
           <th style="padding:6px 10px">Folio</th><th style="padding:6px 10px">Status</th><th style="padding:6px 10px">Cultivo</th><th style="padding:6px 10px">Ciclo</th><th style="padding:6px 10px">Estado</th>
@@ -2155,6 +2129,83 @@ async function gpDraftsChecar() {
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Checar'; }
   }
+}
+
+let _gpConferirJobId = null;
+let _gpConferirPoll = null;
+
+async function gpConferirPlanilha() {
+  const input = document.getElementById('gp-conferir-arquivo');
+  if (!input.files.length) { showToast('Selecione uma planilha primeiro.', 'error'); return; }
+  const btn = document.getElementById('gp-conferir-btn');
+  btn.disabled = true;
+  document.getElementById('gp-conferir-done').style.display = 'none';
+  document.getElementById('gp-conferir-progress').style.display = 'block';
+  document.getElementById('gp-conferir-bar').style.width = '0%';
+  document.getElementById('gp-conferir-status-txt').textContent = 'Lendo planilha…';
+  document.getElementById('gp-conferir-count').textContent = '';
+  try {
+    const fd = new FormData();
+    fd.append('arquivo', input.files[0]);
+    const res = await fetch(`${BACKEND_URL}/gestao-propostas/drafts/conferir-planilha`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${TOKEN}` },
+      body: fd
+    });
+    if (res.status === 401) { handleLogout(); return; }
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Erro'); }
+    const { job_id, total_folios } = await res.json();
+    _gpConferirJobId = job_id;
+    document.getElementById('gp-conferir-status-txt').textContent = 'Consultando a matriz…';
+    document.getElementById('gp-conferir-count').textContent = `0/${total_folios}`;
+    _gpConferirPoll = setInterval(gpConferirCheck, 2000);
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+    btn.disabled = false;
+    document.getElementById('gp-conferir-progress').style.display = 'none';
+  }
+}
+
+async function gpConferirCheck() {
+  if (!_gpConferirJobId) return;
+  try {
+    const res = await fetch(`${BACKEND_URL}/gestao-propostas/status/${_gpConferirJobId}`, {
+      headers: { 'Authorization': `Bearer ${TOKEN}` }
+    });
+    if (!res.ok) return;
+    const s = await res.json();
+    const pct = s.total ? Math.round((s.done / s.total) * 100) : 0;
+    document.getElementById('gp-conferir-bar').style.width = pct + '%';
+    document.getElementById('gp-conferir-count').textContent = s.total ? `${s.done}/${s.total}` : '';
+    document.getElementById('gp-conferir-status-txt').textContent =
+      s.status === 'processando' ? 'Consultando a matriz (um folio por vez, com pausa)…' :
+      s.status === 'concluido'   ? 'Concluído' :
+      s.status === 'erro'        ? 'Erro' : 'Iniciando…';
+    if (s.status === 'concluido') {
+      clearInterval(_gpConferirPoll); _gpConferirPoll = null;
+      document.getElementById('gp-conferir-btn').disabled = false;
+      document.getElementById('gp-conferir-done').style.display = 'block';
+      showToast('Conferência pronta para download.', 'success');
+    } else if (s.status === 'erro') {
+      clearInterval(_gpConferirPoll); _gpConferirPoll = null;
+      document.getElementById('gp-conferir-btn').disabled = false;
+      showToast('Erro na conferência: ' + (s.error || ''), 'error');
+    }
+  } catch (e) { /* ignora falha pontual de polling */ }
+}
+
+async function gpConferirDownload() {
+  if (!_gpConferirJobId) return;
+  try {
+    const res = await fetch(`${BACKEND_URL}/gestao-propostas/download/${_gpConferirJobId}`, {
+      headers: { 'Authorization': `Bearer ${TOKEN}` }
+    });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Erro'); }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'conferencia_drafts.xlsx'; a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) { showToast('Erro: ' + e.message, 'error'); }
 }
 
 
