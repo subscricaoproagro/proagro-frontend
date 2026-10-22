@@ -1097,7 +1097,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" style="margin-bottom:20px">
         <div class="card-header"><div class="card-title" style="font-size:14px">5. Condições Especiais (Power BI)</div></div>
         <div class="card-body">
           <p style="color:var(--gray400);font-size:13px;margin-bottom:14px">
@@ -1106,6 +1106,31 @@
             indicando se já efetivou no sistema.
           </p>
           <button class="btn-sm btn-green" onclick="gpBaixarExcelConditoesEspeciaisBi()" style="padding:10px 20px">⬇ Baixar Excel</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title" style="font-size:14px">6. Checar Folios (Drafts ativo/inativo)</div></div>
+        <div class="card-body">
+          <p style="color:var(--gray400);font-size:13px;margin-bottom:14px">
+            A tela de Drafts da matriz (<code>/Drafts/Index</code>) exige login de sessão completo — não dá pra
+            consultar direto pela API. Exporte a lista por lá e suba o arquivo aqui pra manter a base atualizada;
+            depois cole os Folios que quiser checar.
+          </p>
+          <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:16px">
+            <div style="flex:1;min-width:260px">
+              <label class="form-label" style="font-size:12px;color:var(--gray600)">1. Subir export da tela de Drafts (.xlsx)</label>
+              <input type="file" id="gp-drafts-arquivo" accept=".xlsx" class="form-input" style="width:100%;margin-top:4px">
+              <button class="btn-sm" style="margin-top:8px" onclick="gpDraftsUpload()">Atualizar base de Folios</button>
+              <div id="gp-drafts-status" style="margin-top:8px;font-size:12px;color:var(--gray400)">Carregando status…</div>
+            </div>
+            <div style="flex:1;min-width:260px">
+              <label class="form-label" style="font-size:12px;color:var(--gray600)">2. Colar Folios a checar (vírgula, espaço ou um por linha)</label>
+              <textarea id="gp-drafts-folios" class="form-input" rows="3" style="width:100%;margin-top:4px" placeholder="20299590, 20299588&#10;20299585"></textarea>
+              <button class="btn-sm btn-green" style="margin-top:8px" onclick="gpDraftsChecar()">Checar</button>
+            </div>
+          </div>
+          <div id="gp-drafts-resultado" style="font-size:13px"></div>
         </div>
       </div>
     </div>
@@ -1865,6 +1890,7 @@ async function gpVerificarEmAndamento() {
 async function gpAoAbrirPagina() {
   const banner = document.getElementById('gp-auto-banner');
   carregarGpHistorico();
+  carregarGpDraftsStatus();
   await gpVerificarEmAndamento();
   if (!banner) return;
   try {
@@ -2062,6 +2088,72 @@ async function gpBaixarExcelConditoesEspeciaisBi() {
     showToast('Erro ao baixar Excel: ' + e.message, 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '⬇ Baixar Excel'; }
+  }
+}
+
+async function carregarGpDraftsStatus() {
+  const el = document.getElementById('gp-drafts-status');
+  if (!el) return;
+  try {
+    const s = await api('GET', '/gestao-propostas/drafts');
+    if (!s.total_folios) {
+      el.textContent = 'Nenhuma base importada ainda — suba o export da tela de Drafts.';
+    } else {
+      const data = s.atualizado_em ? new Date(s.atualizado_em).toLocaleString('pt-BR') : '—';
+      el.textContent = `${s.total_folios.toLocaleString('pt-BR')} folios na base, atualizada em ${data}.`;
+    }
+  } catch (e) {
+    el.textContent = 'Erro ao checar status da base de Folios.';
+  }
+}
+
+async function gpDraftsUpload() {
+  const input = document.getElementById('gp-drafts-arquivo');
+  if (!input.files.length) { showToast('Selecione o arquivo exportado primeiro.', 'error'); return; }
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Subindo...'; }
+  try {
+    const fd = new FormData();
+    fd.append('arquivo', input.files[0]);
+    const r = await api('POST', '/gestao-propostas/drafts/upload-xlsx', fd, true);
+    showToast(`Base atualizada: ${r.total_folios} folios.`, 'success');
+    input.value = '';
+    carregarGpDraftsStatus();
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Atualizar base de Folios'; }
+  }
+}
+
+async function gpDraftsChecar() {
+  const texto = document.getElementById('gp-drafts-folios').value.trim();
+  const out = document.getElementById('gp-drafts-resultado');
+  if (!texto) { showToast('Cole pelo menos um Folio.', 'error'); return; }
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Checando...'; }
+  try {
+    const r = await api('POST', '/gestao-propostas/drafts/checar', { texto });
+    const cor = s => s === 'ativo' ? 'var(--green)' : s === 'inativo' ? 'var(--red)' : 'var(--gray400)';
+    out.innerHTML = `
+      <div style="margin-bottom:8px;color:var(--gray400);font-size:12px">Base atualizada em ${r.base_atualizada_em ? new Date(r.base_atualizada_em).toLocaleString('pt-BR') : '—'}</div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="text-align:left;font-size:11px;color:var(--gray400);text-transform:uppercase">
+          <th style="padding:6px 10px">Folio</th><th style="padding:6px 10px">Status</th><th style="padding:6px 10px">Cultivo</th><th style="padding:6px 10px">Ciclo</th><th style="padding:6px 10px">Estado</th>
+        </tr></thead>
+        <tbody>${r.itens.map(it => `
+          <tr style="border-top:1px solid var(--gray100)">
+            <td style="padding:6px 10px;font-weight:600">${it.folio}</td>
+            <td style="padding:6px 10px;color:${cor(it.status)};font-weight:700;text-transform:capitalize">${it.status}</td>
+            <td style="padding:6px 10px">${it.cultivo || '—'}</td>
+            <td style="padding:6px 10px">${it.ciclo || '—'}</td>
+            <td style="padding:6px 10px">${it.estados || '—'}</td>
+          </tr>`).join('')}</tbody>
+      </table>`;
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Checar'; }
   }
 }
 
@@ -3098,6 +3190,47 @@ function renderJobsTable(jobs) {
 }
 
 // Tempo de avaliação do analista por job (created_at → concluido_at)
+// Horário comercial (9h-12h e 13h-18h, horário de Brasília UTC-3 -- sem
+// horário de verão desde 2019 -- seg a sex) -- bug real confirmado em
+// produção (2026-10-22): a coluna "Tempo Aval." usava concluido_at (fim da
+// IA) como se fosse o fim da avaliação, mostrando sempre só o tempo do
+// ROBÔ (minutos) em vez do tempo até a decisão de verdade (decisao_at/
+// decisao_risco_em), que no histórico completo tem mediana 7,6x maior e
+// média 17,8x maior. Mas contar tempo corrido também distorcia pra cima:
+// um job que termina de processar de noite e é decidido de manhã aparecia
+// com "13h de demora" sem ser demora real nenhuma -- por isso o cálculo
+// aqui é só em horário comercial, não corrido.
+const _JANELAS_COMERCIAIS = [[9, 0, 12, 0], [13, 0, 18, 0]];
+function _minutosComerciaisEntre(iniMs, fimMs) {
+  const OFFSET_BRASILIA_MS = 3 * 3600000;
+  if (isNaN(iniMs) || isNaN(fimMs) || fimMs <= iniMs) return 0;
+  const ini = new Date(iniMs - OFFSET_BRASILIA_MS);
+  const fim = new Date(fimMs - OFFSET_BRASILIA_MS);
+  let totalMin = 0;
+  let dia = new Date(Date.UTC(ini.getUTCFullYear(), ini.getUTCMonth(), ini.getUTCDate()));
+  const diaFim = new Date(Date.UTC(fim.getUTCFullYear(), fim.getUTCMonth(), fim.getUTCDate()));
+  while (dia <= diaFim) {
+    const diaSemana = dia.getUTCDay(); // 0=domingo ... 6=sábado
+    if (diaSemana >= 1 && diaSemana <= 5) {
+      for (const [hIni, mIni, hFim, mFim] of _JANELAS_COMERCIAIS) {
+        const janIni = new Date(Date.UTC(dia.getUTCFullYear(), dia.getUTCMonth(), dia.getUTCDate(), hIni, mIni));
+        const janFim = new Date(Date.UTC(dia.getUTCFullYear(), dia.getUTCMonth(), dia.getUTCDate(), hFim, mFim));
+        const sobraIni = janIni > ini ? janIni : ini;
+        const sobraFim = janFim < fim ? janFim : fim;
+        if (sobraFim > sobraIni) totalMin += (sobraFim - sobraIni) / 60000;
+      }
+    }
+    dia = new Date(dia.getTime() + 86400000);
+  }
+  return totalMin;
+}
+function _formatarMinComerciais(totalMin) {
+  if (totalMin < 1) return '< 1 min';
+  const h = Math.floor(totalMin / 60), m = Math.round(totalMin % 60);
+  const p = []; if (h > 0) p.push(h + 'h'); if (m > 0 || h === 0) p.push(m + 'min');
+  return p.join(' ');
+}
+
 function jobTempoAvaliacao(j) {
   if (!j.created_at) return '—';
   // Analista respondeu = tem decisão (aprovado/recusado) ou decisão de risco (CE)
@@ -3107,19 +3240,18 @@ function jobTempoAvaliacao(j) {
   if (!aiFez) return '—'; // ainda processando pela IA
 
   if (analistaDecidiu) {
-    // Analista já respondeu — mostra tempo total (criação até IA concluir como proxy)
-    const ms = Date.parse(j.concluido_at) - Date.parse(j.created_at);
-    if (isNaN(ms) || ms < 0) return '—';
-    const d = Math.floor(ms/86400000), h = Math.floor((ms%86400000)/3600000), m = Math.floor((ms%3600000)/60000);
-    const p = []; if(d>0) p.push(d+'d'); if(h>0) p.push(h+'h'); if(d===0) p.push(m+'min');
-    return `<span style="color:#166534;font-weight:600;font-size:11px">✓ ${p.join(' ')||'< 1 min'}</span>`;
+    // Fim de verdade: decisão de risco da Área Técnica quando existir
+    // (é sempre a última etapa), senão a decisão da analista de subscrição.
+    const fimISO = j.decisao_risco_em || j.decisao_at;
+    if (!fimISO) return '—'; // registro antigo sem data de decisão -- não dá pra calcular
+    const totalMin = _minutosComerciaisEntre(Date.parse(j.created_at), Date.parse(fimISO));
+    return `<span style="color:#166534;font-weight:600;font-size:11px" title="Em horário comercial (9h-12h e 13h-18h, seg-sex)">✓ ${_formatarMinComerciais(totalMin)}</span>`;
   } else {
-    // IA concluiu mas analista ainda não avaliou — mostra quanto tempo está aguardando
-    const ms = Date.now() - Date.parse(j.concluido_at);
-    if (isNaN(ms) || ms < 0) return '—';
-    const d = Math.floor(ms/86400000), h = Math.floor((ms%86400000)/3600000), m = Math.floor((ms%3600000)/60000);
-    const p = []; if(d>0) p.push(d+'d'); if(h>0) p.push(h+'h'); if(d===0) p.push(m+'min');
-    return `<span style="color:#92400e;font-size:11px">⏳ ${p.join(' ')||'< 1 min'}</span>`;
+    // IA concluiu mas analista ainda não avaliou — quanto tempo está
+    // aguardando, também só em horário comercial (senão um job que terminou
+    // às 19h aparece "esperando há 14h" assim que o expediente reabre).
+    const totalMin = _minutosComerciaisEntre(Date.parse(j.concluido_at), Date.now());
+    return `<span style="color:#92400e;font-size:11px" title="Em horário comercial (9h-12h e 13h-18h, seg-sex)">⏳ ${_formatarMinComerciais(totalMin)}</span>`;
   }
 }
 
