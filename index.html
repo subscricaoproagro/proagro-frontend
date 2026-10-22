@@ -1130,6 +1130,7 @@
             <input type="file" id="gp-conferir-arquivo" accept=".xlsx,.xlsm" class="form-input" style="flex:1;min-width:220px">
             <button class="btn-sm btn-green" id="gp-conferir-btn" onclick="gpConferirPlanilha()">Conferir planilha</button>
           </div>
+          <div id="gp-conferir-colunas" style="display:none;margin-top:12px;font-size:12px;color:var(--gray600);background:var(--gray50,#f7f7f7);border-radius:8px;padding:10px 12px"></div>
           <div id="gp-conferir-progress" style="display:none;margin-top:14px">
             <div style="background:var(--gray100);border-radius:999px;height:10px;overflow:hidden">
               <div id="gp-conferir-bar" style="background:var(--g600);height:100%;width:0%;transition:width .4s"></div>
@@ -1137,6 +1138,7 @@
             <div style="font-size:13px;color:var(--gray600);margin-top:8px">
               <span id="gp-conferir-status-txt"></span> <span id="gp-conferir-count"></span>
             </div>
+            <button class="btn-sm" style="margin-top:8px;color:var(--red)" onclick="gpConferirCancelar()" id="gp-conferir-btn-cancelar">✕ Cancelar</button>
           </div>
           <div id="gp-conferir-done" style="display:none;margin-top:14px">
             <button class="btn-sm btn-green" onclick="gpConferirDownload()">⬇ Baixar resultado</button>
@@ -2154,8 +2156,18 @@ async function gpConferirPlanilha() {
     });
     if (res.status === 401) { handleLogout(); return; }
     if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Erro'); }
-    const { job_id, total_folios } = await res.json();
+    const { job_id, total_folios, colunas_detectadas } = await res.json();
     _gpConferirJobId = job_id;
+    const colEl = document.getElementById('gp-conferir-colunas');
+    if (colunas_detectadas && colunas_detectadas.length) {
+      colEl.style.display = 'block';
+      colEl.innerHTML = colunas_detectadas.map(aba => `
+        <div><strong>Aba "${aba.aba}"</strong> -- dados a partir da linha ${aba.linha_inicio_dados}, ${aba.total_folios_na_aba} folio(s) único(s)</div>
+        <div style="margin:4px 0 8px 12px">Colunas de Folio/Draft identificadas: ${aba.colunas_folio_detectadas.map(c => `<code>${c}</code>`).join(', ')}</div>
+      `).join('');
+    } else {
+      colEl.style.display = 'none';
+    }
     document.getElementById('gp-conferir-status-txt').textContent = 'Consultando a matriz…';
     document.getElementById('gp-conferir-count').textContent = `0/${total_folios}`;
     _gpConferirPoll = setInterval(gpConferirCheck, 2000);
@@ -2180,18 +2192,42 @@ async function gpConferirCheck() {
     document.getElementById('gp-conferir-status-txt').textContent =
       s.status === 'processando' ? 'Consultando a matriz (um folio por vez, com pausa)…' :
       s.status === 'concluido'   ? 'Concluído' :
+      s.status === 'cancelado'   ? 'Cancelado' :
       s.status === 'erro'        ? 'Erro' : 'Iniciando…';
     if (s.status === 'concluido') {
       clearInterval(_gpConferirPoll); _gpConferirPoll = null;
       document.getElementById('gp-conferir-btn').disabled = false;
+      document.getElementById('gp-conferir-progress').style.display = 'none';
       document.getElementById('gp-conferir-done').style.display = 'block';
       showToast('Conferência pronta para download.', 'success');
     } else if (s.status === 'erro') {
       clearInterval(_gpConferirPoll); _gpConferirPoll = null;
       document.getElementById('gp-conferir-btn').disabled = false;
       showToast('Erro na conferência: ' + (s.error || ''), 'error');
+    } else if (s.status === 'cancelado') {
+      clearInterval(_gpConferirPoll); _gpConferirPoll = null;
+      document.getElementById('gp-conferir-btn').disabled = false;
+      document.getElementById('gp-conferir-progress').style.display = 'none';
+      showToast('Conferência cancelada.', 'info');
     }
   } catch (e) { /* ignora falha pontual de polling */ }
+}
+
+async function gpConferirCancelar() {
+  if (!_gpConferirJobId) return;
+  const btn = document.getElementById('gp-conferir-btn-cancelar');
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${BACKEND_URL}/gestao-propostas/drafts/conferir-planilha/cancelar/${_gpConferirJobId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${TOKEN}` }
+    });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Erro'); }
+    await gpConferirCheck();
+  } catch (e) {
+    showToast('Erro ao cancelar: ' + e.message, 'error');
+    btn.disabled = false;
+  }
 }
 
 async function gpConferirDownload() {
