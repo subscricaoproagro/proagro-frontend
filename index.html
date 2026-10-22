@@ -2164,6 +2164,7 @@ async function gpConferirPlanilha() {
       colEl.innerHTML = colunas_detectadas.map(aba => `
         <div><strong>Aba "${aba.aba}"</strong> -- dados a partir da linha ${aba.linha_inicio_dados}, ${aba.total_folios_na_aba} folio(s) único(s)</div>
         <div style="margin:4px 0 8px 12px">Colunas de Folio/Draft identificadas: ${aba.colunas_folio_detectadas.map(c => `<code>${c}</code>`).join(', ')}</div>
+        ${aba.folios_duplicados_na_aba ? `<div style="color:var(--red);font-weight:600">⚠ ${aba.folios_duplicados_na_aba} linha(s) com Folio duplicado -- confira a coluna "Duplicado" no resultado</div>` : '<div style="color:var(--green)">✓ Nenhum Folio duplicado encontrado</div>'}
       `).join('');
     } else {
       colEl.style.display = 'none';
