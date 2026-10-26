@@ -1128,8 +1128,11 @@
           <label class="form-label" style="font-size:12px;color:var(--gray600)">Ou conferir uma planilha inteira (ex.: condições comerciais) -- acha sozinho as colunas de Folio/Draft</label>
           <div style="display:flex;gap:10px;align-items:center;margin-top:4px;flex-wrap:wrap">
             <input type="file" id="gp-conferir-arquivo" accept=".xlsx,.xlsm" class="form-input" style="flex:1;min-width:220px">
-            <button class="btn-sm btn-green" id="gp-conferir-btn" onclick="gpConferirPlanilha()">Conferir planilha</button>
+            <button class="btn-sm" id="gp-conferir-btn-dup" onclick="gpConferirSoDuplicados()">⚡ Só duplicados</button>
+            <button class="btn-sm btn-green" id="gp-conferir-btn-rapida" onclick="gpConferirRapida()">⚡ Ativo/inativo (rápido, base local)</button>
+            <button class="btn-sm" id="gp-conferir-btn" onclick="gpConferirPlanilha()">Ativo/inativo (ao vivo, ~2h)</button>
           </div>
+          <div style="font-size:11px;color:var(--gray400);margin-top:4px">"Só duplicados" e "rápido" não tocam a matriz -- saem na hora (o rápido usa uma base local, atualizada periodicamente). "Ao vivo" confere cada folio na matriz agora mesmo, mais lento mas exato no segundo.</div>
           <div id="gp-conferir-colunas" style="display:none;margin-top:12px;font-size:12px;color:var(--gray600);background:var(--gray50,#f7f7f7);border-radius:8px;padding:10px 12px"></div>
           <div id="gp-conferir-progress" style="display:none;margin-top:14px">
             <div style="background:var(--gray100);border-radius:999px;height:10px;overflow:hidden">
@@ -2135,6 +2138,62 @@ async function gpDraftsChecar() {
 
 let _gpConferirJobId = null;
 let _gpConferirPoll = null;
+
+async function gpConferirRapida() {
+  const input = document.getElementById('gp-conferir-arquivo');
+  if (!input.files.length) { showToast('Selecione uma planilha primeiro.', 'error'); return; }
+  const btn = document.getElementById('gp-conferir-btn-rapida');
+  btn.disabled = true; const textoOriginal = btn.textContent; btn.textContent = '⏳ Checando…';
+  try {
+    const fd = new FormData();
+    fd.append('arquivo', input.files[0]);
+    const res = await fetch(`${BACKEND_URL}/gestao-propostas/drafts/conferir-planilha/rapida`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${TOKEN}` },
+      body: fd
+    });
+    if (res.status === 401) { handleLogout(); return; }
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Erro'); }
+    const baseAtualizadaEm = res.headers.get('X-Base-Atualizada-Em');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'conferencia_rapida_drafts.xlsx'; a.click();
+    URL.revokeObjectURL(url);
+    const dataTxt = baseAtualizadaEm ? new Date(baseAtualizadaEm).toLocaleString('pt-BR') : '—';
+    showToast(`Conferência pronta (base local atualizada em ${dataTxt}).`, 'success');
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = textoOriginal;
+  }
+}
+
+async function gpConferirSoDuplicados() {
+  const input = document.getElementById('gp-conferir-arquivo');
+  if (!input.files.length) { showToast('Selecione uma planilha primeiro.', 'error'); return; }
+  const btn = document.getElementById('gp-conferir-btn-dup');
+  btn.disabled = true; const textoOriginal = btn.textContent; btn.textContent = '⏳ Checando…';
+  try {
+    const fd = new FormData();
+    fd.append('arquivo', input.files[0]);
+    const res = await fetch(`${BACKEND_URL}/gestao-propostas/drafts/conferir-planilha/duplicados`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${TOKEN}` },
+      body: fd
+    });
+    if (res.status === 401) { handleLogout(); return; }
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Erro'); }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'duplicados_drafts.xlsx'; a.click();
+    URL.revokeObjectURL(url);
+    showToast('Checagem de duplicados pronta.', 'success');
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = textoOriginal;
+  }
+}
 
 async function gpConferirPlanilha() {
   const input = document.getElementById('gp-conferir-arquivo');
@@ -10814,6 +10873,94 @@ function recLigarClique(e){
  recManualInvalidar();
  document.getElementById('rec-ligar-status').textContent=`${recLigarCortes.length} ligação(ões) definida(s). Clique em "Marcar ligação" de novo pra adicionar outra, ou "Calcular prévia" pra conferir.`;
  document.getElementById('rec-preview').scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+// ── Excluir talhão duplicado (pedido Diego 2026-10-26, caso Maria Clara de
+// Aguiar Wolter Taques: KML com o conjunto inteiro de talhões colado duas
+// vezes) — edita o KML original (com backup) e reprocessa o job do zero.
+// Segue o mesmo padrão de "wrap" de renderizarConteudoSobreposicoes usado
+// acima pro painel de recorte, pra não mexer em nada já existente.
+const _renderSobreposicoesPreDedup = renderizarConteudoSobreposicoes;
+renderizarConteudoSobreposicoes = function(jobId, dados) {
+  _renderSobreposicoesPreDedup(jobId, dados);
+  renderizarPainelTalhoesDuplicados(jobId, dados);
+};
+
+function _dedupEsc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+async function renderizarPainelTalhoesDuplicados(jobId, dados) {
+  const existente = document.getElementById('dedup-panel');
+  if (existente) existente.remove();
+  const poligonos = dados.poligonos || [];
+  if (poligonos.length < 2) return; // nada a duplicar com 0 ou 1 talhão
+
+  const panel = document.createElement('section');
+  panel.id = 'dedup-panel';
+  panel.style.cssText = 'margin:16px 0;padding:18px;border:1px solid #fcd9b8;border-radius:10px;background:#fff8f1';
+  panel.innerHTML = `
+    <h3 style="margin:0 0 8px">🗑️ Excluir talhão duplicado</h3>
+    <p id="dedup-intro" style="font-size:13px;color:#7c4a12">Verificando automaticamente se há talhões repetidos no KML…</p>
+    <div id="dedup-lista" style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0"></div>
+    <button type="button" class="btn-sm" style="background:#dc2626;color:#fff;border:none" onclick="excluirTalhoesDuplicadosConfirmar('${jobId}')">Excluir selecionados e reprocessar</button>
+    <p id="dedup-status" role="status" style="margin-top:10px;font-size:13px"></p>
+  `;
+  document.getElementById('sobreposicoes-modal-body').appendChild(panel);
+
+  // A lista do "mapa de sobreposições" (dados.poligonos) não indica duplicata
+  // -- quem sabe isso é o KML original. Por isso busca a análise de verdade
+  // (comparação geométrica real, feita no backend) em vez de só comparar
+  // area_ha aqui na tela, que podia coincidir por acaso.
+  let talhoesAnalisados = poligonos.map(p => ({ id: p.id, area_ha: p.area_ha, duplicado_de: null }));
+  let houveErroAnalise = false;
+  try {
+    const r = await api('GET', `/jobs/${jobId}/sobreposicoes/talhoes`);
+    if (r.talhoes) talhoesAnalisados = r.talhoes;
+  } catch (e) {
+    houveErroAnalise = true;
+  }
+  if (_sobreposicoesModalJobIdAtual !== jobId || !document.getElementById('dedup-panel')) return; // usuário trocou de proposta ou fechou o modal
+
+  const duplicatas = talhoesAnalisados.filter(t => t.duplicado_de != null);
+  const intro = document.getElementById('dedup-intro');
+  if (houveErroAnalise) {
+    intro.textContent = 'Não consegui verificar duplicatas automaticamente — confira manualmente pela área de cada talhão abaixo e marque à mão.';
+  } else if (duplicatas.length) {
+    intro.innerHTML = `⚠️ Encontrei <strong>${duplicatas.length}</strong> talhão(ões) que parecem repetidos (mesma geometria de outro talhão já existente) — já vieram pré-marcados abaixo. Confira antes de confirmar: isso edita o KML original do job (guardando uma cópia de segurança no servidor) e reprocessa a análise inteira do zero (área, CAR/PRODES/CNFP, mapa de sobreposições e parecer).`;
+  } else {
+    intro.textContent = 'Não encontrei talhões com geometria repetida neste KML. Se mesmo assim achar que há duplicata, marque manualmente abaixo.';
+  }
+
+  document.getElementById('dedup-lista').innerHTML = talhoesAnalisados.map(t => `
+    <label style="display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid ${t.duplicado_de != null ? '#f59e0b' : '#e5c9a8'};border-radius:6px;background:${t.duplicado_de != null ? '#fef3c7' : '#fff'};font-size:13px">
+      <input type="checkbox" class="dedup-talhao" value="${_dedupEsc(t.id)}" ${t.duplicado_de != null ? 'checked' : ''}>
+      Talhão ${_dedupEsc(t.id)} <span style="color:#9a7148">(${typeof t.area_ha === 'number' ? t.area_ha.toFixed(2) : _dedupEsc(t.area_ha)} ha)</span>
+      ${t.duplicado_de != null ? `<span style="color:#b45309;font-weight:600">· igual ao talhão ${_dedupEsc(t.duplicado_de)}</span>` : ''}
+    </label>
+  `).join('');
+}
+
+async function excluirTalhoesDuplicadosConfirmar(jobId) {
+  const panel = document.getElementById('dedup-panel');
+  const ids = [...panel.querySelectorAll('.dedup-talhao:checked')].map(e => parseInt(e.value, 10));
+  const status = document.getElementById('dedup-status');
+  if (!ids.length) {
+    status.style.color = '#b91c1c';
+    status.textContent = 'Selecione pelo menos um talhão.';
+    return;
+  }
+  if (!confirm(`Confirma excluir ${ids.length} talhão(ões) (${ids.join(', ')}) do KML original e reprocessar a análise inteira?\n\nIsso não dá pra desfazer por aqui — mas fica salva uma cópia do KML original no servidor antes da exclusão.`)) return;
+  status.style.color = '#374151';
+  status.textContent = 'Excluindo do KML e reenfileirando para reprocessamento…';
+  try {
+    const r = await api('POST', `/jobs/${jobId}/sobreposicoes/excluir-talhoes`, { ids });
+    status.style.color = '#166534';
+    status.textContent = `✅ ${r.removidos} talhão(ões) removido(s) (restam ${r.restantes} no KML). Job reenfileirado para reprocessamento — acompanhe o progresso na lista de propostas.`;
+  } catch (e) {
+    status.style.color = '#b91c1c';
+    status.textContent = '❌ ' + e.message;
+  }
 }
 
 </script>
