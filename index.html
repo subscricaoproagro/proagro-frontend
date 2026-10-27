@@ -325,6 +325,7 @@
       <button class="topbar-btn" id="solicitacoes-btn" onclick="showPage('solicitacoes')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg></span><span class="sidebar-label">Solicitações CE</span></button>
       <button class="topbar-btn" id="assistente-btn" onclick="showPage('assistente')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg></span><span class="sidebar-label">Assistente IA</span></button>
       <button class="topbar-btn" id="ce-btn" onclick="showPage('condicao-especial')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span><span class="sidebar-label">Condição Especial</span></button>
+      <button class="topbar-btn" id="pre-analise-btn" onclick="showPage('pre-analise')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span><span class="sidebar-label">Pré-análise</span></button>
       <button class="topbar-btn" id="endosso-btn" onclick="showPage('endosso')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span><span class="sidebar-label">Endosso</span></button>
       <button class="topbar-btn" id="admin-btn" onclick="showPage('admin')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></span><span class="sidebar-label">Admin</span></button>
       <button class="topbar-btn" id="observacoes-pendentes-btn" onclick="showPage('observacoes-pendentes')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span><span class="sidebar-label">Observações Pendentes</span><span id="obs-pendentes-sino" class="esg-sino-alerta" style="display:none" title="Há observações aguardando aprovação"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2Zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2Z"/></svg></span></button>
@@ -843,6 +844,28 @@
     </div>
 
     <!-- ENDOSSO -->
+    <!-- PRÉ-ANÁLISE (sem proposta formal) -->
+    <div id="page-pre-analise" class="page-section">
+      <div class="section-header">
+        <div>
+          <div class="section-title">🔍 Pré-análise</div>
+          <div class="section-sub">Suba só o KML — sem nome nem CPF do cliente — e veja na hora se há algo que desabona a área (CAR, PRODES, CNFP, Assentamento INCRA, Quilombolas, Unidades de Conservação, Terras Indígenas, Sítios Arqueológicos, Embargos IBAMA/ICMBio). Não vira proposta nem fica salvo na lista de análises.</div>
+        </div>
+      </div>
+      <div class="card" style="padding:20px 24px">
+        <label style="font-size:13px;font-weight:600;color:var(--gray600);display:block;margin-bottom:6px">Referência (opcional, só pra você lembrar depois — ex.: nome do corretor ou apelido da fazenda)</label>
+        <input id="pre-analise-referencia" class="form-input" placeholder="Ex.: Corretora Dellaquino - Fazenda Santa Luzia" style="max-width:420px;margin-bottom:14px">
+        <div>
+          <input type="file" id="pre-analise-arquivo" accept=".kml,.kmz" style="display:none" onchange="preAnaliseArquivoSelecionado()">
+          <button type="button" class="btn btn-primary" onclick="document.getElementById('pre-analise-arquivo').click()">📎 Selecionar KML</button>
+          <span id="pre-analise-nome-arquivo" style="margin-left:10px;font-size:13px;color:var(--gray600)"></span>
+        </div>
+        <button type="button" class="btn btn-primary" id="pre-analise-btn-rodar" style="margin-top:14px" disabled onclick="iniciarPreAnalise()">Analisar</button>
+        <p id="pre-analise-status" role="status" style="margin-top:12px;font-size:13px"></p>
+      </div>
+      <div id="pre-analise-resultado" style="margin-top:18px"></div>
+    </div>
+
     <div id="page-endosso" class="page-section">
       <div class="section-header" style="display:flex;align-items:center;justify-content:space-between">
         <div>
@@ -2744,6 +2767,7 @@ function showPage(page) {
     'assistente':          'assistente-btn',
     'solicitacoes':        'solicitacoes-btn',
     'condicao-especial':   'ce-btn',
+    'pre-analise':         'pre-analise-btn',
     'endosso':             'endosso-btn',
     'admin':               'admin-btn',
     'datas-zarc':          'datas-zarc-btn',
@@ -4068,6 +4092,7 @@ const _PG = {
   'nova-analise':  { label: 'Nova Análise',           btn: 'nova-analise-btn'  },
   'historico':     { label: 'Histórico de Análises',  btn: 'historico-btn'     },
   'ce':            { label: 'Condição Especial',      btn: 'ce-btn'            },
+  'pre-analise':   { label: 'Pré-análise',            btn: 'pre-analise-btn'   },
   'solicitacoes':  { label: 'Solicitações CE',        btn: 'solicitacoes-btn'  },
   'endosso':       { label: 'Endosso',                btn: 'endosso-btn'       },
   'assistente':    { label: 'Assistente IA',          btn: 'assistente-btn'    },
@@ -4083,8 +4108,8 @@ const _PG = {
 };
 const _PG_DEFAULTS = {
   admin:      Object.keys(_PG),
-  analista:   ['nova-analise','historico','solicitacoes','endosso','datas-zarc'],
-  supervisor: ['ce', 'esg', 'relatorio-esg-mensal'],
+  analista:   ['nova-analise','historico','solicitacoes','endosso','datas-zarc','pre-analise'],
+  supervisor: ['ce', 'esg', 'relatorio-esg-mensal', 'pre-analise'],
   campo:      ['monitoramento'],
   ceo:        [], // sem padrão — acesso escolhido manualmente pelo botão "Acesso"
   comercial:  ['painel-comercial'],
@@ -10961,6 +10986,150 @@ async function excluirTalhoesDuplicadosConfirmar(jobId) {
     status.style.color = '#b91c1c';
     status.textContent = '❌ ' + e.message;
   }
+}
+
+// ── Pré-análise (sem proposta formal) — pedido do usuário 2026-10-27: o
+// cliente quer saber se tem algo que desabona a área antes de formalizar
+// nome/CPF. Sobe só o KML e mostra a mesma checagem ambiental (CAR, PRODES,
+// CNFP, Assentamento INCRA, Quilombolas, UC Federais, Terras Indígenas,
+// Sítios Arqueológicos, Embargos IBAMA/ICMBio) que o resto da plataforma já
+// usa. Não cria proposta nem fica salvo na lista de análises.
+let _preAnaliseArquivoSelecionado = null;
+let _preAnalisePollSeq = 0;
+
+function preAnaliseArquivoSelecionado() {
+  const input = document.getElementById('pre-analise-arquivo');
+  const f = input.files && input.files[0];
+  _preAnaliseArquivoSelecionado = f || null;
+  document.getElementById('pre-analise-nome-arquivo').textContent = f ? f.name : '';
+  document.getElementById('pre-analise-btn-rodar').disabled = !f;
+}
+
+async function iniciarPreAnalise() {
+  const arquivo = _preAnaliseArquivoSelecionado;
+  if (!arquivo) return;
+  const referencia = document.getElementById('pre-analise-referencia').value.trim();
+  const status = document.getElementById('pre-analise-status');
+  const btn = document.getElementById('pre-analise-btn-rodar');
+  document.getElementById('pre-analise-resultado').innerHTML = '';
+  btn.disabled = true;
+  status.style.color = '#374151';
+  status.textContent = 'Enviando KML e calculando sobreposições… (pode levar alguns minutos — CAR/SICAR e PRODES são consultados ao vivo)';
+  try {
+    const fd = new FormData();
+    fd.append('kml', arquivo);
+    fd.append('referencia', referencia);
+    const r = await api('POST', '/pre-analise', fd, true);
+    _preAnalisePollSeq++;
+    _pollarPreAnalise(r.id, _preAnalisePollSeq, 0);
+  } catch (e) {
+    status.style.color = '#b91c1c';
+    status.textContent = '❌ ' + e.message;
+    btn.disabled = false;
+  }
+}
+
+async function _pollarPreAnalise(pid, seq, tentativa) {
+  if (seq !== _preAnalisePollSeq) return; // usuário iniciou outra pré-análise — para de acompanhar esta
+  const status = document.getElementById('pre-analise-status');
+  const btn = document.getElementById('pre-analise-btn-rodar');
+  let info;
+  try {
+    info = await api('GET', `/pre-analise/${pid}/status`);
+  } catch (e) {
+    status.style.color = '#b91c1c';
+    status.textContent = '❌ ' + e.message;
+    btn.disabled = false;
+    return;
+  }
+  if (seq !== _preAnalisePollSeq) return;
+  if (info.status === 'erro') {
+    status.style.color = '#b91c1c';
+    status.textContent = '❌ Erro ao calcular: ' + (info.erro || 'erro desconhecido');
+    btn.disabled = false;
+    return;
+  }
+  if (info.status === 'concluido') {
+    try {
+      const dados = await api('GET', `/pre-analise/${pid}`);
+      if (seq !== _preAnalisePollSeq) return;
+      status.style.color = '#166534';
+      status.textContent = '✅ Pré-análise concluída.';
+      renderizarResultadoPreAnalise(dados);
+    } catch (e) {
+      status.style.color = '#b91c1c';
+      status.textContent = '❌ ' + e.message;
+    }
+    btn.disabled = false;
+    return;
+  }
+  const segundos = (tentativa + 1) * 4;
+  status.textContent = `🔄 Calculando sobreposições… (${segundos}s)`;
+  setTimeout(() => _pollarPreAnalise(pid, seq, tentativa + 1), 4000);
+}
+
+function renderizarResultadoPreAnalise(dados) {
+  const el = document.getElementById('pre-analise-resultado');
+  const linhasVetoriais = dados.sobreposicoes || [];
+  const linhasRaster = dados.rasters || [];
+  const total = linhasVetoriais.length + linhasRaster.length;
+  const areaTotal = dados.cliente?.area_total_ha;
+
+  let tabelaHtml;
+  if (!total) {
+    tabelaHtml = `<div style="padding:14px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;color:#166534;font-size:13px;margin-bottom:16px">
+      ✅ Nenhuma ocorrência de sobreposição identificada nas camadas verificadas (CAR, PRODES, CNFP, Assentamento INCRA, Quilombolas, UC Federais, Terras Indígenas, Sítios Arqueológicos, Embargos IBAMA/ICMBio).
+    </div>`;
+  } else {
+    const linhas = [
+      ...linhasVetoriais.map(o => ({ ...o, percTexto: o.percentual != null ? o.percentual.toFixed(2) + '%' : '—' })),
+      ...linhasRaster.map(o => ({ ...o, percTexto: '—' })),
+    ];
+    tabelaHtml = `<div style="border:1px solid #d1d5db;border-radius:6px;overflow:hidden;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:70px 1fr 90px 1.4fr;background:#1d4ed8;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">
+        <div style="padding:8px 10px">Polígono</div>
+        <div style="padding:8px 10px">Camada</div>
+        <div style="padding:8px 10px">%</div>
+        <div style="padding:8px 10px">Detalhe</div>
+      </div>
+      ${linhas.map((o, i) => `
+        <div style="display:grid;grid-template-columns:70px 1fr 90px 1.4fr;background:${i % 2 ? '#fff' : '#f9fafb'};border-top:1px solid #e5e7eb;font-size:12.5px">
+          <div style="padding:8px 10px;font-weight:600">${o.poligono}</div>
+          <div style="padding:8px 10px">${o.semaforo || ''} ${o.camada}</div>
+          <div style="padding:8px 10px">${o.percTexto}</div>
+          <div style="padding:8px 10px;color:#4b5563">${o.detalhe || ''}</div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  const municipios = dados.municipios || [];
+  let municipiosHtml = '';
+  if (municipios.length) {
+    municipiosHtml = `<div style="border:1px solid #d1d5db;border-radius:6px;overflow:hidden;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:70px 1fr 120px 90px;background:#4b5563;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">
+        <div style="padding:8px 10px">Polígono</div>
+        <div style="padding:8px 10px">Município</div>
+        <div style="padding:8px 10px">Geocódigo IBGE</div>
+        <div style="padding:8px 10px">%</div>
+      </div>
+      ${municipios.map((m, i) => `
+        <div style="display:grid;grid-template-columns:70px 1fr 120px 90px;background:${i % 2 ? '#fff' : '#f9fafb'};border-top:1px solid #e5e7eb;font-size:12.5px">
+          <div style="padding:8px 10px;font-weight:600">${m.poligono}</div>
+          <div style="padding:8px 10px">🏙️ ${m.municipio}</div>
+          <div style="padding:8px 10px;color:#6b7280">${m.geocodigo || '—'}</div>
+          <div style="padding:8px 10px">${m.percentual.toFixed(2)}%</div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  const resumoHtml = `<div style="padding:10px 14px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:12px;font-size:13px;color:#374151">
+    <strong>${(dados.poligonos || []).length}</strong> talhão(ões) · área total <strong>${typeof areaTotal === 'number' ? areaTotal.toFixed(2) : '—'} ha</strong> ·
+    esta é uma checagem ambiental rápida, sem CPF/cultura confirmados — não substitui a análise completa (PSR, ZARC, decisão final).
+  </div>`;
+
+  el.innerHTML = resumoHtml + tabelaHtml + municipiosHtml;
 }
 
 </script>
