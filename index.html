@@ -853,14 +853,22 @@
         </div>
       </div>
       <div class="card" style="padding:20px 24px">
+        <label style="font-size:13px;font-weight:600;color:var(--gray600);display:block;margin-bottom:6px">Cultura (obrigatório — define a janela de plantio/NDVI usada no relatório)</label>
+        <select id="pre-analise-cultura" class="form-input" style="max-width:260px;margin-bottom:14px">
+          <option value="">Selecione…</option>
+          <option value="Soja">Soja</option>
+          <option value="Milho">Milho 1ª safra</option>
+          <option value="Milho 2ª Safra">Milho 2ª safra (safrinha)</option>
+        </select>
         <label style="font-size:13px;font-weight:600;color:var(--gray600);display:block;margin-bottom:6px">Referência (opcional, só pra você lembrar depois — ex.: nome do corretor ou apelido da fazenda)</label>
         <input id="pre-analise-referencia" class="form-input" placeholder="Ex.: Corretora Dellaquino - Fazenda Santa Luzia" style="max-width:420px;margin-bottom:14px">
         <div>
-          <input type="file" id="pre-analise-arquivo" accept=".kml,.kmz" style="display:none" onchange="preAnaliseArquivoSelecionado()">
+          <input type="file" id="pre-analise-arquivo" accept=".kml" style="display:none" onchange="preAnaliseArquivoSelecionado()">
           <button type="button" class="btn btn-primary" onclick="document.getElementById('pre-analise-arquivo').click()">📎 Selecionar KML</button>
           <span id="pre-analise-nome-arquivo" style="margin-left:10px;font-size:13px;color:var(--gray600)"></span>
         </div>
-        <button type="button" class="btn btn-primary" id="pre-analise-btn-rodar" style="margin-top:14px" disabled onclick="iniciarPreAnalise()">Analisar</button>
+        <button type="button" class="btn btn-primary" id="pre-analise-btn-rodar" style="margin-top:14px" disabled onclick="iniciarPreAnalise()">Gerar relatório de pré-análise</button>
+        <p style="font-size:12px;color:var(--gray400);margin-top:6px">Gera o mesmo relatório visual completo (mapas, declividade, solo, CAR por talhão, NDVI, satélite) — só sem nome/CPF do cliente. Pode levar bastante tempo (o mesmo de uma análise completa).</p>
         <p id="pre-analise-status" role="status" style="margin-top:12px;font-size:13px"></p>
       </div>
       <div id="pre-analise-resultado" style="margin-top:18px"></div>
@@ -10990,10 +10998,10 @@ async function excluirTalhoesDuplicadosConfirmar(jobId) {
 
 // ── Pré-análise (sem proposta formal) — pedido do usuário 2026-10-27: o
 // cliente quer saber se tem algo que desabona a área antes de formalizar
-// nome/CPF. Sobe só o KML e mostra a mesma checagem ambiental (CAR, PRODES,
-// CNFP, Assentamento INCRA, Quilombolas, UC Federais, Terras Indígenas,
-// Sítios Arqueológicos, Embargos IBAMA/ICMBio) que o resto da plataforma já
-// usa. Não cria proposta nem fica salvo na lista de análises.
+// nome/CPF. Sobe o KML + escolhe a cultura e gera o MESMO relatório visual
+// completo (mapas, declividade, solo, CAR por talhão, NDVI, satélite) que o
+// resto da plataforma gera — só sem identidade do cliente. Não cria
+// proposta nem fica salvo na lista de análises.
 let _preAnaliseArquivoSelecionado = null;
 let _preAnalisePollSeq = 0;
 
@@ -11008,17 +11016,24 @@ function preAnaliseArquivoSelecionado() {
 async function iniciarPreAnalise() {
   const arquivo = _preAnaliseArquivoSelecionado;
   if (!arquivo) return;
-  const referencia = document.getElementById('pre-analise-referencia').value.trim();
+  const cultura = document.getElementById('pre-analise-cultura').value;
   const status = document.getElementById('pre-analise-status');
+  if (!cultura) {
+    status.style.color = '#b91c1c';
+    status.textContent = 'Selecione a cultura antes de gerar.';
+    return;
+  }
+  const referencia = document.getElementById('pre-analise-referencia').value.trim();
   const btn = document.getElementById('pre-analise-btn-rodar');
   document.getElementById('pre-analise-resultado').innerHTML = '';
   btn.disabled = true;
   status.style.color = '#374151';
-  status.textContent = 'Enviando KML e calculando sobreposições… (pode levar alguns minutos — CAR/SICAR e PRODES são consultados ao vivo)';
+  status.textContent = 'Enviando KML e gerando o relatório completo… isso roda o MESMO pipeline de uma análise de verdade (CAR, PRODES, solo, declividade, NDVI, satélite) e pode levar bastante tempo.';
   try {
     const fd = new FormData();
     fd.append('kml', arquivo);
     fd.append('referencia', referencia);
+    fd.append('cultura', cultura);
     const r = await api('POST', '/pre-analise', fd, true);
     _preAnalisePollSeq++;
     _pollarPreAnalise(r.id, _preAnalisePollSeq, 0);
@@ -11045,91 +11060,55 @@ async function _pollarPreAnalise(pid, seq, tentativa) {
   if (seq !== _preAnalisePollSeq) return;
   if (info.status === 'erro') {
     status.style.color = '#b91c1c';
-    status.textContent = '❌ Erro ao calcular: ' + (info.erro || 'erro desconhecido');
+    status.textContent = '❌ Erro ao gerar: ' + (info.erro || 'erro desconhecido');
     btn.disabled = false;
     return;
   }
   if (info.status === 'concluido') {
-    try {
-      const dados = await api('GET', `/pre-analise/${pid}`);
-      if (seq !== _preAnalisePollSeq) return;
-      status.style.color = '#166534';
-      status.textContent = '✅ Pré-análise concluída.';
-      renderizarResultadoPreAnalise(dados);
-    } catch (e) {
-      status.style.color = '#b91c1c';
-      status.textContent = '❌ ' + e.message;
-    }
+    status.style.color = '#166534';
+    status.textContent = '✅ Relatório de pré-análise concluído.';
+    renderizarResultadoPreAnalise(pid);
     btn.disabled = false;
     return;
   }
-  const segundos = (tentativa + 1) * 4;
-  status.textContent = `🔄 Calculando sobreposições… (${segundos}s)`;
-  setTimeout(() => _pollarPreAnalise(pid, seq, tentativa + 1), 4000);
+  const minutos = Math.floor((tentativa + 1) * 10 / 60);
+  const segundos = (tentativa + 1) * 10;
+  status.textContent = `🔄 Gerando relatório completo… (${minutos > 0 ? minutos + 'min ' : ''}${segundos % 60}s — normal levar vários minutos)`;
+  setTimeout(() => _pollarPreAnalise(pid, seq, tentativa + 1), 10000);
 }
 
-function renderizarResultadoPreAnalise(dados) {
+function renderizarResultadoPreAnalise(pid) {
   const el = document.getElementById('pre-analise-resultado');
-  const linhasVetoriais = dados.sobreposicoes || [];
-  const linhasRaster = dados.rasters || [];
-  const total = linhasVetoriais.length + linhasRaster.length;
-  const areaTotal = dados.cliente?.area_total_ha;
+  const url = `${BACKEND_URL}/pre-analise/${pid}/pdf`;
+  el.innerHTML = `
+    <div style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;margin-bottom:12px;font-size:13px;color:#166534">
+      ✅ Relatório pronto — mesmo conteúdo visual de uma análise completa (sobreposições, declividade, solo, CAR por talhão, NDVI, satélite), sem identidade do cliente.
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:14px">
+      <button type="button" class="btn btn-primary" onclick="preAnaliseBaixarPdf('${pid}')">⬇️ Baixar PDF</button>
+    </div>
+    <iframe src="about:blank" id="pre-analise-pdf-frame" style="width:100%;height:80vh;border:1px solid #d1d5db;border-radius:8px"></iframe>
+  `;
+  preAnaliseBaixarPdf(pid, true);
+}
 
-  let tabelaHtml;
-  if (!total) {
-    tabelaHtml = `<div style="padding:14px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;color:#166534;font-size:13px;margin-bottom:16px">
-      ✅ Nenhuma ocorrência de sobreposição identificada nas camadas verificadas (CAR, PRODES, CNFP, Assentamento INCRA, Quilombolas, UC Federais, Terras Indígenas, Sítios Arqueológicos, Embargos IBAMA/ICMBio).
-    </div>`;
-  } else {
-    const linhas = [
-      ...linhasVetoriais.map(o => ({ ...o, percTexto: o.percentual != null ? o.percentual.toFixed(2) + '%' : '—' })),
-      ...linhasRaster.map(o => ({ ...o, percTexto: '—' })),
-    ];
-    tabelaHtml = `<div style="border:1px solid #d1d5db;border-radius:6px;overflow:hidden;margin-bottom:16px">
-      <div style="display:grid;grid-template-columns:70px 1fr 90px 1.4fr;background:#1d4ed8;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">
-        <div style="padding:8px 10px">Polígono</div>
-        <div style="padding:8px 10px">Camada</div>
-        <div style="padding:8px 10px">%</div>
-        <div style="padding:8px 10px">Detalhe</div>
-      </div>
-      ${linhas.map((o, i) => `
-        <div style="display:grid;grid-template-columns:70px 1fr 90px 1.4fr;background:${i % 2 ? '#fff' : '#f9fafb'};border-top:1px solid #e5e7eb;font-size:12.5px">
-          <div style="padding:8px 10px;font-weight:600">${o.poligono}</div>
-          <div style="padding:8px 10px">${o.semaforo || ''} ${o.camada}</div>
-          <div style="padding:8px 10px">${o.percTexto}</div>
-          <div style="padding:8px 10px;color:#4b5563">${o.detalhe || ''}</div>
-        </div>
-      `).join('')}
-    </div>`;
+async function preAnaliseBaixarPdf(pid, soVisualizar) {
+  try {
+    const res = await fetch(`${BACKEND_URL}/pre-analise/${pid}/pdf`, {
+      headers: { Authorization: `Bearer ${TOKEN}`, 'ngrok-skip-browser-warning': 'true' }
+    });
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'Falha ao baixar PDF.'); }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const frame = document.getElementById('pre-analise-pdf-frame');
+    if (frame) frame.src = url;
+    if (!soVisualizar) {
+      const a = document.createElement('a');
+      a.href = url; a.download = `pre-analise-${pid.slice(0, 8)}.pdf`; a.click();
+    }
+  } catch (e) {
+    document.getElementById('pre-analise-status').textContent = '❌ ' + e.message;
   }
-
-  const municipios = dados.municipios || [];
-  let municipiosHtml = '';
-  if (municipios.length) {
-    municipiosHtml = `<div style="border:1px solid #d1d5db;border-radius:6px;overflow:hidden;margin-bottom:16px">
-      <div style="display:grid;grid-template-columns:70px 1fr 120px 90px;background:#4b5563;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">
-        <div style="padding:8px 10px">Polígono</div>
-        <div style="padding:8px 10px">Município</div>
-        <div style="padding:8px 10px">Geocódigo IBGE</div>
-        <div style="padding:8px 10px">%</div>
-      </div>
-      ${municipios.map((m, i) => `
-        <div style="display:grid;grid-template-columns:70px 1fr 120px 90px;background:${i % 2 ? '#fff' : '#f9fafb'};border-top:1px solid #e5e7eb;font-size:12.5px">
-          <div style="padding:8px 10px;font-weight:600">${m.poligono}</div>
-          <div style="padding:8px 10px">🏙️ ${m.municipio}</div>
-          <div style="padding:8px 10px;color:#6b7280">${m.geocodigo || '—'}</div>
-          <div style="padding:8px 10px">${m.percentual.toFixed(2)}%</div>
-        </div>
-      `).join('')}
-    </div>`;
-  }
-
-  const resumoHtml = `<div style="padding:10px 14px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:12px;font-size:13px;color:#374151">
-    <strong>${(dados.poligonos || []).length}</strong> talhão(ões) · área total <strong>${typeof areaTotal === 'number' ? areaTotal.toFixed(2) : '—'} ha</strong> ·
-    esta é uma checagem ambiental rápida, sem CPF/cultura confirmados — não substitui a análise completa (PSR, ZARC, decisão final).
-  </div>`;
-
-  el.innerHTML = resumoHtml + tabelaHtml + municipiosHtml;
 }
 
 </script>
