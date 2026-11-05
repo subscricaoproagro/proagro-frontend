@@ -783,9 +783,10 @@
                 <th>Cultura</th>
                 <th>Preenchido em</th>
                 <th>Achados</th>
+                <th>Ações</th>
               </tr>
             </thead>
-            <tbody id="aud-tbody"><tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Clique em Atualizar pra carregar a auditoria.</td></tr></tbody>
+            <tbody id="aud-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Clique em Atualizar pra carregar a auditoria.</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -7654,7 +7655,7 @@ let _auditorCeCache = [];
 
 async function carregarAuditorCE() {
   const tbody = document.getElementById('aud-tbody');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
   try {
     const lista = await api('GET', '/solicitacoes-ce/auditoria');
     _auditorCeCache = lista;
@@ -7665,7 +7666,7 @@ async function carregarAuditorCE() {
     const elO = document.getElementById('aud-n-ok'); if (elO) elO.textContent = n.ok;
     renderAuditorCE();
   } catch(e) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--danger);padding:40px">Erro ao carregar auditoria: ${e.message}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--danger);padding:40px">Erro ao carregar auditoria: ${e.message}</td></tr>`;
   }
 }
 
@@ -7676,7 +7677,7 @@ function renderAuditorCE() {
   const lista = filtro ? _auditorCeCache.filter(r => r.status_geral === filtro) : _auditorCeCache;
 
   if (!lista.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Nenhum registro encontrado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Nenhum registro encontrado.</td></tr>';
     return;
   }
 
@@ -7699,7 +7700,52 @@ function renderAuditorCE() {
     <td style="font-size:12px">
       ${r.achados.length ? r.achados.map(a => `<div style="margin-bottom:4px"><b style="color:${a.status==='erro'?'#991b1b':'#92400e'}">${a.campo}:</b> ${a.detalhe}</div>`).join('') : '<span style="color:var(--gray400)">Tudo certo</span>'}
     </td>
+    <td><button class="btn-sm btn-outline" onclick="editarSolicitacaoAuditor('${r.id}')">✏️ Editar</button></td>
   </tr>`).join('');
+}
+
+function editarSolicitacaoAuditor(id) {
+  const r = _auditorCeCache.find(x => x.id === id);
+  if (!r) return;
+  const campos = [
+    ['cpf_cnpj', 'CPF/CNPJ'], ['municipio_uf', 'Município/UF (formato Cidade/UF)'],
+    ['superficie', 'Superfície (ha)'], ['prod_estimada_bruta', 'Produtividade Estimada Bruta'],
+    ['preco_saca', 'Preço da Saca'], ['taxa', 'Taxa'],
+    ['nivel_cobertura1', 'Nível de Cobertura 1'], ['nivel_cobertura2', 'Nível de Cobertura 2'],
+    ['data_plantio', 'Data de Plantio'], ['previsao_colheita', 'Previsão de Colheita'],
+  ];
+  document.getElementById('modal-job-title').textContent = 'Corrigir — ' + (r.produtor || '');
+  document.getElementById('modal-job-body').innerHTML = `
+    <div style="margin-bottom:12px;padding:10px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;font-size:12px;color:#991b1b">
+      ${r.achados.length ? r.achados.map(a => `<div><b>${a.campo}:</b> ${a.detalhe}</div>`).join('') : 'Sem achados.'}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px">
+      ${campos.map(([campo, label]) => `
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label" style="font-size:11px">${label}</label>
+          <input type="text" class="form-input" id="aud-edit-${campo}" value="${(r[campo] ?? '').toString().replace(/"/g, '&quot;')}">
+        </div>`).join('')}
+    </div>
+    <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn-sm btn-outline" onclick="closeModal('modal-job')">Cancelar</button>
+      <button class="btn-sm btn-green" onclick="salvarEdicaoAuditor('${id}')">Salvar e reauditar</button>
+    </div>`;
+  openModal('modal-job');
+}
+
+async function salvarEdicaoAuditor(id) {
+  const campos = ['cpf_cnpj', 'municipio_uf', 'superficie', 'prod_estimada_bruta', 'preco_saca',
+                  'taxa', 'nivel_cobertura1', 'nivel_cobertura2', 'data_plantio', 'previsao_colheita'];
+  const corpo = {};
+  campos.forEach(c => { corpo[c] = document.getElementById('aud-edit-' + c)?.value ?? ''; });
+  try {
+    await api('PATCH', '/solicitacoes-ce/' + id, corpo);
+    closeModal('modal-job');
+    showToast('Corrigido! Reauditando…', 'success');
+    await carregarAuditorCE();
+  } catch(e) {
+    showToast('Erro ao salvar: ' + e.message, 'error');
+  }
 }
 
 function formatarData(val) {
