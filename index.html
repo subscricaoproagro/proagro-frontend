@@ -7745,53 +7745,30 @@ const _AUD_CAMPO_ACHADO_PARA_INPUT = {
   'Superfície': ['ce-area-solicitada'],
 };
 
-function _audConverterDataParaInput(v) {
-  // "dd/mm/yyyy" ou já ISO -> "yyyy-mm-dd" (formato que <input type=date> espera)
-  if (!v) return '';
-  const s = String(v).trim();
-  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-  return '';
-}
-
 function editarSolicitacaoAuditor(id) {
+  // Reaproveita a MESMA função que o Preencher Dados CE usa quando você
+  // digita o CPF na busca (preencherCamposCE) -- nenhuma lógica de
+  // formatação/campo duplicada aqui, é exatamente o que já ocorre no
+  // Preencher CE de verdade. Só adiciona a marcação de erro em cima.
   const r = _auditorCeCache.find(x => x.id === id);
   if (!r) return;
+  _limparMarcacaoErroFormCE();
   _ceAuditoriaId = id;
   resetBotaoSalvarCE();
 
-  const [municipio, uf] = (r.municipio_uf || '').split('/').map(s => (s || '').trim());
-
-  const valores = {
-    'ce-broker': r.corretora || '', 'ce-email-corretora': r.email_corretora || '',
-    'ce-solicitacao-id': r.id || '', 'ce-municipio': municipio || '', 'ce-codigo-ibge': '',
-    'ce-uf': (uf || '').toUpperCase(), 'ce-cliente': r.produtor || '',
-    'ce-area-solicitada': r.superficie || '', 'ce-cultivo': r.cultura || '',
-    'ce-ajuste': r.regulacao || '', 'ce-ciclo': r.safra || '',
-    'ce-nivel-cobertura': r.nivel_cobertura2 || r.nivel_cobertura1 || '',
-    'ce-prod-estimada': r.prod_estimada_bruta || r.prod_garantida || '',
-    'ce-prod-ibge': '', 'ce-diferenca': '', 'ce-preco-saca': r.preco_saca || '',
-    'ce-cuota': r.taxa || '', 'ce-premio': '', 'ce-replantio': r.replantio || '',
-    'ce-fecha-siembra': _audConverterDataParaInput(r.data_plantio),
-    'ce-fecha-cosecha': _audConverterDataParaInput(r.previsao_colheita),
-  };
-  Object.entries(valores).forEach(([elId, val]) => { const el = document.getElementById(elId); if (el) el.value = val; });
-  const obsEl = document.getElementById('ce-obs-subscritor'); if (obsEl) obsEl.innerHTML = '';
-  const cpfBusca = document.getElementById('ce-cpf-busca'); if (cpfBusca) cpfBusca.value = r.cpf_cnpj || '';
-
-  // Mantém o campo de CPF visível (precisa aparecer se tiver erro nele),
-  // mas desliga a busca-ao-digitar -- senão, corrigir o CPF digitaria um
-  // CPF diferente e a busca viva (buscarSolicitacaoCE) trocaria todos os
-  // campos pelos de OUTRA solicitação no meio da correção.
-  _limparMarcacaoErroFormCE();
-  _ceAuditoriaId = id;
   const cpfBuscaEl = document.getElementById('ce-cpf-busca');
-  if (cpfBuscaEl) cpfBuscaEl.oninput = null;
+  if (cpfBuscaEl) {
+    cpfBuscaEl.value = r.cpf_cnpj || '';
+    // Desliga a busca-ao-digitar enquanto corrige o CPF aqui -- senão, ao
+    // editar o CPF errado, a busca viva (buscarSolicitacaoCE) trocaria
+    // todos os campos pelos de OUTRA solicitação no meio da correção.
+    cpfBuscaEl.oninput = null;
+  }
   const elMunicipioSelectWrap = document.getElementById('ce-municipio-select-wrap');
   if (elMunicipioSelectWrap) elMunicipioSelectWrap.style.display = 'none';
-  const elBuscaStatus = document.getElementById('ce-busca-status');
-  if (elBuscaStatus) elBuscaStatus.textContent = '';
+
+  preencherCamposCE(r);
+
   (r.achados || []).filter(a => a.status === 'erro').forEach(a => {
     (_AUD_CAMPO_ACHADO_PARA_INPUT[a.campo] || []).forEach(elId => {
       const el = document.getElementById(elId);
