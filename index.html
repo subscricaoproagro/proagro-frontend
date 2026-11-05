@@ -7704,40 +7704,70 @@ function renderAuditorCE() {
   </tr>`).join('');
 }
 
+// Mesmo layout/campos do formulário real "Preencher Dados CE"
+// (modal-form-ce, ce-broker/ce-municipio/etc.), adaptado pros campos que
+// existem na planilha de Forms (solicitacoes_ce) -- a pedido do usuário:
+// "precisa trazer exatamente da forma que está o preencher dados... com
+// os dados prepreenchidos e marcando onde está o possível erro".
+const _AUD_CAMPOS_FORM = [
+  ['corretora', 'Corretora', false], ['responsavel', 'Responsável', false],
+  ['email_corretora', 'E-mail do Corretor', false], ['cpf_cnpj', 'CPF/CNPJ', false],
+  ['produtor', 'Cliente', true],
+  ['municipio_uf', 'Município/UF', false], ['cep', 'CEP', false],
+  ['superficie', 'Área Solicitada (ha)', false], ['cultura', 'Cultivo', false],
+  ['regulacao', 'Ajuste', false], ['safra', 'Ciclo', false],
+  ['nivel_cobertura1', 'Nível de Cobertura 1', false], ['nivel_cobertura2', 'Nível de Cobertura 2', false],
+  ['prod_garantida', 'Prod. Garantida (kg/ha)', false], ['prod_estimada_bruta', 'Prod. Estimada Bruta (kg/ha)', false],
+  ['preco_saca', 'Preço de Saca (R$)', false], ['taxa', 'Taxa/Cuota', false],
+  ['replantio', 'Replantio', false],
+  ['data_plantio', 'Data de Plantio', false], ['previsao_colheita', 'Previsão de Colheita', false],
+];
+// Acha o(s) campo(s) do formulário que cada "campo" de achado da auditoria
+// corresponde -- pra marcar o input certo em vermelho.
+const _AUD_CAMPO_ACHADO_PARA_INPUT = {
+  'CPF/CNPJ': ['cpf_cnpj'], 'Superfície': ['superficie'],
+  'Produtividade': ['prod_estimada_bruta', 'prod_garantida'],
+  'Preço da saca': ['preco_saca'], 'Taxa': ['taxa'],
+  'Nível de cobertura': ['nivel_cobertura1', 'nivel_cobertura2'],
+  'Data de plantio': ['data_plantio'], 'Previsão de colheita': ['previsao_colheita'],
+  'Município/UF': ['municipio_uf'], 'Cultura': ['cultura'],
+  'Ajuste (Regulação)': ['regulacao'],
+};
+
 function editarSolicitacaoAuditor(id) {
   const r = _auditorCeCache.find(x => x.id === id);
   if (!r) return;
-  const campos = [
-    ['cpf_cnpj', 'CPF/CNPJ'], ['municipio_uf', 'Município/UF (formato Cidade/UF)'],
-    ['superficie', 'Superfície (ha)'], ['prod_estimada_bruta', 'Produtividade Estimada Bruta'],
-    ['preco_saca', 'Preço da Saca'], ['taxa', 'Taxa'],
-    ['nivel_cobertura1', 'Nível de Cobertura 1'], ['nivel_cobertura2', 'Nível de Cobertura 2'],
-    ['data_plantio', 'Data de Plantio'], ['previsao_colheita', 'Previsão de Colheita'],
-  ];
-  document.getElementById('modal-job-title').textContent = 'Corrigir — ' + (r.produtor || '');
+  const errosPorInput = {};
+  (r.achados || []).forEach(a => {
+    if (a.status !== 'erro') return;
+    (_AUD_CAMPO_ACHADO_PARA_INPUT[a.campo] || []).forEach(campo => {
+      errosPorInput[campo] = errosPorInput[campo] || [];
+      errosPorInput[campo].push(a.detalhe);
+    });
+  });
+  document.getElementById('modal-job-title').textContent = '⭐ Corrigir — ' + (r.produtor || '');
   document.getElementById('modal-job-body').innerHTML = `
-    <div style="margin-bottom:12px;padding:10px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;font-size:12px;color:#991b1b">
-      ${r.achados.length ? r.achados.map(a => `<div><b>${a.campo}:</b> ${a.detalhe}</div>`).join('') : 'Sem achados.'}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:700px">
+      ${_AUD_CAMPOS_FORM.map(([campo, label, full]) => {
+        const erros = errosPorInput[campo];
+        return `<div${full ? ' style="grid-column:1/-1"' : ''}>
+          <label class="ce-label">${label}${erros ? ' ⚠️' : ''}</label>
+          <input class="ce-input${erros ? ' ce-input-erro' : ''}" id="aud-edit-${campo}"
+                 value="${(r[campo] ?? '').toString().replace(/"/g, '&quot;')}">
+          ${erros ? erros.map(d => `<div class="ce-erro-msg">${d}</div>`).join('') : ''}
+        </div>`;
+      }).join('')}
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px">
-      ${campos.map(([campo, label]) => `
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label" style="font-size:11px">${label}</label>
-          <input type="text" class="form-input" id="aud-edit-${campo}" value="${(r[campo] ?? '').toString().replace(/"/g, '&quot;')}">
-        </div>`).join('')}
-    </div>
-    <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px">
-      <button class="btn-sm btn-outline" onclick="closeModal('modal-job')">Cancelar</button>
-      <button class="btn-sm btn-green" onclick="salvarEdicaoAuditor('${id}')">Salvar e reauditar</button>
+    <div style="margin-top:20px;display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-outline" onclick="closeModal('modal-job')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarEdicaoAuditor('${id}')">Salvar e reauditar</button>
     </div>`;
   openModal('modal-job');
 }
 
 async function salvarEdicaoAuditor(id) {
-  const campos = ['cpf_cnpj', 'municipio_uf', 'superficie', 'prod_estimada_bruta', 'preco_saca',
-                  'taxa', 'nivel_cobertura1', 'nivel_cobertura2', 'data_plantio', 'previsao_colheita'];
   const corpo = {};
-  campos.forEach(c => { corpo[c] = document.getElementById('aud-edit-' + c)?.value ?? ''; });
+  _AUD_CAMPOS_FORM.forEach(([campo]) => { corpo[campo] = document.getElementById('aud-edit-' + campo)?.value ?? ''; });
   try {
     await api('PATCH', '/solicitacoes-ce/' + id, corpo);
     closeModal('modal-job');
@@ -9262,6 +9292,16 @@ function renderizarMapaSobreposicoes(dados) {
   color:#1e6b40;
   font-weight:700;
   cursor:default;
+}
+.ce-input.ce-input-erro {
+  border-color:#dc2626;
+  background:#fef2f2;
+}
+.ce-erro-msg {
+  font-size:11px;
+  color:#dc2626;
+  font-weight:600;
+  margin-top:3px;
 }
 .ce-premio-destaque {
   font-size:15px !important;
