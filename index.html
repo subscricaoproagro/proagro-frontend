@@ -5459,6 +5459,9 @@ function resetBotaoSalvarCE() {
 }
 
 async function salvarFormCE() {
+  // Modo "corrigir da Auditoria de CE" -- grava na planilha de Forms
+  // (solicitacoes_ce), não cria/atualiza Condição Especial nenhuma.
+  if (_ceAuditoriaId) { return salvarEdicaoAuditoriaCE(_ceAuditoriaId); }
   // Proteção: _ceJobId não pode ser null
   if (!_ceJobId) {
     showToast('Erro interno: ID do job perdido. Feche o modal e tente novamente.', 'error');
@@ -5519,7 +5522,24 @@ async function salvarFormCE() {
   }
 }
 
+function _limparMarcacaoErroFormCE() {
+  _ceAuditoriaId = null;
+  const cpfBuscaEl = document.getElementById('ce-cpf-busca');
+  if (cpfBuscaEl) cpfBuscaEl.oninput = () => buscarSolicitacaoCE();
+  document.querySelectorAll('#modal-form-ce .ce-input-erro').forEach(el => el.classList.remove('ce-input-erro'));
+  document.querySelectorAll('#modal-form-ce .ce-erro-msg').forEach(el => el.remove());
+}
+
+function fecharModalFormCE() {
+  _limparMarcacaoErroFormCE();
+  closeModal('modal-form-ce');
+}
+
 async function abrirPreencherCE(jobId) {
+  // Defensivo: garante que o modo "corrigir da Auditoria de CE" nunca
+  // vaza pro fluxo normal (ex.: usuário fechou o modal de auditoria
+  // clicando fora, sem passar por fecharModalFormCE()).
+  _limparMarcacaoErroFormCE();
   _ceJobId = jobId;
   resetBotaoSalvarCE();
   window._ceJobSemDecisao = false;
@@ -6372,6 +6392,9 @@ function calcularCE() {
 }
 
 async function abrirEdicaoCE(jobId, nomeProponente, cpf) {
+  // Defensivo: mesma proteção de abrirPreencherCE -- nunca deixa o modo
+  // "corrigir da Auditoria de CE" vazar pro fluxo normal.
+  _limparMarcacaoErroFormCE();
   _ceJobId = jobId;
   try {
     let ce = {};
@@ -7704,73 +7727,112 @@ function renderAuditorCE() {
   </tr>`).join('');
 }
 
-// Mesmo layout/campos do formulário real "Preencher Dados CE"
-// (modal-form-ce, ce-broker/ce-municipio/etc.), adaptado pros campos que
-// existem na planilha de Forms (solicitacoes_ce) -- a pedido do usuário:
-// "precisa trazer exatamente da forma que está o preencher dados... com
-// os dados prepreenchidos e marcando onde está o possível erro".
-const _AUD_CAMPOS_FORM = [
-  ['corretora', 'Corretora', false], ['responsavel', 'Responsável', false],
-  ['email_corretora', 'E-mail do Corretor', false], ['cpf_cnpj', 'CPF/CNPJ', false],
-  ['produtor', 'Cliente', true],
-  ['municipio_uf', 'Município/UF', false], ['cep', 'CEP', false],
-  ['superficie', 'Área Solicitada (ha)', false], ['cultura', 'Cultivo', false],
-  ['regulacao', 'Ajuste', false], ['safra', 'Ciclo', false],
-  ['nivel_cobertura1', 'Nível de Cobertura 1', false], ['nivel_cobertura2', 'Nível de Cobertura 2', false],
-  ['prod_garantida', 'Prod. Garantida (kg/ha)', false], ['prod_estimada_bruta', 'Prod. Estimada Bruta (kg/ha)', false],
-  ['preco_saca', 'Preço de Saca (R$)', false], ['taxa', 'Taxa/Cuota', false],
-  ['replantio', 'Replantio', false],
-  ['data_plantio', 'Data de Plantio', false], ['previsao_colheita', 'Previsão de Colheita', false],
-];
-// Acha o(s) campo(s) do formulário que cada "campo" de achado da auditoria
-// corresponde -- pra marcar o input certo em vermelho.
+// Reaproveita o MESMO modal "Preencher Dados CE" (modal-form-ce) usado no
+// fluxo normal -- a pedido do usuário: "o editar precisa ser exatamente
+// igual ao preencher dados CE". _ceAuditoriaId (não-nulo) desvia
+// salvarFormCE() pra gravar na planilha de Forms (solicitacoes_ce) em vez
+// de criar/atualizar uma Condição Especial.
+let _ceAuditoriaId = null;
+
+// Acha o(s) campo(s) do formulário (id do input ce-*) que cada "campo" de
+// achado da auditoria corresponde -- pra marcar o input certo em vermelho.
 const _AUD_CAMPO_ACHADO_PARA_INPUT = {
-  'CPF/CNPJ': ['cpf_cnpj'], 'Superfície': ['superficie'],
-  'Produtividade': ['prod_estimada_bruta', 'prod_garantida'],
-  'Preço da saca': ['preco_saca'], 'Taxa': ['taxa'],
-  'Nível de cobertura': ['nivel_cobertura1', 'nivel_cobertura2'],
-  'Data de plantio': ['data_plantio'], 'Previsão de colheita': ['previsao_colheita'],
-  'Município/UF': ['municipio_uf'], 'Cultura': ['cultura'],
-  'Ajuste (Regulação)': ['regulacao'],
+  'Produtividade': ['ce-prod-estimada'], 'Preço da saca': ['ce-preco-saca'],
+  'Taxa': ['ce-cuota'], 'Nível de cobertura': ['ce-nivel-cobertura'],
+  'Data de plantio': ['ce-fecha-siembra'], 'Previsão de colheita': ['ce-fecha-cosecha'],
+  'Município/UF': ['ce-municipio', 'ce-uf'], 'Cultura': ['ce-cultivo'],
+  'Ajuste (Regulação)': ['ce-ajuste'], 'CPF/CNPJ': ['ce-cpf-busca'],
+  'Superfície': ['ce-area-solicitada'],
 };
+
+function _audConverterDataParaInput(v) {
+  // "dd/mm/yyyy" ou já ISO -> "yyyy-mm-dd" (formato que <input type=date> espera)
+  if (!v) return '';
+  const s = String(v).trim();
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  return '';
+}
 
 function editarSolicitacaoAuditor(id) {
   const r = _auditorCeCache.find(x => x.id === id);
   if (!r) return;
-  const errosPorInput = {};
-  (r.achados || []).forEach(a => {
-    if (a.status !== 'erro') return;
-    (_AUD_CAMPO_ACHADO_PARA_INPUT[a.campo] || []).forEach(campo => {
-      errosPorInput[campo] = errosPorInput[campo] || [];
-      errosPorInput[campo].push(a.detalhe);
+  _ceAuditoriaId = id;
+  resetBotaoSalvarCE();
+
+  const [municipio, uf] = (r.municipio_uf || '').split('/').map(s => (s || '').trim());
+
+  const valores = {
+    'ce-broker': r.corretora || '', 'ce-email-corretora': r.email_corretora || '',
+    'ce-solicitacao-id': r.id || '', 'ce-municipio': municipio || '', 'ce-codigo-ibge': '',
+    'ce-uf': (uf || '').toUpperCase(), 'ce-cliente': r.produtor || '',
+    'ce-area-solicitada': r.superficie || '', 'ce-cultivo': r.cultura || '',
+    'ce-ajuste': r.regulacao || '', 'ce-ciclo': r.safra || '',
+    'ce-nivel-cobertura': r.nivel_cobertura2 || r.nivel_cobertura1 || '',
+    'ce-prod-estimada': r.prod_estimada_bruta || r.prod_garantida || '',
+    'ce-prod-ibge': '', 'ce-diferenca': '', 'ce-preco-saca': r.preco_saca || '',
+    'ce-cuota': r.taxa || '', 'ce-premio': '', 'ce-replantio': r.replantio || '',
+    'ce-fecha-siembra': _audConverterDataParaInput(r.data_plantio),
+    'ce-fecha-cosecha': _audConverterDataParaInput(r.previsao_colheita),
+  };
+  Object.entries(valores).forEach(([elId, val]) => { const el = document.getElementById(elId); if (el) el.value = val; });
+  const obsEl = document.getElementById('ce-obs-subscritor'); if (obsEl) obsEl.innerHTML = '';
+  const cpfBusca = document.getElementById('ce-cpf-busca'); if (cpfBusca) cpfBusca.value = r.cpf_cnpj || '';
+
+  // Mantém o campo de CPF visível (precisa aparecer se tiver erro nele),
+  // mas desliga a busca-ao-digitar -- senão, corrigir o CPF digitaria um
+  // CPF diferente e a busca viva (buscarSolicitacaoCE) trocaria todos os
+  // campos pelos de OUTRA solicitação no meio da correção.
+  _limparMarcacaoErroFormCE();
+  _ceAuditoriaId = id;
+  const cpfBuscaEl = document.getElementById('ce-cpf-busca');
+  if (cpfBuscaEl) cpfBuscaEl.oninput = null;
+  const elMunicipioSelectWrap = document.getElementById('ce-municipio-select-wrap');
+  if (elMunicipioSelectWrap) elMunicipioSelectWrap.style.display = 'none';
+  const elBuscaStatus = document.getElementById('ce-busca-status');
+  if (elBuscaStatus) elBuscaStatus.textContent = '';
+  (r.achados || []).filter(a => a.status === 'erro').forEach(a => {
+    (_AUD_CAMPO_ACHADO_PARA_INPUT[a.campo] || []).forEach(elId => {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      el.classList.add('ce-input-erro');
+      const msg = document.createElement('div');
+      msg.className = 'ce-erro-msg';
+      msg.textContent = a.detalhe;
+      el.insertAdjacentElement('afterend', msg);
     });
   });
-  document.getElementById('modal-job-title').textContent = '⭐ Corrigir — ' + (r.produtor || '');
-  document.getElementById('modal-job-body').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:700px">
-      ${_AUD_CAMPOS_FORM.map(([campo, label, full]) => {
-        const erros = errosPorInput[campo];
-        return `<div${full ? ' style="grid-column:1/-1"' : ''}>
-          <label class="ce-label">${label}${erros ? ' ⚠️' : ''}</label>
-          <input class="ce-input${erros ? ' ce-input-erro' : ''}" id="aud-edit-${campo}"
-                 value="${(r[campo] ?? '').toString().replace(/"/g, '&quot;')}">
-          ${erros ? erros.map(d => `<div class="ce-erro-msg">${d}</div>`).join('') : ''}
-        </div>`;
-      }).join('')}
-    </div>
-    <div style="margin-top:20px;display:flex;justify-content:flex-end;gap:8px">
-      <button class="btn btn-outline" onclick="closeModal('modal-job')">Cancelar</button>
-      <button class="btn btn-primary" onclick="salvarEdicaoAuditor('${id}')">Salvar e reauditar</button>
-    </div>`;
-  openModal('modal-job');
+
+  document.querySelector('#modal-form-ce .modal-title').textContent = '✏️ Corrigir solicitação — ' + (r.produtor || '');
+  openModal('modal-form-ce');
+  document.getElementById('modal-form-ce').scrollTop = 0;
 }
 
-async function salvarEdicaoAuditor(id) {
-  const corpo = {};
-  _AUD_CAMPOS_FORM.forEach(([campo]) => { corpo[campo] = document.getElementById('aud-edit-' + campo)?.value ?? ''; });
+async function salvarEdicaoAuditoriaCE(id) {
+  const corpo = {
+    corretora: document.getElementById('ce-broker')?.value || '',
+    email_corretora: document.getElementById('ce-email-corretora')?.value || '',
+    cpf_cnpj: document.getElementById('ce-cpf-busca')?.value || '',
+    produtor: document.getElementById('ce-cliente')?.value || '',
+    municipio_uf: [document.getElementById('ce-municipio')?.value || '', document.getElementById('ce-uf')?.value || '']
+                  .filter(Boolean).join('/'),
+    superficie: document.getElementById('ce-area-solicitada')?.value || '',
+    cultura: document.getElementById('ce-cultivo')?.value || '',
+    regulacao: document.getElementById('ce-ajuste')?.value || '',
+    safra: document.getElementById('ce-ciclo')?.value || '',
+    nivel_cobertura1: document.getElementById('ce-nivel-cobertura')?.value || '',
+    prod_estimada_bruta: document.getElementById('ce-prod-estimada')?.value || '',
+    preco_saca: document.getElementById('ce-preco-saca')?.value || '',
+    taxa: document.getElementById('ce-cuota')?.value || '',
+    replantio: document.getElementById('ce-replantio')?.value || '',
+    data_plantio: document.getElementById('ce-fecha-siembra')?.value || '',
+    previsao_colheita: document.getElementById('ce-fecha-cosecha')?.value || '',
+  };
   try {
     await api('PATCH', '/solicitacoes-ce/' + id, corpo);
-    closeModal('modal-job');
+    _limparMarcacaoErroFormCE();
+    closeModal('modal-form-ce');
     showToast('Corrigido! Reauditando…', 'success');
     await carregarAuditorCE();
   } catch(e) {
@@ -9097,11 +9159,11 @@ function renderizarMapaSobreposicoes(dados) {
   <div class="modal-card" style="max-width:700px;width:100%;margin:auto">
     <div class="modal-header" style="position:sticky;top:0;z-index:10;background:var(--white)">
       <div class="modal-title">⭐ Condição Especial — Dados da Proposta</div>
-      <button class="modal-close" onclick="closeModal('modal-form-ce')">✕</button>
+      <button class="modal-close" onclick="fecharModalFormCE()">✕</button>
     </div>
     <div class="modal-body" style="padding:24px">
       <!-- Busca por CPF/CNPJ -->
-      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;margin-bottom:16px">
+      <div id="ce-busca-wrap" style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;margin-bottom:16px">
         <label class="ce-label" style="color:#166534;font-weight:700">🔍 Buscar solicitação pelo CPF/CNPJ do produtor</label>
         <div style="display:flex;gap:8px;margin-top:6px">
           <input class="ce-input" id="ce-cpf-busca" placeholder="000.000.000-00 ou 00.000.000/0001-00" style="margin:0;flex:1" oninput="buscarSolicitacaoCE()">
@@ -9153,7 +9215,7 @@ function renderizarMapaSobreposicoes(dados) {
         <div style="font-size:11px;color:var(--gray400);margin-top:4px">Você pode colar uma imagem direto aqui (Ctrl+V) ou usar o botão acima.</div>
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px">
-        <button class="btn btn-outline" onclick="closeModal('modal-form-ce')">Cancelar</button>
+        <button class="btn btn-outline" onclick="fecharModalFormCE()">Cancelar</button>
         <button class="btn btn-primary" onclick="salvarFormCE()">Salvar</button>
       </div>
     </div>
