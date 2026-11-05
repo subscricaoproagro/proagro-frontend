@@ -323,6 +323,7 @@
       <button class="topbar-btn" id="nova-analise-btn" onclick="showPage('nova-analise')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/><path d="M12 11v6"/><path d="M9 14h6"/></svg></span><span class="sidebar-label">Nova Análise</span></button>
       <button class="topbar-btn" id="historico-btn" onclick="showPage('historico')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span><span class="sidebar-label">Histórico</span></button>
       <button class="topbar-btn" id="solicitacoes-btn" onclick="showPage('solicitacoes')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg></span><span class="sidebar-label">Solicitações CE</span></button>
+      <button class="topbar-btn" id="auditor-ce-btn" onclick="showPage('auditor-ce')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><span class="sidebar-label">Auditor de CE</span></button>
       <button class="topbar-btn" id="assistente-btn" onclick="showPage('assistente')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg></span><span class="sidebar-label">Assistente IA</span></button>
       <button class="topbar-btn" id="ce-btn" onclick="showPage('condicao-especial')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span><span class="sidebar-label">Condição Especial</span></button>
       <button class="topbar-btn" id="pre-analise-btn" onclick="showPage('pre-analise')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span><span class="sidebar-label">Pré-análise</span></button>
@@ -743,6 +744,48 @@
               </tr>
             </thead>
             <tbody id="sol-tbody"><tr><td colspan="14" style="text-align:center;color:var(--gray400);padding:40px">Importe uma planilha ou aguarde o carregamento.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- AUDITOR DE CONDIÇÃO ESPECIAL -->
+    <div id="page-auditor-ce" class="page-section">
+      <div class="section-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <div class="section-title">Auditor de Condição Especial</div>
+          <div class="section-sub">Confere se os dados da planilha de Solicitações estão preenchidos no formato/unidade certos (não é auditoria de decisão de risco)</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select class="form-input" id="aud-filter" style="width:auto;padding:8px 12px;font-size:13px" onchange="renderAuditorCE()">
+            <option value="">Todos</option>
+            <option value="erro">❌ Erro</option>
+            <option value="corrigido">⚠️ Corrigido</option>
+            <option value="ok">✅ Ok</option>
+          </select>
+          <button class="btn-sm btn-outline" onclick="carregarAuditorCE()">↻ Atualizar</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <div id="aud-count-erro" onclick="document.getElementById('aud-filter').value='erro';renderAuditorCE()" style="cursor:pointer;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#991b1b">❌ Erro: <span id="aud-n-erro">—</span></div>
+        <div id="aud-count-corrigido" onclick="document.getElementById('aud-filter').value='corrigido';renderAuditorCE()" style="cursor:pointer;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#92400e">⚠️ Corrigido: <span id="aud-n-corrigido">—</span></div>
+        <div id="aud-count-ok" onclick="document.getElementById('aud-filter').value='ok';renderAuditorCE()" style="cursor:pointer;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;color:#166534">✅ Ok: <span id="aud-n-ok">—</span></div>
+      </div>
+      <div class="card">
+        <div class="overflow-x">
+          <table class="jobs-table">
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Corretora</th>
+                <th>Produtor</th>
+                <th>CPF/CNPJ</th>
+                <th>Cultura</th>
+                <th>Preenchido em</th>
+                <th>Achados</th>
+              </tr>
+            </thead>
+            <tbody id="aud-tbody"><tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Clique em Atualizar pra carregar a auditoria.</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -2774,6 +2817,7 @@ function showPage(page) {
   if (page === 'condicao-especial') carregarCondicoesEspeciais();
   if (page === 'gestao-propostas') gpAoAbrirPagina();
   if (page === 'solicitacoes') carregarSolicitacoes();
+  if (page === 'auditor-ce') carregarAuditorCE();
   if (page === 'endosso') carregarEndossos();
   if (page === 'dashboard-supervisor') carregarDashboardSupervisor();
   if (page === 'esg') carregarEsgStatus();
@@ -2792,6 +2836,7 @@ function showPage(page) {
     'historico':           'historico-btn',
     'assistente':          'assistente-btn',
     'solicitacoes':        'solicitacoes-btn',
+    'auditor-ce':          'auditor-ce-btn',
     'condicao-especial':   'ce-btn',
     'pre-analise':         'pre-analise-btn',
     'endosso':             'endosso-btn',
@@ -4158,6 +4203,7 @@ const _PG = {
   'ce':            { label: 'Condição Especial',      btn: 'ce-btn'            },
   'pre-analise':   { label: 'Pré-análise',            btn: 'pre-analise-btn'   },
   'solicitacoes':  { label: 'Solicitações CE',        btn: 'solicitacoes-btn'  },
+  'auditor-ce':    { label: 'Auditor de Condição Especial', btn: 'auditor-ce-btn' },
   'endosso':       { label: 'Endosso',                btn: 'endosso-btn'       },
   'assistente':    { label: 'Assistente IA',          btn: 'assistente-btn'    },
   'admin':         { label: 'Administração',           btn: 'admin-btn'         },
@@ -4172,8 +4218,8 @@ const _PG = {
 };
 const _PG_DEFAULTS = {
   admin:      Object.keys(_PG),
-  analista:   ['nova-analise','historico','solicitacoes','endosso','datas-zarc','pre-analise'],
-  supervisor: ['ce', 'esg', 'relatorio-esg-mensal', 'pre-analise'],
+  analista:   ['nova-analise','historico','solicitacoes','auditor-ce','endosso','datas-zarc','pre-analise'],
+  supervisor: ['ce', 'auditor-ce', 'esg', 'relatorio-esg-mensal', 'pre-analise'],
   campo:      ['monitoramento'],
   ceo:        [], // sem padrão — acesso escolhido manualmente pelo botão "Acesso"
   comercial:  ['painel-comercial'],
@@ -7600,6 +7646,58 @@ function renderSolicitacoes() {
           <option value="concluida">✅ Concluída</option>
         </select>
       </div>
+    </td>
+  </tr>`).join('');
+}
+
+let _auditorCeCache = [];
+
+async function carregarAuditorCE() {
+  const tbody = document.getElementById('aud-tbody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
+  try {
+    const lista = await api('GET', '/solicitacoes-ce/auditoria');
+    _auditorCeCache = lista;
+    const n = { erro: 0, corrigido: 0, ok: 0 };
+    lista.forEach(r => { n[r.status_geral] = (n[r.status_geral] || 0) + 1; });
+    const elE = document.getElementById('aud-n-erro'); if (elE) elE.textContent = n.erro;
+    const elC = document.getElementById('aud-n-corrigido'); if (elC) elC.textContent = n.corrigido;
+    const elO = document.getElementById('aud-n-ok'); if (elO) elO.textContent = n.ok;
+    renderAuditorCE();
+  } catch(e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--danger);padding:40px">Erro ao carregar auditoria: ${e.message}</td></tr>`;
+  }
+}
+
+function renderAuditorCE() {
+  const tbody = document.getElementById('aud-tbody');
+  if (!tbody) return;
+  const filtro = document.getElementById('aud-filter')?.value || '';
+  const lista = filtro ? _auditorCeCache.filter(r => r.status_geral === filtro) : _auditorCeCache;
+
+  if (!lista.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Nenhum registro encontrado.</td></tr>';
+    return;
+  }
+
+  const statusBadge = {
+    erro:      '<span class="badge" style="background:#fee2e2;color:#991b1b"><span class="badge-dot"></span>Erro</span>',
+    corrigido: '<span class="badge badge-warning"><span class="badge-dot"></span>Corrigido</span>',
+    ok:        '<span class="badge badge-success"><span class="badge-dot"></span>Ok</span>',
+  };
+
+  tbody.innerHTML = lista.map(r => `<tr>
+    <td>${statusBadge[r.status_geral] || r.status_geral}</td>
+    <td style="font-size:12px">
+      <div style="font-weight:500">${r.corretora || '—'}</div>
+      <div style="color:var(--gray400)">${r.responsavel || ''}</div>
+    </td>
+    <td style="font-weight:500">${r.produtor || '—'}</td>
+    <td style="font-size:12px;color:var(--gray400)">${r.cpf_cnpj || '—'}</td>
+    <td style="font-size:12px">${r.cultura || '—'}</td>
+    <td style="font-size:12px">${r.criado_em ? formatarDataHora(r.criado_em) : '—'}</td>
+    <td style="font-size:12px">
+      ${r.achados.length ? r.achados.map(a => `<div style="margin-bottom:4px"><b style="color:${a.status==='erro'?'#991b1b':'#92400e'}">${a.campo}:</b> ${a.detalhe}</div>`).join('') : '<span style="color:var(--gray400)">Tudo certo</span>'}
     </td>
   </tr>`).join('');
 }
