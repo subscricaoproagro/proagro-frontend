@@ -894,7 +894,7 @@
       <div class="section-header">
         <div>
           <div class="section-title">🔍 Pré-análise</div>
-          <div class="section-sub">Suba só o KML — sem nome nem CPF do cliente — e veja na hora se há algo que desabona a área (CAR, PRODES, CNFP, Assentamento INCRA, Quilombolas, Unidades de Conservação, Terras Indígenas, Sítios Arqueológicos, Embargos IBAMA/ICMBio). Não vira proposta nem fica salvo na lista de análises.</div>
+          <div class="section-sub">Suba um ou mais KMLs — sem nome nem CPF do cliente — e veja na hora se há algo que desabona a área (CAR, PRODES, CNFP, Assentamento INCRA, Quilombolas, Unidades de Conservação, Terras Indígenas, Sítios Arqueológicos, Embargos IBAMA/ICMBio). KMLs de municípios diferentes nunca se misturam — cada município vira um relatório separado automaticamente. Não vira proposta nem fica salvo na lista de análises.</div>
         </div>
       </div>
       <div class="card" style="padding:20px 24px">
@@ -908,12 +908,12 @@
         <label style="font-size:13px;font-weight:600;color:var(--gray600);display:block;margin-bottom:6px">Referência (opcional, só pra você lembrar depois — ex.: nome do corretor ou apelido da fazenda)</label>
         <input id="pre-analise-referencia" class="form-input" placeholder="Ex.: Corretora Dellaquino - Fazenda Santa Luzia" style="max-width:420px;margin-bottom:14px">
         <div>
-          <input type="file" id="pre-analise-arquivo" accept=".kml" style="display:none" onchange="preAnaliseArquivoSelecionado()">
-          <button type="button" class="btn btn-primary" onclick="document.getElementById('pre-analise-arquivo').click()">📎 Selecionar KML</button>
+          <input type="file" id="pre-analise-arquivo" accept=".kml" multiple style="display:none" onchange="preAnaliseArquivoSelecionado()">
+          <button type="button" class="btn btn-primary" onclick="document.getElementById('pre-analise-arquivo').click()">📎 Selecionar KML(s)</button>
           <span id="pre-analise-nome-arquivo" style="margin-left:10px;font-size:13px;color:var(--gray600)"></span>
         </div>
         <button type="button" class="btn btn-primary" id="pre-analise-btn-rodar" style="margin-top:14px" disabled onclick="iniciarPreAnalise()">Gerar relatório de pré-análise</button>
-        <p style="font-size:12px;color:var(--gray400);margin-top:6px">Gera o mesmo relatório visual completo (mapas, declividade, solo, CAR por talhão, NDVI, satélite) — só sem nome/CPF do cliente. Pode levar bastante tempo (o mesmo de uma análise completa).</p>
+        <p style="font-size:12px;color:var(--gray400);margin-top:6px">Gera o mesmo relatório visual completo (mapas, declividade, solo, CAR por talhão, NDVI, satélite) — só sem nome/CPF do cliente. Pode selecionar vários KMLs de uma vez; se forem de municípios diferentes, sai um relatório por município. Pode levar bastante tempo (o mesmo de uma análise completa) — ainda mais com vários KMLs.</p>
         <p id="pre-analise-status" role="status" style="margin-top:12px;font-size:13px"></p>
       </div>
       <div id="pre-analise-resultado" style="margin-top:18px"></div>
@@ -11282,20 +11282,23 @@ async function excluirTalhoesDuplicadosConfirmar(jobId) {
 // completo (mapas, declividade, solo, CAR por talhão, NDVI, satélite) que o
 // resto da plataforma gera — só sem identidade do cliente. Não cria
 // proposta nem fica salvo na lista de análises.
-let _preAnaliseArquivoSelecionado = null;
+let _preAnaliseArquivosSelecionados = [];
 let _preAnalisePollSeq = 0;
 
 function preAnaliseArquivoSelecionado() {
   const input = document.getElementById('pre-analise-arquivo');
-  const f = input.files && input.files[0];
-  _preAnaliseArquivoSelecionado = f || null;
-  document.getElementById('pre-analise-nome-arquivo').textContent = f ? f.name : '';
-  document.getElementById('pre-analise-btn-rodar').disabled = !f;
+  const arquivos = Array.from(input.files || []);
+  _preAnaliseArquivosSelecionados = arquivos;
+  document.getElementById('pre-analise-nome-arquivo').textContent =
+    arquivos.length === 0 ? '' :
+    arquivos.length === 1 ? arquivos[0].name :
+    `${arquivos.length} arquivos selecionados`;
+  document.getElementById('pre-analise-btn-rodar').disabled = arquivos.length === 0;
 }
 
 async function iniciarPreAnalise() {
-  const arquivo = _preAnaliseArquivoSelecionado;
-  if (!arquivo) return;
+  const arquivos = _preAnaliseArquivosSelecionados;
+  if (!arquivos.length) return;
   const cultura = document.getElementById('pre-analise-cultura').value;
   const status = document.getElementById('pre-analise-status');
   if (!cultura) {
@@ -11305,18 +11308,37 @@ async function iniciarPreAnalise() {
   }
   const referencia = document.getElementById('pre-analise-referencia').value.trim();
   const btn = document.getElementById('pre-analise-btn-rodar');
-  document.getElementById('pre-analise-resultado').innerHTML = '';
+  const container = document.getElementById('pre-analise-resultado');
+  container.innerHTML = '';
   btn.disabled = true;
   status.style.color = '#374151';
-  status.textContent = 'Enviando KML e gerando o relatório completo… isso roda o MESMO pipeline de uma análise de verdade (CAR, PRODES, solo, declividade, NDVI, satélite) e pode levar bastante tempo.';
+  status.textContent = 'Enviando KML(s) e gerando o(s) relatório(s)… se os arquivos forem de municípios diferentes, cada município vira um relatório separado. Isso roda o MESMO pipeline de uma análise de verdade (CAR, PRODES, solo, declividade, NDVI, satélite) e pode levar bastante tempo.';
   try {
     const fd = new FormData();
-    fd.append('kml', arquivo);
+    arquivos.forEach(f => fd.append('kmls', f));
     fd.append('referencia', referencia);
     fd.append('cultura', cultura);
     const r = await api('POST', '/pre-analise', fd, true);
     _preAnalisePollSeq++;
-    _pollarPreAnalise(r.id, _preAnalisePollSeq, 0);
+    const seq = _preAnalisePollSeq;
+    const grupos = r.grupos || [];
+    grupos.forEach(g => {
+      const bloco = document.createElement('div');
+      bloco.className = 'card';
+      bloco.style.cssText = 'padding:16px 20px;margin-bottom:16px';
+      bloco.innerHTML = `
+        <div style="font-weight:600;margin-bottom:8px">📍 ${g.municipio}${g.kmls > 1 ? ` (${g.kmls} KMLs combinados)` : ''}</div>
+        <p id="pre-analise-status-${g.id}" role="status" style="font-size:13px;color:#374151">⏳ Na fila…</p>
+        <div id="pre-analise-pdf-area-${g.id}"></div>
+      `;
+      container.appendChild(bloco);
+      _pollarPreAnalise(g.id, seq, 0);
+    });
+    status.style.color = '#166534';
+    status.textContent = grupos.length > 1
+      ? `✅ ${grupos.length} relatórios em andamento (1 por município detectado) — acompanhe abaixo.`
+      : '✅ Relatório em andamento — acompanhe abaixo.';
+    btn.disabled = false;
   } catch (e) {
     status.style.color = '#b91c1c';
     status.textContent = '❌ ' + e.message;
@@ -11325,50 +11347,54 @@ async function iniciarPreAnalise() {
 }
 
 async function _pollarPreAnalise(pid, seq, tentativa) {
-  if (seq !== _preAnalisePollSeq) return; // usuário iniciou outra pré-análise — para de acompanhar esta
-  const status = document.getElementById('pre-analise-status');
-  const btn = document.getElementById('pre-analise-btn-rodar');
+  if (seq !== _preAnalisePollSeq) return; // usuário iniciou outra rodada — para de acompanhar esta
+  const statusEl = document.getElementById(`pre-analise-status-${pid}`);
+  if (!statusEl) return; // bloco não existe mais
   let info;
   try {
     info = await api('GET', `/pre-analise/${pid}/status`);
   } catch (e) {
-    status.style.color = '#b91c1c';
-    status.textContent = '❌ ' + e.message;
-    btn.disabled = false;
+    statusEl.style.color = '#b91c1c';
+    statusEl.textContent = '❌ ' + e.message;
     return;
   }
   if (seq !== _preAnalisePollSeq) return;
   if (info.status === 'erro') {
-    status.style.color = '#b91c1c';
-    status.textContent = '❌ Erro ao gerar: ' + (info.erro || 'erro desconhecido');
-    btn.disabled = false;
+    statusEl.style.color = '#b91c1c';
+    statusEl.textContent = '❌ Erro ao gerar: ' + (info.erro || 'erro desconhecido');
     return;
   }
   if (info.status === 'concluido') {
-    status.style.color = '#166534';
-    status.textContent = '✅ Relatório de pré-análise concluído.';
-    renderizarResultadoPreAnalise(pid);
+    statusEl.style.color = '#166534';
+    statusEl.textContent = '✅ Relatório concluído.';
+    renderizarResultadoPreAnalise(pid, document.getElementById(`pre-analise-pdf-area-${pid}`));
     carregarHistoricoPreAnalise();
-    btn.disabled = false;
     return;
   }
+  if (info.status === 'aguardando') {
+    statusEl.style.color = '#92400e';
+    statusEl.textContent = '⏳ Na fila — esperando os jobs normais em processamento terminarem, pra não sobrecarregar.';
+    setTimeout(() => _pollarPreAnalise(pid, seq, tentativa + 1), 10000);
+    return;
+  }
+  statusEl.style.color = '#374151';
   const minutos = Math.floor((tentativa + 1) * 10 / 60);
   const segundos = (tentativa + 1) * 10;
-  status.textContent = `🔄 Gerando relatório completo… (${minutos > 0 ? minutos + 'min ' : ''}${segundos % 60}s — normal levar vários minutos)`;
+  statusEl.textContent = `🔄 Gerando relatório completo… (${minutos > 0 ? minutos + 'min ' : ''}${segundos % 60}s — normal levar vários minutos)`;
   setTimeout(() => _pollarPreAnalise(pid, seq, tentativa + 1), 10000);
 }
 
-function renderizarResultadoPreAnalise(pid) {
-  const el = document.getElementById('pre-analise-resultado');
+function renderizarResultadoPreAnalise(pid, container) {
+  const el = container || document.getElementById('pre-analise-resultado');
   const url = `${BACKEND_URL}/pre-analise/${pid}/pdf`;
   el.innerHTML = `
-    <div style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;margin-bottom:12px;font-size:13px;color:#166534">
+    <div style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;margin:10px 0;font-size:13px;color:#166534">
       ✅ Relatório pronto — mesmo conteúdo visual de uma análise completa (sobreposições, declividade, solo, CAR por talhão, NDVI, satélite), sem identidade do cliente.
     </div>
     <div style="display:flex;gap:10px;margin-bottom:14px">
       <button type="button" class="btn btn-primary" onclick="preAnaliseBaixarPdf('${pid}')">⬇️ Baixar PDF</button>
     </div>
-    <iframe src="about:blank" id="pre-analise-pdf-frame" style="width:100%;height:80vh;border:1px solid #d1d5db;border-radius:8px"></iframe>
+    <iframe src="about:blank" id="pre-analise-pdf-frame-${pid}" style="width:100%;height:80vh;border:1px solid #d1d5db;border-radius:8px"></iframe>
   `;
   preAnaliseBaixarPdf(pid, true);
 }
@@ -11404,8 +11430,10 @@ async function carregarHistoricoPreAnalise() {
 
 function preAnaliseVerDoHistorico(pid) {
   document.getElementById('pre-analise-status').textContent = '';
-  renderizarResultadoPreAnalise(pid);
-  document.getElementById('pre-analise-resultado').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const container = document.getElementById('pre-analise-resultado');
+  container.innerHTML = '';
+  renderizarResultadoPreAnalise(pid, container);
+  container.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function preAnaliseBaixarPdf(pid, soVisualizar) {
@@ -11416,7 +11444,7 @@ async function preAnaliseBaixarPdf(pid, soVisualizar) {
     if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'Falha ao baixar PDF.'); }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
-    const frame = document.getElementById('pre-analise-pdf-frame');
+    const frame = document.getElementById(`pre-analise-pdf-frame-${pid}`);
     if (frame) frame.src = url;
     if (!soVisualizar) {
       const a = document.createElement('a');
