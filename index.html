@@ -928,8 +928,8 @@
       <div class="card">
         <div class="overflow-x">
           <table class="jobs-table">
-            <thead><tr><th>Data</th><th>Referência</th><th>Cultura</th><th>Município</th><th>Área (ha)</th><th>Criado por</th><th>PDF</th></tr></thead>
-            <tbody id="pre-analise-historico-tbody"><tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+            <thead><tr><th>Data</th><th>Referência</th><th>Cultura</th><th>Município</th><th>Área (ha)</th><th>Status</th><th>Criado por</th><th>PDF</th></tr></thead>
+            <tbody id="pre-analise-historico-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -11386,45 +11386,56 @@ async function _pollarPreAnalise(pid, seq, tentativa) {
 
 function renderizarResultadoPreAnalise(pid, container) {
   const el = container || document.getElementById('pre-analise-resultado');
-  const url = `${BACKEND_URL}/pre-analise/${pid}/pdf`;
   el.innerHTML = `
     <div style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;margin:10px 0;font-size:13px;color:#166534">
       ✅ Relatório pronto — mesmo conteúdo visual de uma análise completa (sobreposições, declividade, solo, CAR por talhão, NDVI, satélite), sem identidade do cliente.
     </div>
     <div style="display:flex;gap:10px;margin-bottom:14px">
+      <button type="button" class="btn btn-outline" onclick="preAnaliseVerPdf('${pid}')">👁️ Ver PDF</button>
       <button type="button" class="btn btn-primary" onclick="preAnaliseBaixarPdf('${pid}')">⬇️ Baixar PDF</button>
     </div>
-    <iframe src="about:blank" id="pre-analise-pdf-frame-${pid}" style="width:100%;height:80vh;border:1px solid #d1d5db;border-radius:8px"></iframe>
+    <div id="pre-analise-pdf-wrap-${pid}"></div>
   `;
-  preAnaliseBaixarPdf(pid, true);
 }
 
 async function carregarHistoricoPreAnalise() {
   const tbody = document.getElementById('pre-analise-historico-tbody');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
   try {
     const lista = await api('GET', '/pre-analise');
     if (!lista.length) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma pré-análise gerada ainda.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma pré-análise gerada ainda.</td></tr>';
       return;
     }
+    const STATUS_LABEL = {
+      aguardando:  '<span style="color:#92400e">⏳ Na fila</span>',
+      processando: '<span style="color:#374151">🔄 Processando</span>',
+      concluido:   '<span style="color:#166534">✅ Concluído</span>',
+      erro:        '<span style="color:#b91c1c">❌ Erro</span>',
+    };
     tbody.innerHTML = lista.map(p => {
       const data = p.criado_em ? new Date(p.criado_em).toLocaleString('pt-BR') : '—';
       const municipio = [p.municipio_dominante, p.uf_dominante].filter(Boolean).join('/') || '—';
       const area = typeof p.area_total_ha === 'number' ? p.area_total_ha.toFixed(2) : '—';
+      const statusTxt = STATUS_LABEL[p.status] || (p.status || '—');
+      const statusCompleto = p.status === 'erro' && p.erro ? `${statusTxt}<br><span style="font-size:11px;color:#991b1b">${p.erro}</span>` : statusTxt;
+      const acao = p.status === 'concluido'
+        ? `<button class="btn-sm btn-outline" onclick="preAnaliseVerDoHistorico('${p.id}')">Ver PDF</button>`
+        : '—';
       return `<tr>
         <td>${data}</td>
         <td>${p.referencia || '—'}</td>
         <td>${p.cultura || '—'}</td>
         <td>${municipio}</td>
         <td>${area}</td>
+        <td>${statusCompleto}</td>
         <td>${p.criado_por || '—'}</td>
-        <td><button class="btn-sm btn-outline" onclick="preAnaliseVerDoHistorico('${p.id}')">Ver PDF</button></td>
+        <td>${acao}</td>
       </tr>`;
     }).join('');
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#b91c1c;padding:40px">Erro ao carregar: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#b91c1c;padding:40px">Erro ao carregar: ${e.message}</td></tr>`;
   }
 }
 
@@ -11436,7 +11447,28 @@ function preAnaliseVerDoHistorico(pid) {
   container.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-async function preAnaliseBaixarPdf(pid, soVisualizar) {
+async function preAnaliseVerPdf(pid) {
+  // Só busca e mostra o PDF quando o usuário clica em "Ver PDF" -- antes
+  // isso rodava sozinho assim que o relatório ficava pronto, sem o usuário
+  // pedir, e deixava a página pesada carregando o PDF à toa (2026-11-06,
+  // a pedido do usuário: "deixe só o botão ver pdf").
+  const wrap = document.getElementById(`pre-analise-pdf-wrap-${pid}`);
+  if (!wrap) return;
+  wrap.innerHTML = '<p style="font-size:13px;color:#374151">Carregando PDF…</p>';
+  try {
+    const res = await fetch(`${BACKEND_URL}/pre-analise/${pid}/pdf`, {
+      headers: { Authorization: `Bearer ${TOKEN}`, 'ngrok-skip-browser-warning': 'true' }
+    });
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'Falha ao carregar PDF.'); }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    wrap.innerHTML = `<iframe src="${url}" style="width:100%;height:80vh;border:1px solid #d1d5db;border-radius:8px"></iframe>`;
+  } catch (e) {
+    wrap.innerHTML = `<p style="color:#b91c1c;font-size:13px">❌ ${e.message}</p>`;
+  }
+}
+
+async function preAnaliseBaixarPdf(pid) {
   try {
     const res = await fetch(`${BACKEND_URL}/pre-analise/${pid}/pdf`, {
       headers: { Authorization: `Bearer ${TOKEN}`, 'ngrok-skip-browser-warning': 'true' }
@@ -11444,12 +11476,8 @@ async function preAnaliseBaixarPdf(pid, soVisualizar) {
     if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'Falha ao baixar PDF.'); }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
-    const frame = document.getElementById(`pre-analise-pdf-frame-${pid}`);
-    if (frame) frame.src = url;
-    if (!soVisualizar) {
-      const a = document.createElement('a');
-      a.href = url; a.download = `pre-analise-${pid.slice(0, 8)}.pdf`; a.click();
-    }
+    const a = document.createElement('a');
+    a.href = url; a.download = `pre-analise-${pid.slice(0, 8)}.pdf`; a.click();
   } catch (e) {
     document.getElementById('pre-analise-status').textContent = '❌ ' + e.message;
   }
