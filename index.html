@@ -257,6 +257,85 @@
     .two-col{grid-template-columns:1fr}
     .form-grid{grid-template-columns:1fr}
   }
+
+  /* ═══ Mesa de Condição Especial (gatilho/custo/taxa técnica mínima) — bloco adicionado 2026-11-09 ═══ */
+.mce-root{
+  --mce-bg:#F8F8F6; --mce-panel:#FFFFFF; --mce-panel-2:#F0FAF4; --mce-ink:#161512; --mce-text:#2A2926;
+  --mce-muted:#9C9A94; --mce-line:#D5D3CE; --mce-brand:#1E6B40; --mce-on-brand:#FFFFFF;
+  --mce-ok:#1E6B40; --mce-ok-bg:#D4F0E0; --mce-warn:#92400E; --mce-warn-bg:#FFF3C4;
+  --mce-bad:#C0392B; --mce-bad-bg:#FFF5F5; --mce-zone:rgba(45,138,85,.16); --mce-badzone:rgba(192,57,43,.09);
+  --mce-hatch:rgba(22,21,18,.07); --mce-r:10px;
+  font-family:"DM Sans",sans-serif;
+  color:var(--mce-text); background:var(--mce-bg); font-size:15px; line-height:1.45;
+  padding:16px; border-radius:12px; max-width:1180px; margin:0 auto;
+}
+.mce-root *{box-sizing:border-box}
+.mce-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;
+  border-bottom:3px solid var(--mce-brand);padding-bottom:10px;margin-bottom:14px}
+.mce-eyebrow{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--mce-brand)}
+.mce-h1{font-family:"Syne",sans-serif;font-weight:800;color:var(--mce-ink);font-size:22px;line-height:1.15;margin:3px 0 0}
+.mce-sub{color:var(--mce-muted);font-size:13px;max-width:58ch;margin:4px 0 0}
+.mce-note{background:var(--mce-warn-bg);color:var(--mce-ink);border:1px solid var(--mce-line);
+  border-radius:var(--mce-r);padding:9px 12px;font-size:13px;margin-bottom:14px}
+.mce-grid{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:820px){.mce-grid{grid-template-columns:minmax(0,1fr)}}
+.mce-card{background:var(--mce-panel);border:1px solid var(--mce-line);border-radius:var(--mce-r);
+  padding:14px 16px;min-width:0;margin-bottom:14px}
+.mce-card h3{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mce-muted);
+  margin:0 0 10px}
+.mce-form{display:grid;gap:12px}
+.mce-field{display:grid;gap:4px;font-size:13px;font-weight:700;color:var(--mce-ink)}
+.mce-hint{font-weight:400;color:var(--mce-muted);font-size:12px}
+.mce-input, .mce-select{font:inherit;font-size:15px;font-variant-numeric:tabular-nums;color:var(--mce-ink);
+  background:var(--mce-bg);border:1px solid var(--mce-line);border-radius:8px;padding:8px 10px;width:100%}
+.mce-unit{position:relative}.mce-unit .mce-input{padding-right:52px}
+.mce-unit span{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--mce-muted);font-size:13px}
+.mce-row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mce-check{display:flex;align-items:center;gap:7px;font-weight:500;color:var(--mce-text);font-size:13px}
+.mce-ref{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.mce-ref th,.mce-ref td{padding:5px 4px;border-bottom:1px solid var(--mce-line);text-align:right;white-space:nowrap}
+.mce-ref th{font-size:11px;color:var(--mce-muted);font-weight:700;text-transform:uppercase}
+.mce-ref td:first-child, .mce-ref th:first-child{text-align:left}
+.mce-verdict{border-radius:var(--mce-r);padding:14px 16px;display:grid;gap:6px;border:1px solid transparent;margin-bottom:14px}
+.mce-verdict.ok{background:var(--mce-ok-bg)}.mce-verdict.warn{background:var(--mce-warn-bg)}
+.mce-verdict.bad{background:var(--mce-bad-bg)}.mce-verdict.aguardando{background:var(--mce-panel-2)}
+.mce-vtop{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.mce-pill{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;
+  border-radius:999px;color:var(--mce-panel)}
+.mce-ok .mce-pill{background:var(--mce-ok)}.mce-warn .mce-pill{background:var(--mce-warn)}
+.mce-bad .mce-pill{background:var(--mce-bad)}.mce-aguardando .mce-pill{background:var(--mce-muted)}
+.mce-vtitle{font-weight:800;font-size:17px;color:var(--mce-ink)}
+.mce-reasons{margin:0;padding-left:16px;display:grid;gap:3px;color:var(--mce-ink);font-size:13px}
+.mce-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+@media (max-width:620px){.mce-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.mce-kpi{background:var(--mce-panel);border:1px solid var(--mce-line);border-radius:var(--mce-r);
+  padding:10px 12px;display:grid;gap:2px;min-width:0}
+.mce-kpi .k{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mce-muted)}
+.mce-kpi .v{font-size:20px;font-weight:800;color:var(--mce-ink);font-variant-numeric:tabular-nums}
+.mce-kpi .s{font-size:12px;color:var(--mce-muted);font-variant-numeric:tabular-nums}
+.mce-tone-ok{color:var(--mce-ok)!important}.mce-tone-warn{color:var(--mce-warn)!important}
+.mce-tone-bad{color:var(--mce-bad)!important}
+.mce-chartbox{overflow-x:auto}
+.mce-root svg{display:block;width:100%;height:auto;min-width:420px}
+.mce-root svg text{font-size:11px;fill:var(--mce-muted)}
+.mce-legend{display:flex;flex-wrap:wrap;gap:5px 14px;font-size:12px;color:var(--mce-muted);margin-top:6px}
+.mce-legend i{display:inline-block;width:13px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.mce-offers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:720px){.mce-offers{grid-template-columns:minmax(0,1fr)}}
+.mce-offer{border:1px solid var(--mce-line);border-radius:var(--mce-r);padding:10px 12px;display:grid;gap:3px;
+  background:var(--mce-panel-2)}
+.mce-offer .t{font-size:12px;font-weight:800;color:var(--mce-brand);letter-spacing:.03em;text-transform:uppercase}
+.mce-offer .n{font-size:17px;font-weight:800;color:var(--mce-ink)}
+.mce-offer .d{font-size:12px;color:var(--mce-muted)}
+.mce-offer button{font:inherit;font-size:12px;font-weight:700;color:var(--mce-brand);background:transparent;
+  border:1px solid var(--mce-brand);border-radius:6px;padding:4px 9px;cursor:pointer;margin-top:3px}
+.mce-offer button:disabled{opacity:.4;cursor:default}
+.mce-foot{font-size:12px;color:var(--mce-muted);margin:10px 0 0}
+.mce-loading{font-size:13px;color:var(--mce-muted);padding:8px 0}
+.mce-error{background:var(--mce-bad-bg);color:var(--mce-bad);border-radius:var(--mce-r);padding:10px 12px;font-size:13px}
+.mce-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}
+.mce-modal-box{background:var(--mce-bg,#F8F8F6);border-radius:12px;max-width:1240px;width:100%;max-height:92vh;overflow:auto;position:relative}
+.mce-modal-fechar{position:absolute;top:10px;right:14px;z-index:10;background:#fff;border:1px solid #d5d3ce;border-radius:999px;width:30px;height:30px;font-size:16px;cursor:pointer;color:#5e5c57}
 </style>
 </head>
 <body>
@@ -5948,6 +6027,7 @@ async function carregarCondicoesEspeciais() {
           <div class="ce-acoes-grid">
             <button class="btn-sm btn-green" style="font-size:11px;padding:3px 6px" onclick="baixarJob('${ce.job_id}')">⬇ Baixar</button>
             <button class="btn-sm" style="font-size:11px;padding:3px 6px;background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c" onclick="baixarAcoes('${ce.job_id}')" title="Documento interno com as providências a tomar -- uso restrito do analista, não é o parecer">📋 Ações</button>
+            <button class="btn-sm btn-outline" style="font-size:11px;padding:3px 6px" onclick="abrirModalSimularCEDaLista('${ce.job_id}')" title="Simular gatilho, custo esperado e taxa técnica mínima pro município desta Condição Especial">🧮 Simular</button>
             ${renderBtnsCE(ce)}
             <button class="btn-sm btn-danger" onclick="excluirCE('${ce.job_id}')" title="Excluir" style="font-size:11px;padding:3px 6px">🗑</button>
           </div>
@@ -11483,6 +11563,446 @@ async function preAnaliseBaixarPdf(pid) {
   }
 }
 
+</script>
+
+<!-- ═══ Mesa de Condição Especial — módulo adicionado 2026-11-09 ═══
+     Calcula gatilho, custo esperado, taxa técnica mínima e alçada pra
+     qualquer PG/taxa pedida, comparando com o balcão. Fala com
+     /condicao-especial/* (backend já em produção). Toda a conta é feita lá;
+     este script só desenha o que a API devolve. -->
+<script>
+(function (global, factory) {
+  const api = factory();
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else global.MesaCondicaoEspecial = { montar: api.montarMesaCondicaoEspecial };
+  if (typeof define === "function" && define.amd) define([], () => api);
+})(typeof window !== "undefined" ? window : globalThis, function () {
+  "use strict";
+
+  const nf = (v, d = 1) => Number.isFinite(v) ? v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d }) : "—";
+  const pct = (v, d = 2) => Number.isFinite(v) ? nf(v, d) + "%" : "—";
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  function montarMesaCondicaoEspecial(container, opts) {
+    if (!container) throw new Error("montarMesaCondicaoEspecial: container é obrigatório");
+    const o = Object.assign({ apiBaseUrl: "", getToken: () => null, cultivo: null, municipioInicial: null, municipioNomeUf: null }, opts);
+
+    let destruido = false;
+    let municipios = [];       // [{codigo_ibge, nome, uf}]
+    let cultivoAtual = o.cultivo;
+    let cultivos = [];
+    let debounceTimer = null;
+    let ultimoResultado = null;
+
+    const st = { codigo: o.municipioInicial || null, plano: 3, pg: null, tx: null, rep: false, area: null, preco: null };
+
+    container.innerHTML = `
+      <div class="mce-root" id="mce-raiz">
+        <div class="mce-head">
+          <div>
+            <div class="mce-eyebrow" id="mce-eyebrow">Subscrição · Condição Especial</div>
+            <h2 class="mce-h1" id="mce-titulo">Mesa de Condição Especial</h2>
+          </div>
+          <p class="mce-sub">Informe o município, a PG e a taxa pedidas. A mesa compara com o balcão e devolve gatilho, custo esperado, taxa técnica mínima, decisão e alçada.</p>
+        </div>
+        <div id="mce-avisos"></div>
+        <div class="mce-grid">
+          <section class="mce-card">
+            <h3>Pedido do cliente</h3>
+            <div class="mce-form">
+              <label class="mce-field">Cultivo
+                <select class="mce-select" id="mce-cultivo"></select>
+              </label>
+              <label class="mce-field">Município
+                <input class="mce-input" id="mce-mun" list="mce-muns" placeholder="Digite o nome ou o código IBGE" autocomplete="off">
+                <datalist id="mce-muns"></datalist>
+                <span class="mce-hint" id="mce-mun-hint"></span>
+              </label>
+              <label class="mce-field">Plano de referência (balcão)
+                <select class="mce-select" id="mce-plano">
+                  <option value="1">Plano 1</option><option value="2">Plano 2</option><option value="3" selected>Plano 3</option>
+                </select>
+              </label>
+              <label class="mce-field">PG solicitada
+                <span class="mce-unit"><input class="mce-input" id="mce-pg" type="number" step="0.1" min="0" inputmode="decimal"><span>sc/ha</span></span>
+              </label>
+              <label class="mce-field">Taxa solicitada
+                <span class="mce-unit"><input class="mce-input" id="mce-tx" type="number" step="0.01" min="0" inputmode="decimal"><span>%</span></span>
+              </label>
+              <label class="mce-check"><input id="mce-rep" type="checkbox"> Com cobertura de replantio (taxa REP)</label>
+              <div class="mce-row2">
+                <label class="mce-field">Área <span class="mce-hint">opcional</span>
+                  <span class="mce-unit"><input class="mce-input" id="mce-area" type="number" step="0.01" min="0"><span>ha</span></span></label>
+                <label class="mce-field">Preço <span class="mce-hint">opcional</span>
+                  <span class="mce-unit"><input class="mce-input" id="mce-preco" type="number" step="1" min="0"><span>R$/sc</span></span></label>
+              </div>
+            </div>
+            <h3 style="margin-top:16px">Referência da tabela (balcão)</h3>
+            <table class="mce-ref"><thead><tr><th>Plano</th><th>PG sc/ha</th><th>Taxa</th><th>REP</th><th>Sinistr.</th></tr></thead>
+              <tbody id="mce-ref-body"><tr><td colspan="5" class="mce-hint">Selecione um município</td></tr></tbody></table>
+          </section>
+          <div>
+            <section class="mce-verdict aguardando" id="mce-verdict">
+              <div class="mce-vtop"><span class="mce-pill" id="mce-pill">—</span><span class="mce-vtitle" id="mce-vtitulo">Informe os dados do pedido</span></div>
+              <ul class="mce-reasons" id="mce-motivos"></ul>
+            </section>
+            <div class="mce-kpis">
+              <div class="mce-kpi"><span class="k">PG pedida</span><span class="v" id="mce-k-pg">—</span><span class="s" id="mce-k-pg-s">—</span></div>
+              <div class="mce-kpi"><span class="k">Custo esperado</span><span class="v" id="mce-k-lc">—</span><span class="s" id="mce-k-lc-s">—</span></div>
+              <div class="mce-kpi"><span class="k">Taxa técnica mínima</span><span class="v" id="mce-k-min">—</span><span class="s" id="mce-k-min-s">—</span></div>
+              <div class="mce-kpi"><span class="k">Alçada</span><span class="v" id="mce-k-alc">—</span><span class="s" id="mce-k-alc-s">—</span></div>
+            </div>
+            <section class="mce-card">
+              <h3>Condição especial × balcão</h3>
+              <div id="mce-bal-pill-wrap" style="margin-bottom:6px"></div>
+              <div class="mce-chartbox"><table class="mce-ref"><thead><tr><th></th><th>Balcão</th><th>Condição especial</th><th>Diferença</th></tr></thead>
+                <tbody id="mce-bal-body"></tbody></table></div>
+            </section>
+            <section class="mce-card">
+              <h3>Gatilho: PG pedida ÷ produtividade esperada</h3>
+              <div class="mce-chartbox"><svg id="mce-regua" viewBox="0 0 640 70" role="img" aria-label="Régua do gatilho"></svg></div>
+              <p class="mce-hint" id="mce-regua-texto"></p>
+            </section>
+            <section class="mce-card">
+              <h3>Fronteira PG × taxa</h3>
+              <div class="mce-chartbox"><svg id="mce-grafico" viewBox="0 0 640 300" role="img" aria-label="Taxa de referência e taxa técnica mínima em função da PG"></svg></div>
+              <div class="mce-legend">
+                <span><i style="background:var(--mce-brand)"></i>Taxa de referência</span>
+                <span><i style="background:var(--mce-zone)"></i>Faixa negociável</span>
+                <span><i style="background:var(--mce-badzone)"></i>Abaixo da taxa técnica mínima</span>
+              </div>
+            </section>
+            <section class="mce-card">
+              <h3>Contrapropostas</h3>
+              <div class="mce-offers">
+                <div class="mce-offer"><span class="t">Manter a PG pedida</span><span class="n" id="mce-o-a">—</span><span class="d" id="mce-o-a-d">—</span><button type="button" id="mce-b-a">Usar esta</button></div>
+                <div class="mce-offer"><span class="t">Manter a taxa pedida</span><span class="n" id="mce-o-b">—</span><span class="d" id="mce-o-b-d">—</span><button type="button" id="mce-b-b">Usar esta</button></div>
+                <div class="mce-offer"><span class="t">Maior PG sustentada</span><span class="n" id="mce-o-c">—</span><span class="d" id="mce-o-c-d">—</span><button type="button" id="mce-b-c">Usar esta</button></div>
+              </div>
+            </section>
+            <p class="mce-foot" id="mce-rodape"></p>
+          </div>
+        </div>
+      </div>`;
+
+    const $ = (id) => container.querySelector("#" + id);
+
+    async function chamarApi(path, init) {
+      const token = await o.getToken();
+      const headers = Object.assign({ "Content-Type": "application/json" }, init && init.headers);
+      if (token) headers["Authorization"] = "Bearer " + token;
+      const resp = await fetch(o.apiBaseUrl.replace(/\/$/, "") + path, Object.assign({}, init, { headers }));
+      if (!resp.ok) {
+        let detalhe = resp.statusText;
+        try { detalhe = (await resp.json()).detail || detalhe; } catch (e) { /* ignore */ }
+        throw new Error(`${resp.status}: ${detalhe}`);
+      }
+      return resp.json();
+    }
+
+    function mostrarErro(msg) {
+      $("mce-motivos").innerHTML = `<li class="mce-error">${esc(msg)}</li>`;
+    }
+
+    async function carregarCultivos() {
+      cultivos = await chamarApi("/condicao-especial/cultivos");
+      const sel = $("mce-cultivo");
+      sel.innerHTML = cultivos.map(c => `<option value="${esc(c.slug)}">${esc(c.nome_exibicao)} (${esc(c.safra || "")})</option>`).join("");
+      if (!cultivoAtual || !cultivos.some(c => c.slug === cultivoAtual)) {
+        cultivoAtual = cultivos[0] ? cultivos[0].slug : null;
+      }
+      sel.value = cultivoAtual || "";
+      const meta = cultivos.find(c => c.slug === cultivoAtual);
+      if (meta) {
+        $("mce-eyebrow").textContent = `Subscrição · ${meta.nome_exibicao} · ${meta.safra || ""} · ${(meta.ufs || []).join(" · ")}`;
+        $("mce-avisos").innerHTML = (meta.avisos || []).length
+          ? `<div class="mce-note"><b>Atenção:</b> ${meta.avisos.map(esc).join(" ")}</div>` : "";
+      }
+    }
+
+    const normalizarNome = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+
+    async function carregarMunicipios() {
+      if (!cultivoAtual) return;
+      municipios = await chamarApi(`/condicao-especial/${cultivoAtual}/municipios`);
+      const byCode = new Map(municipios.map(m => [m.codigo_ibge, m]));
+      $("mce-muns").innerHTML = municipios.map(m => `<option value="${esc(m.nome)} — ${esc(m.uf)} (${esc(m.codigo_ibge)})">`).join("");
+      container.__mceByCode = byCode;
+      if (!st.codigo && o.municipioNomeUf && o.municipioNomeUf.nome) {
+        const nomeAlvo = normalizarNome(o.municipioNomeUf.nome);
+        const ufAlvo = (o.municipioNomeUf.uf || "").trim().toUpperCase();
+        const achado = municipios.find(m => normalizarNome(m.nome) === nomeAlvo && (!ufAlvo || m.uf === ufAlvo));
+        if (achado) st.codigo = achado.codigo_ibge;
+      }
+      if (st.codigo && byCode.has(st.codigo)) {
+        $("mce-mun").value = `${byCode.get(st.codigo).nome} — ${byCode.get(st.codigo).uf} (${st.codigo})`;
+        await aoSelecionarMunicipio();
+      } else if (o.municipioNomeUf && o.municipioNomeUf.nome) {
+        $("mce-mun-hint").textContent = `Não achei "${o.municipioNomeUf.nome}" na lista — selecione manualmente.`;
+      }
+    }
+
+    function acharCodigoPeloTexto(texto) {
+      const m = texto.match(/\((\d{7})\)\s*$/);
+      if (m) return m[1];
+      const achado = municipios.find(x => (`${x.nome} — ${x.uf}`).toLowerCase() === texto.trim().toLowerCase());
+      return achado ? achado.codigo_ibge : null;
+    }
+
+    let referenciaMunicipio = null;
+
+    async function aoSelecionarMunicipio() {
+      const texto = $("mce-mun").value;
+      const codigo = acharCodigoPeloTexto(texto);
+      $("mce-mun-hint").textContent = codigo ? `Código IBGE ${codigo}` : "Município não encontrado na lista.";
+      st.codigo = codigo;
+      if (!codigo) { referenciaMunicipio = null; renderRef(null); return; }
+      try {
+        referenciaMunicipio = await chamarApi(`/condicao-especial/${cultivoAtual}/municipios/${codigo}`);
+        renderRef(referenciaMunicipio);
+        if (st.pg == null) {
+          const p = referenciaMunicipio.planos.find(p => p.plano === st.plano);
+          if (p) { st.pg = p.pg_sc_ha; $("mce-pg").value = st.pg; }
+        }
+        agendarSimulacao(0);
+      } catch (e) {
+        mostrarErro("Não consegui carregar a referência deste município: " + e.message);
+      }
+    }
+
+    function renderRef(ref) {
+      const tbody = $("mce-ref-body");
+      if (!ref) { tbody.innerHTML = `<tr><td colspan="5" class="mce-hint">Selecione um município</td></tr>`; return; }
+      tbody.innerHTML = ref.planos.map(p => {
+        const sel = p.plano === st.plano ? ' style="font-weight:800;color:var(--mce-ink)"' : "";
+        const s = p.sinistralidade_esperada_pct;
+        const cls = s == null ? "" : (s > 100 ? "mce-tone-bad" : (s > 80 ? "mce-tone-warn" : ""));
+        return `<tr${sel}><td>Plano ${p.plano}</td><td>${nf(p.pg_sc_ha)}</td><td>${nf(p.taxa_pct, 2)}%</td><td>${nf(p.taxa_rep_pct, 2)}%</td><td class="${cls}">${s == null ? "—" : nf(s, 0) + "%"}</td></tr>`;
+      }).join("");
+    }
+
+    function agendarSimulacao(delayMs = 350) {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(simular, delayMs);
+    }
+
+    async function simular() {
+      if (!st.codigo || !(st.pg > 0) || !(st.tx > 0)) {
+        $("mce-verdict").className = "mce-verdict aguardando";
+        $("mce-pill").textContent = "Aguardando"; $("mce-vtitulo").textContent = "Informe o município, a PG e a taxa pedidas";
+        $("mce-motivos").innerHTML = "";
+        return;
+      }
+      try {
+        const body = {
+          codigo_ibge: st.codigo, plano: st.plano, pg_pedida_sc_ha: st.pg, taxa_pedida_pct: st.tx,
+          com_replantio: st.rep, area_ha: st.area || null, preco_rs_sc: st.preco || null,
+        };
+        const res = await chamarApi(`/condicao-especial/${cultivoAtual}/simular`, { method: "POST", body: JSON.stringify(body) });
+        ultimoResultado = res;
+        renderResultado(res);
+      } catch (e) {
+        mostrarErro("Não consegui simular: " + e.message);
+      }
+    }
+
+    function renderResultado(m) {
+      const v = m.decisao.veredito;
+      const classeCss = { aguardando: "aguardando", recusar: "bad", contraproposta: "warn", aprovar: "ok", aprovar_com_alcada: "ok" }[v.classe] || "aguardando";
+      $("mce-verdict").className = "mce-verdict " + classeCss;
+      $("mce-pill").textContent = { recusar: "Recusar a PG", contraproposta: "Contraproposta", aprovar: "Aprovar", aprovar_com_alcada: "Aprovar com alçada", aguardando: "Aguardando" }[v.classe] || v.classe;
+      $("mce-vtitulo").textContent = v.titulo;
+      $("mce-motivos").innerHTML = v.motivos.map(x => `<li>${esc(x)}</li>`).join("");
+
+      $("mce-k-pg").textContent = `${nf(m.pedido.pg_sc_ha)} sc`;
+      $("mce-k-pg").className = "v" + (m.limites.fora_da_faixa_sustentada ? " mce-tone-bad" : "");
+      const diffTab = (m.pedido.pg_sc_ha / m.balcao.pg_sc_ha - 1) * 100;
+      $("mce-k-pg-s").textContent = `${diffTab >= 0 ? "+" : ""}${nf(diffTab, 1)}% sobre a tabela`;
+      $("mce-k-lc").textContent = pct(m.custo_esperado.media_pct);
+      $("mce-k-lc-s").textContent = `${m.custo_esperado.percentil.toUpperCase()} ${pct(m.custo_esperado.percentil_pct)} · por LMI`;
+      const abaixoDaMinima = st.tx < m.taxa.tecnica_minima_pct;
+      $("mce-k-min").textContent = pct(m.taxa.tecnica_minima_pct);
+      $("mce-k-min").className = "v" + (abaixoDaMinima ? " mce-tone-bad" : "");
+      $("mce-k-min-s").innerHTML = `pedida <b class="${abaixoDaMinima ? "mce-tone-bad" : "mce-tone-ok"}">${nf(st.tx, 2)}%</b> · referência ${pct(m.taxa.referencia_pct)}`;
+      const semAlcada = m.limites.fora_da_faixa_sustentada || abaixoDaMinima;
+      $("mce-k-alc").textContent = semAlcada ? "—" : (m.decisao.alcada || "—").split("/")[0];
+      $("mce-k-alc-s").textContent = semAlcada ? "pedido fora da política" : `gatilho: ${m.decisao.alcada_por_gatilho.split("/")[0]} · desconto: ${m.decisao.alcada_por_desconto.split("/")[0]}`;
+
+      renderBalcao(m);
+      renderRegua(m);
+      renderGrafico(m);
+      renderOfertas(m);
+      renderRef(Object.assign({}, referenciaMunicipio));
+
+      $("mce-rodape").textContent = `Produtividade de referência ${nf(m.referencia.produtividade_referencia_kg_ha, 0)} kg/ha · relatividade ${nf(m.referencia.relatividade_municipal, 2)} (${m.referencia.anos_psr} anos no PSR) · gatilho pedido ${nf(m.pedido.gatilho, 3)} · fator de carregamento ${nf(m.referencia.fator_carregamento, 3)}.`;
+    }
+
+    function renderBalcao(m) {
+      const c = m.comparacao_balcao;
+      const labels = {
+        melhor: ["mce-ok", "Melhor que o balcão"], igual: ["mce-warn", "Igual ao balcão"],
+        pior: ["mce-bad", "Pior que o balcão"], maisPG_taxaMaior: ["mce-warn", "Mais PG, taxa maior"],
+        menosPG_taxaMenor: ["mce-warn", "Menos PG, taxa menor"],
+      }[c.classificacao] || ["mce-warn", c.classificacao];
+      $("mce-bal-pill-wrap").innerHTML = `<span class="mce-pill ${labels[0]}" style="background:var(--mce-brand)">${esc(labels[1])}</span>`;
+      const dif = (a, b) => { const d = b - a; return (d > 0 ? "+" : "") + nf(d, 2); };
+      const linhas = [
+        ["PG", nf(m.balcao.pg_sc_ha) + " sc/ha", nf(m.pedido.pg_sc_ha) + " sc/ha", dif(m.balcao.pg_sc_ha, m.pedido.pg_sc_ha) + " sc/ha"],
+        ["Taxa", pct(m.balcao.taxa_pct), nf(st.tx, 2) + "%", dif(m.balcao.taxa_pct, st.tx) + " p.p."],
+      ];
+      if (c.premio_balcao_rs_ha != null) {
+        linhas.push(["Prêmio por ha", "R$ " + nf(c.premio_balcao_rs_ha, 2), "R$ " + nf(c.premio_pedido_rs_ha, 2), "R$ " + dif(c.premio_balcao_rs_ha, c.premio_pedido_rs_ha)]);
+      }
+      $("mce-bal-body").innerHTML = linhas.map(r => `<tr>${r.map(x => `<td>${x}</td>`).join("")}</tr>`).join("");
+    }
+
+    function renderRegua(m) {
+      const r = m.regua_gatilho;
+      const W = 640, ml = 14, mr = 14, y = 26, h = 16;
+      const x0 = 0.40, x1 = Math.max(0.90, r.g_pedido + 0.03);
+      const X = g => ml + (g - x0) / (x1 - x0) * (W - ml - mr);
+      const corZona = { dentro_do_usual: "var(--mce-ok)", acima_da_tabela: "var(--mce-warn)", extensao_do_modelo: "var(--mce-warn)", fora_dos_dados: "var(--mce-bad)" }[r.zona] || "var(--mce-muted)";
+      let s = "";
+      s += `<rect x="${X(x0)}" y="${y}" width="${X(r.g_dado_observado) - X(x0)}" height="${h}" fill="var(--mce-ok-bg)"/>`;
+      s += `<rect x="${X(r.g_dado_observado)}" y="${y}" width="${X(r.g_maximo) - X(r.g_dado_observado)}" height="${h}" fill="var(--mce-warn-bg)"/>`;
+      s += `<rect x="${X(r.g_maximo)}" y="${y}" width="${X(x1) - X(r.g_maximo)}" height="${h}" fill="var(--mce-bad-bg)"/>`;
+      s += `<rect x="${ml}" y="${y}" width="${W - ml - mr}" height="${h}" fill="none" stroke="var(--mce-line)"/>`;
+      const xt = X(r.g_tabela);
+      s += `<line x1="${xt}" x2="${xt}" y1="${y}" y2="${y + h}" stroke="var(--mce-muted)" stroke-width="1.5"/><text x="${xt}" y="${y + h + 14}" text-anchor="middle">tabela</text>`;
+      const px = X(Math.min(r.g_pedido, x1));
+      s += `<path d="M${px - 7},${y - 11} L${px + 7},${y - 11} L${px},${y - 1} Z" fill="${corZona}"/>`;
+      s += `<text x="${px}" y="${y - 16}" text-anchor="middle" style="fill:${corZona};font-weight:700">${nf(r.g_pedido, 3)}</text>`;
+      for (let g = 0.4; g <= x1 + 1e-9; g += 0.1) s += `<text x="${X(g)}" y="${y + h + 28}" text-anchor="middle">${nf(g, 1)}</text>`;
+      $("mce-regua").innerHTML = s;
+      const txtZona = { dentro_do_usual: "Dentro do usual — gatilho igual ou abaixo do praticado.", acima_da_tabela: "Acima da tabela — dentro do observado no PSR; exige alçada de Gerente.", extensao_do_modelo: "Extensão do modelo — entre o último gatilho observado e o máximo; só com Diretoria.", fora_dos_dados: "Fora dos dados — acima do maior gatilho sustentado pelo PSR." }[r.zona] || "";
+      $("mce-regua-texto").textContent = txtZona;
+    }
+
+    function renderGrafico(m) {
+      const g = m.grafico_fronteira;
+      const W = 640, H = 300, ml = 50, mr = 14, mt = 12, mb = 32, pw = W - ml - mr, ph = H - mt - mb;
+      const xs = g.pg_sc_ha, ref = g.taxa_referencia_pct, mn = g.taxa_minima_pct;
+      const x0 = Math.min(...xs), x1 = Math.max(...xs);
+      const ys = [...ref, ...mn, st.tx || ref[0]];
+      const y0 = Math.min(...ys) * 0.85, y1 = Math.max(...ys) * 1.08;
+      const X = v => ml + (v - x0) / (x1 - x0 || 1) * pw;
+      const Y = v => mt + (1 - (v - y0) / (y1 - y0 || 1)) * ph;
+      let s = "";
+      [0.25, 0.5, 0.75, 1].forEach(f => { const v = y0 + (y1 - y0) * f; s += `<line x1="${ml}" x2="${W - mr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--mce-line)"/><text x="${ml - 6}" y="${Y(v) + 4}" text-anchor="end">${nf(v, 1)}%</text>`; });
+      s += `<text x="${ml + pw / 2}" y="${H - 4}" text-anchor="middle">PG (sc/ha)</text>`;
+      const pts = arr => xs.map((x, i) => `${X(x)},${Y(arr[i])}`).join(" ");
+      s += `<polygon points="${pts(mn)} ${X(x1)},${mt + ph} ${X(x0)},${mt + ph}" fill="var(--mce-badzone)"/>`;
+      s += `<polyline points="${pts(ref)}" fill="none" stroke="var(--mce-brand)" stroke-width="2.5"/>`;
+      s += `<polyline points="${pts(mn)}" fill="none" stroke="var(--mce-bad)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+      s += `<line x1="${ml}" x2="${W - mr}" y1="${mt + ph}" y2="${mt + ph}" stroke="var(--mce-muted)"/>`;
+      if (st.pg > 0 && st.tx > 0) {
+        const px = Math.min(Math.max(X(st.pg), ml), W - mr), py = Math.min(Math.max(Y(st.tx), mt), mt + ph);
+        const cor = m.limites.fora_da_faixa_sustentada ? "var(--mce-bad)" : (st.tx < m.taxa.tecnica_minima_pct ? "var(--mce-warn)" : "var(--mce-ok)");
+        s += `<circle cx="${px}" cy="${py}" r="6" fill="${cor}" stroke="var(--mce-panel)" stroke-width="2"/>`;
+      }
+      $("mce-grafico").innerHTML = s;
+    }
+
+    function renderOfertas(m) {
+      const c = m.contrapropostas;
+      $("mce-o-a").textContent = pct(c.manter_pg_menor_taxa.taxa_pct);
+      $("mce-o-a-d").textContent = `para ${nf(c.manter_pg_menor_taxa.pg_sc_ha)} sc/ha`;
+      $("mce-b-a").onclick = () => { st.pg = c.manter_pg_menor_taxa.pg_sc_ha; st.tx = c.manter_pg_menor_taxa.taxa_pct; $("mce-pg").value = st.pg; $("mce-tx").value = st.tx; agendarSimulacao(0); };
+      if (c.manter_taxa_maior_pg) {
+        $("mce-o-b").textContent = `${nf(c.manter_taxa_maior_pg.pg_sc_ha)} sc/ha`;
+        $("mce-o-b-d").textContent = `mantendo ${nf(c.manter_taxa_maior_pg.taxa_pct, 2)}%`;
+        $("mce-b-b").disabled = false;
+        $("mce-b-b").onclick = () => { st.pg = c.manter_taxa_maior_pg.pg_sc_ha; $("mce-pg").value = st.pg; agendarSimulacao(0); };
+      } else {
+        $("mce-o-b").textContent = "Não fecha"; $("mce-o-b-d").textContent = "taxa não cobre o custo em nenhuma PG"; $("mce-b-b").disabled = true;
+      }
+      $("mce-o-c").textContent = `${nf(c.maior_pg_sustentada.pg_sc_ha)} sc/ha`;
+      $("mce-o-c-d").textContent = `taxa mínima ${pct(c.maior_pg_sustentada.taxa_pct)}`;
+      $("mce-b-c").onclick = () => { st.pg = c.maior_pg_sustentada.pg_sc_ha; st.tx = c.maior_pg_sustentada.taxa_pct; $("mce-pg").value = st.pg; $("mce-tx").value = st.tx; agendarSimulacao(0); };
+    }
+
+    // ---- listeners ----
+    $("mce-cultivo").addEventListener("change", async (e) => {
+      cultivoAtual = e.target.value; st.codigo = null; referenciaMunicipio = null;
+      $("mce-mun").value = ""; renderRef(null);
+      await carregarMunicipios();
+    });
+    $("mce-mun").addEventListener("change", aoSelecionarMunicipio);
+    $("mce-plano").addEventListener("change", (e) => { st.plano = parseInt(e.target.value, 10); renderRef(referenciaMunicipio); agendarSimulacao(0); });
+    $("mce-pg").addEventListener("input", (e) => { st.pg = parseFloat(e.target.value) || null; agendarSimulacao(); });
+    $("mce-tx").addEventListener("input", (e) => { st.tx = parseFloat(e.target.value) || null; agendarSimulacao(); });
+    $("mce-rep").addEventListener("change", (e) => { st.rep = e.target.checked; agendarSimulacao(0); });
+    $("mce-area").addEventListener("input", (e) => { st.area = parseFloat(e.target.value) || null; agendarSimulacao(); });
+    $("mce-preco").addEventListener("input", (e) => { st.preco = parseFloat(e.target.value) || null; agendarSimulacao(); });
+
+    (async function iniciar() {
+      try {
+        await carregarCultivos();
+        await carregarMunicipios();
+      } catch (e) {
+        mostrarErro("Não consegui carregar os dados da Mesa de Condição Especial: " + e.message);
+      }
+    })();
+
+    return {
+      destruir() { destruido = true; clearTimeout(debounceTimer); container.innerHTML = ""; },
+      obterUltimoResultado() { return ultimoResultado; },
+    };
+  }
+
+  return { montarMesaCondicaoEspecial };
+});
+</script>
+
+<script>
+// ── Abre a Mesa de Condição Especial num modal, a partir de uma linha de
+//    Condição Especial (ce) ou de Auditor -- reaproveita BACKEND_URL/TOKEN já
+//    usados pelo resto da plataforma (ver function api(), mais acima).
+function abrirModalSimularCE(opts) {
+  opts = opts || {};
+  const ov = document.createElement('div');
+  ov.className = 'mce-modal-overlay';
+  ov.onclick = (e) => { if (e.target === ov) fechar(); };
+  const box = document.createElement('div');
+  box.className = 'mce-modal-box';
+  const fecharBtn = document.createElement('button');
+  fecharBtn.className = 'mce-modal-fechar';
+  fecharBtn.setAttribute('aria-label', 'Fechar');
+  fecharBtn.textContent = '✕';
+  const alvo = document.createElement('div');
+  alvo.style.padding = '28px 20px 20px';
+  let instancia = null;
+  function fechar() {
+    if (instancia) instancia.destruir();
+    document.body.removeChild(ov);
+    document.removeEventListener('keydown', aoEsc);
+  }
+  function aoEsc(e) { if (e.key === 'Escape') fechar(); }
+  fecharBtn.onclick = fechar;
+  box.appendChild(fecharBtn);
+  box.appendChild(alvo);
+  ov.appendChild(box);
+  document.body.appendChild(ov);
+  document.addEventListener('keydown', aoEsc);
+  instancia = window.MesaCondicaoEspecial.montar(alvo, {
+    apiBaseUrl: BACKEND_URL,
+    getToken: () => TOKEN,
+    municipioNomeUf: opts.municipio ? { nome: opts.municipio, uf: opts.uf } : null,
+  });
+}
+
+// Chamado pelos botões "🧮 Simular" das tabelas de Condição Especial/Auditor
+// -- pega município/UF do cache já montado por carregarCondicoesEspeciais()
+// (window._ceCache), em vez de inserir esses campos crus dentro de um
+// onclick="" (evita problema de aspas/acentos no nome do município).
+function abrirModalSimularCEDaLista(jobId) {
+  const ce = (window._ceCache || {})[jobId];
+  if (!ce || (!ce.municipio && !ce.uf)) {
+    abrirModalSimularCE({});
+    return;
+  }
+  abrirModalSimularCE({ municipio: ce.municipio, uf: ce.uf });
+}
 </script>
 
 </body></html>
