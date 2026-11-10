@@ -1173,6 +1173,21 @@
         </div>
 
         <div id="ce-subtab-config" style="display:none">
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-header"><div class="card-title">Atualizar tabela de balcão (PG/taxa/REP/preço)</div></div>
+            <div class="card-body">
+              <div class="config-notice">⚠️ <span>Sobe a planilha .xlsx no modelo padrão da Área Técnica -- o cultivo é detectado sozinho pelo título da planilha (não precisa escolher da lista, e não usa o nome do arquivo). Atualiza só PG/taxa/REP/preço dos 3 planos; não mexe na calibração atuarial (produtividade de referência/relatividade). Município que aparecer na planilha sem calibração prévia é ignorado e listado abaixo, não inventado.</span></div>
+              <div class="form-group"><label class="form-label">Planilha .xlsx</label><input class="form-input" type="file" id="ce-balcao-arquivo" accept=".xlsx"></div>
+              <button class="btn-sm btn-green" onclick="subirBalcaoAuto()">Atualizar tabela de balcão</button>
+              <div id="ce-balcao-status" style="margin-top:8px;font-size:13px"></div>
+              <div id="ce-balcao-escolha" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--gray100)">
+                <div class="form-group"><label class="form-label" id="ce-balcao-escolha-label">Selecione o cultivo</label>
+                  <select class="form-input" id="ce-balcao-escolha-slug"></select>
+                </div>
+                <button class="btn-sm btn-outline" onclick="subirBalcaoManual()">Confirmar e atualizar este cultivo</button>
+              </div>
+            </div>
+          </div>
           <div class="card">
             <div class="card-header"><div class="card-title">Parâmetros por cultivo</div></div>
             <div class="card-body">
@@ -1203,14 +1218,6 @@
                 </div>
                 <button class="btn-sm btn-green" onclick="salvarConfigCultivoCE()">Salvar configurações</button>
                 <div id="ce-cfg-status" style="margin-top:8px;font-size:13px"></div>
-
-                <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--gray100)">
-                  <div class="form-label" style="font-weight:700;margin-bottom:6px">Atualizar tabela de balcão (PG/taxa/REP/preço)</div>
-                  <div class="config-notice">⚠️ <span>Sobe a planilha .xlsx no modelo padrão da Área Técnica (Código IBGE + blocos Plano 1/2/3 + Preço mínimo/máximo) e atualiza só esses valores -- não mexe na calibração atuarial (produtividade de referência/relatividade). Município que aparecer na planilha sem calibração prévia é ignorado e listado abaixo, não inventado.</span></div>
-                  <div class="form-group"><label class="form-label">Planilha .xlsx</label><input class="form-input" type="file" id="ce-cfg-balcao-arquivo" accept=".xlsx"></div>
-                  <button class="btn-sm btn-outline" onclick="subirBalcaoCultivoCE()">Atualizar tabela de balcão</button>
-                  <div id="ce-cfg-balcao-status" style="margin-top:8px;font-size:13px"></div>
-                </div>
               </div>
             </div>
           </div>
@@ -4752,26 +4759,75 @@ async function salvarConfigCultivoCE() {
   }
 }
 
-async function subirBalcaoCultivoCE() {
-  const slug = document.getElementById('ce-cfg-slug').value;
-  const arquivo = document.getElementById('ce-cfg-balcao-arquivo').files[0];
-  const statusEl = document.getElementById('ce-cfg-balcao-status');
-  if (!slug) return;
+function _resumoBalcaoCE(res) {
+  let msg = `✅ ${escHtml(res.nome_exibicao || res.slug)}: ${res.municipios_atualizados} de ${res.municipios_no_arquivo} municípios atualizados.`;
+  if (res.municipios_ignorados_sem_calibracao && res.municipios_ignorados_sem_calibracao.length) {
+    msg += ` ${res.municipios_ignorados_sem_calibracao.length} ignorados (sem calibração prévia): ` +
+      res.municipios_ignorados_sem_calibracao.slice(0, 10).map(m => escHtml(m.municipio || m.cod_ibge)).join(', ') +
+      (res.municipios_ignorados_sem_calibracao.length > 10 ? '…' : '') + '.';
+  }
+  return msg;
+}
+
+// Upload da tabela de balcão: SEM escolher o cultivo antes -- o backend
+// detecta sozinho pelo título da planilha (célula A1). Só pede escolha
+// manual se não conseguir (planilha ambígua ou sem match) -- pedido do
+// usuário, 2026-11-10: "pensei que todos os campos eram identificados
+// sozinhos... era só subir o arquivo e muitas vezes não terá a uf no nome
+// do arquivo" (por isso nunca usamos o nome do arquivo, só o conteúdo).
+window._ceBalcaoArquivoPendente = null;
+async function subirBalcaoAuto() {
+  const arquivo = document.getElementById('ce-balcao-arquivo').files[0];
+  const statusEl = document.getElementById('ce-balcao-status');
+  const escolhaEl = document.getElementById('ce-balcao-escolha');
+  escolhaEl.style.display = 'none';
   if (!arquivo) { statusEl.innerHTML = '<span style="color:var(--red)">Selecione a planilha .xlsx.</span>'; return; }
   const fd = new FormData();
   fd.append('arquivo', arquivo);
   statusEl.innerHTML = '⏳ Processando planilha…';
   try {
-    const res = await api('POST', '/condicao-especial/cultivos/' + encodeURIComponent(slug) + '/balcao/upload', fd, true);
-    let msg = `✅ ${res.municipios_atualizados} de ${res.municipios_no_arquivo} municípios atualizados.`;
-    if (res.municipios_ignorados_sem_calibracao.length) {
-      msg += ` ${res.municipios_ignorados_sem_calibracao.length} ignorados (sem calibração prévia): ` +
-        res.municipios_ignorados_sem_calibracao.slice(0, 10).map(m => escHtml(m.municipio || m.cod_ibge)).join(', ') +
-        (res.municipios_ignorados_sem_calibracao.length > 10 ? '…' : '') + '.';
+    const res = await api('POST', '/condicao-especial/cultivos/balcao/upload-auto', fd, true);
+    if (res.ok) {
+      statusEl.innerHTML = `<span style="color:var(--g600)">${_resumoBalcaoCE(res)}</span>`;
+      showToast('Tabela de balcão atualizada.', 'success');
+      document.getElementById('ce-balcao-arquivo').value = '';
+      window._ceBalcaoArquivoPendente = null;
+      return;
     }
-    statusEl.innerHTML = `<span style="color:var(--g600)">${msg}</span>`;
+    // não detectou sozinho -- guarda o arquivo e pede escolha manual
+    window._ceBalcaoArquivoPendente = arquivo;
+    const sel = document.getElementById('ce-balcao-escolha-slug');
+    if (res.motivo === 'ambiguo') {
+      document.getElementById('ce-balcao-escolha-label').textContent =
+        `O título "${res.titulo_planilha}" bate com mais de um cultivo -- selecione qual é`;
+      sel.innerHTML = res.candidatos.map(c => `<option value="${escHtml(c.slug)}">${escHtml(c.nome_exibicao)}</option>`).join('');
+    } else {
+      document.getElementById('ce-balcao-escolha-label').textContent =
+        `Não achei um cultivo pro título "${res.titulo_planilha}" -- selecione manualmente`;
+      sel.innerHTML = res.cultivos_disponiveis.map(c => `<option value="${escHtml(c.slug)}">${escHtml(c.nome_exibicao)}</option>`).join('');
+    }
+    escolhaEl.style.display = '';
+    statusEl.innerHTML = '';
+  } catch(e) {
+    statusEl.innerHTML = `<span style="color:var(--red)">Erro: ${escHtml(e.message)}</span>`;
+  }
+}
+
+async function subirBalcaoManual() {
+  const slug = document.getElementById('ce-balcao-escolha-slug').value;
+  const arquivo = window._ceBalcaoArquivoPendente;
+  const statusEl = document.getElementById('ce-balcao-status');
+  if (!slug || !arquivo) return;
+  const fd = new FormData();
+  fd.append('arquivo', arquivo);
+  statusEl.innerHTML = '⏳ Processando planilha…';
+  try {
+    const res = await api('POST', '/condicao-especial/cultivos/' + encodeURIComponent(slug) + '/balcao/upload', fd, true);
+    statusEl.innerHTML = `<span style="color:var(--g600)">${_resumoBalcaoCE(res)}</span>`;
     showToast('Tabela de balcão atualizada.', 'success');
-    document.getElementById('ce-cfg-balcao-arquivo').value = '';
+    document.getElementById('ce-balcao-escolha').style.display = 'none';
+    document.getElementById('ce-balcao-arquivo').value = '';
+    window._ceBalcaoArquivoPendente = null;
   } catch(e) {
     statusEl.innerHTML = `<span style="color:var(--red)">Erro: ${escHtml(e.message)}</span>`;
   }
