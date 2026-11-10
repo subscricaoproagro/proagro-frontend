@@ -1203,6 +1203,14 @@
                 </div>
                 <button class="btn-sm btn-green" onclick="salvarConfigCultivoCE()">Salvar configurações</button>
                 <div id="ce-cfg-status" style="margin-top:8px;font-size:13px"></div>
+
+                <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--gray100)">
+                  <div class="form-label" style="font-weight:700;margin-bottom:6px">Atualizar tabela de balcão (PG/taxa/REP/preço)</div>
+                  <div class="config-notice">⚠️ <span>Sobe a planilha .xlsx no modelo padrão da Área Técnica (Código IBGE + blocos Plano 1/2/3 + Preço mínimo/máximo) e atualiza só esses valores -- não mexe na calibração atuarial (produtividade de referência/relatividade). Município que aparecer na planilha sem calibração prévia é ignorado e listado abaixo, não inventado.</span></div>
+                  <div class="form-group"><label class="form-label">Planilha .xlsx</label><input class="form-input" type="file" id="ce-cfg-balcao-arquivo" accept=".xlsx"></div>
+                  <button class="btn-sm btn-outline" onclick="subirBalcaoCultivoCE()">Atualizar tabela de balcão</button>
+                  <div id="ce-cfg-balcao-status" style="margin-top:8px;font-size:13px"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -4739,6 +4747,31 @@ async function salvarConfigCultivoCE() {
     statusEl.innerHTML = '<span style="color:var(--g600)">✅ Configurações salvas.</span>';
     showToast('Configurações do cultivo salvas.', 'success');
     carregarListaConfigCultivosCE();
+  } catch(e) {
+    statusEl.innerHTML = `<span style="color:var(--red)">Erro: ${escHtml(e.message)}</span>`;
+  }
+}
+
+async function subirBalcaoCultivoCE() {
+  const slug = document.getElementById('ce-cfg-slug').value;
+  const arquivo = document.getElementById('ce-cfg-balcao-arquivo').files[0];
+  const statusEl = document.getElementById('ce-cfg-balcao-status');
+  if (!slug) return;
+  if (!arquivo) { statusEl.innerHTML = '<span style="color:var(--red)">Selecione a planilha .xlsx.</span>'; return; }
+  const fd = new FormData();
+  fd.append('arquivo', arquivo);
+  statusEl.innerHTML = '⏳ Processando planilha…';
+  try {
+    const res = await api('POST', '/condicao-especial/cultivos/' + encodeURIComponent(slug) + '/balcao/upload', fd, true);
+    let msg = `✅ ${res.municipios_atualizados} de ${res.municipios_no_arquivo} municípios atualizados.`;
+    if (res.municipios_ignorados_sem_calibracao.length) {
+      msg += ` ${res.municipios_ignorados_sem_calibracao.length} ignorados (sem calibração prévia): ` +
+        res.municipios_ignorados_sem_calibracao.slice(0, 10).map(m => escHtml(m.municipio || m.cod_ibge)).join(', ') +
+        (res.municipios_ignorados_sem_calibracao.length > 10 ? '…' : '') + '.';
+    }
+    statusEl.innerHTML = `<span style="color:var(--g600)">${msg}</span>`;
+    showToast('Tabela de balcão atualizada.', 'success');
+    document.getElementById('ce-cfg-balcao-arquivo').value = '';
   } catch(e) {
     statusEl.innerHTML = `<span style="color:var(--red)">Erro: ${escHtml(e.message)}</span>`;
   }
