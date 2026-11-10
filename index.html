@@ -1128,39 +1128,83 @@
         </div>
       </div>
       <div id="admin-tab-ce-cultivos" style="display:none">
-        <div class="card" style="margin-bottom:16px">
-          <div class="card-header"><div class="card-title">Cultivos publicados na Mesa de Condição Especial</div><button class="btn-sm btn-outline" onclick="carregarCultivosCE()">↻ Atualizar</button></div>
-          <div class="card-body" id="ce-cultivos-lista"><div style="text-align:center;color:var(--gray400);font-size:13px;padding:20px">Carregando…</div></div>
+        <div class="tabs" style="margin-bottom:16px">
+          <button class="tab-btn active" id="ce-subtab-btn-cultivos" onclick="ceSubTab('cultivos')">Cultivos</button>
+          <button class="tab-btn" id="ce-subtab-btn-config" onclick="ceSubTab('config')">Config especiais</button>
         </div>
-        <div class="card">
-          <div class="card-header"><div class="card-title">Publicar cultivo novo</div></div>
-          <div class="card-body">
-            <div class="config-notice">⚠️ <span>Precisa já ter os 2 arquivos prontos (curva_uf.csv e municipios.csv) -- mesmo tipo de trabalho que gerou os dados de Milho 2ª safra (curva de custo por UF + relatividade municipal, calibradas com o PSR). Isso aqui só publica os arquivos na plataforma; não faz a modelagem atuarial sozinho.</span></div>
-            <div class="form-grid">
-              <div class="form-group"><label class="form-label">Slug (identificador único)</label><input class="form-input" id="ce-up-slug" placeholder="ex.: soja_2027"></div>
-              <div class="form-group"><label class="form-label">Nome de exibição</label><input class="form-input" id="ce-up-nome" placeholder="ex.: Soja 2026/2027"></div>
-              <div class="form-group"><label class="form-label">Safra</label><input class="form-input" id="ce-up-safra" placeholder="ex.: 2026/2027"></div>
-              <div class="form-group"><label class="form-label">UFs (vírgula)</label><input class="form-input" id="ce-up-ufs" placeholder="ex.: PR,SP,MS -- vazio detecta sozinho"></div>
-            </div>
-            <div class="form-group"><label class="form-label">Avisos (um por linha -- aparecem no topo da Mesa)</label><textarea class="form-input" id="ce-up-avisos" rows="3" placeholder="Carregamentos provisórios -- substituir pelos valores reais da NTA."></textarea></div>
-            <div class="form-grid">
-              <div class="form-group"><label class="form-label">Comissão (%)</label><input class="form-input" type="number" step="0.5" id="ce-up-comissao" value="15"></div>
-              <div class="form-group"><label class="form-label">Despesas + resseguro (%)</label><input class="form-input" type="number" step="0.5" id="ce-up-despesas" value="8"></div>
-              <div class="form-group"><label class="form-label">Margem (%)</label><input class="form-input" type="number" step="0.5" id="ce-up-margem" value="5"></div>
-              <div class="form-group"><label class="form-label">Percentil de segurança</label>
-                <select class="form-input" id="ce-up-percentil"><option value="p50">P50</option><option value="p75" selected>P75</option><option value="p90">P90</option></select>
+
+        <div id="ce-subtab-cultivos">
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-header"><div class="card-title">Cultivos publicados na Mesa de Condição Especial</div><button class="btn-sm btn-outline" onclick="carregarCultivosCE()">↻ Atualizar</button></div>
+            <div class="card-body" id="ce-cultivos-lista"><div style="text-align:center;color:var(--gray400);font-size:13px;padding:20px">Carregando…</div></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Publicar cultivo novo</div></div>
+            <div class="card-body">
+              <div class="config-notice">⚠️ <span>Precisa já ter os 2 arquivos prontos (curva_uf.csv e municipios.csv) -- mesmo tipo de trabalho que gerou os dados de Milho 2ª safra (curva de custo por UF + relatividade municipal, calibradas com o PSR). Isso aqui só publica os arquivos na plataforma; não faz a modelagem atuarial sozinho.</span></div>
+              <div class="form-grid">
+                <div class="form-group"><label class="form-label">Slug (identificador único)</label><input class="form-input" id="ce-up-slug" placeholder="ex.: soja_2027"></div>
+                <div class="form-group"><label class="form-label">Nome de exibição</label><input class="form-input" id="ce-up-nome" placeholder="ex.: Soja 2026/2027"></div>
+                <div class="form-group"><label class="form-label">Safra</label><input class="form-input" id="ce-up-safra" placeholder="ex.: 2026/2027"></div>
+                <div class="form-group"><label class="form-label">UFs (vírgula)</label><input class="form-input" id="ce-up-ufs" placeholder="ex.: PR,SP,MS -- vazio detecta sozinho"></div>
               </div>
-              <div class="form-group"><label class="form-label">Gatilho com dado observado</label><input class="form-input" type="number" step="0.01" id="ce-up-gdados" value="0.70"></div>
-              <div class="form-group"><label class="form-label">Gatilho máximo (recusa acima)</label><input class="form-input" type="number" step="0.01" id="ce-up-gmax" value="0.75"></div>
-              <div class="form-group"><label class="form-label">Desconto até… Subscritor (%)</label><input class="form-input" type="number" step="0.5" id="ce-up-d1" value="10"></div>
-              <div class="form-group"><label class="form-label">Desconto até… Gerente (%)</label><input class="form-input" type="number" step="0.5" id="ce-up-d2" value="20"></div>
+              <div class="form-group"><label class="form-label">Nomes alternativos (vírgula) <span style="font-weight:400;color:var(--gray400)">-- os valores digitados no campo "Cultivo" das propostas (ex.: Soja, Soja 2027) pra essa Mesa se auto-selecionar sozinha ao abrir o simulador de uma Condição Especial</span></label><input class="form-input" id="ce-up-aliases" placeholder="ex.: Soja, Soja 2026/2027"></div>
+              <div class="form-group"><label class="form-label">Avisos (um por linha -- aparecem no topo da Mesa)</label><textarea class="form-input" id="ce-up-avisos" rows="3" placeholder="Carregamentos provisórios -- substituir pelos valores reais da NTA."></textarea></div>
+              <div class="form-grid">
+                <div class="form-group"><label class="form-label">Comissão (%)</label><input class="form-input" type="number" step="0.5" id="ce-up-comissao" value="15"></div>
+                <div class="form-group"><label class="form-label">Despesas + resseguro (%)</label><input class="form-input" type="number" step="0.5" id="ce-up-despesas" value="8"></div>
+                <div class="form-group"><label class="form-label">Margem (%)</label><input class="form-input" type="number" step="0.5" id="ce-up-margem" value="5"></div>
+                <div class="form-group"><label class="form-label">Percentil de segurança</label>
+                  <select class="form-input" id="ce-up-percentil"><option value="p50">P50</option><option value="p75" selected>P75</option><option value="p90">P90</option></select>
+                </div>
+                <div class="form-group"><label class="form-label">Gatilho com dado observado</label><input class="form-input" type="number" step="0.01" id="ce-up-gdados" value="0.70"></div>
+                <div class="form-group"><label class="form-label">Gatilho máximo (recusa acima)</label><input class="form-input" type="number" step="0.01" id="ce-up-gmax" value="0.75"></div>
+                <div class="form-group"><label class="form-label">Desconto até… Subscritor (%)</label><input class="form-input" type="number" step="0.5" id="ce-up-d1" value="10"></div>
+                <div class="form-group"><label class="form-label">Desconto até… Gerente (%)</label><input class="form-input" type="number" step="0.5" id="ce-up-d2" value="20"></div>
+              </div>
+              <div class="form-grid">
+                <div class="form-group"><label class="form-label">curva_uf.csv</label><input class="form-input" type="file" id="ce-up-curva" accept=".csv"></div>
+                <div class="form-group"><label class="form-label">municipios.csv</label><input class="form-input" type="file" id="ce-up-municipios" accept=".csv"></div>
+              </div>
+              <button class="btn-sm btn-green" onclick="publicarCultivoCE()">Publicar cultivo</button>
+              <div id="ce-up-status" style="margin-top:8px;font-size:13px"></div>
             </div>
-            <div class="form-grid">
-              <div class="form-group"><label class="form-label">curva_uf.csv</label><input class="form-input" type="file" id="ce-up-curva" accept=".csv"></div>
-              <div class="form-group"><label class="form-label">municipios.csv</label><input class="form-input" type="file" id="ce-up-municipios" accept=".csv"></div>
+          </div>
+        </div>
+
+        <div id="ce-subtab-config" style="display:none">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Parâmetros por cultivo</div></div>
+            <div class="card-body">
+              <div class="config-notice">⚠️ <span>Edita só os parâmetros (nome, UFs, nomes alternativos, avisos, carregamentos, gatilhos, alçadas) de um cultivo já publicado -- não mexe nos CSVs de curva/municípios. Pra trocar os dados em si, use a aba "Cultivos".</span></div>
+              <div class="form-group">
+                <label class="form-label">Cultivo</label>
+                <select class="form-input" id="ce-cfg-slug" onchange="carregarConfigCultivoCE()"></select>
+              </div>
+              <div id="ce-cfg-form" style="display:none">
+                <div class="form-grid">
+                  <div class="form-group"><label class="form-label">Nome de exibição</label><input class="form-input" id="ce-cfg-nome"></div>
+                  <div class="form-group"><label class="form-label">Safra</label><input class="form-input" id="ce-cfg-safra"></div>
+                  <div class="form-group"><label class="form-label">UFs (vírgula)</label><input class="form-input" id="ce-cfg-ufs"></div>
+                </div>
+                <div class="form-group"><label class="form-label">Nomes alternativos (vírgula)</label><input class="form-input" id="ce-cfg-aliases"></div>
+                <div class="form-group"><label class="form-label">Avisos (um por linha)</label><textarea class="form-input" id="ce-cfg-avisos" rows="3"></textarea></div>
+                <div class="form-grid">
+                  <div class="form-group"><label class="form-label">Comissão (%)</label><input class="form-input" type="number" step="0.5" id="ce-cfg-comissao"></div>
+                  <div class="form-group"><label class="form-label">Despesas + resseguro (%)</label><input class="form-input" type="number" step="0.5" id="ce-cfg-despesas"></div>
+                  <div class="form-group"><label class="form-label">Margem (%)</label><input class="form-input" type="number" step="0.5" id="ce-cfg-margem"></div>
+                  <div class="form-group"><label class="form-label">Percentil de segurança</label>
+                    <select class="form-input" id="ce-cfg-percentil"><option value="p50">P50</option><option value="p75">P75</option><option value="p90">P90</option></select>
+                  </div>
+                  <div class="form-group"><label class="form-label">Gatilho com dado observado</label><input class="form-input" type="number" step="0.01" id="ce-cfg-gdados"></div>
+                  <div class="form-group"><label class="form-label">Gatilho máximo (recusa acima)</label><input class="form-input" type="number" step="0.01" id="ce-cfg-gmax"></div>
+                  <div class="form-group"><label class="form-label">Desconto até… Subscritor (%)</label><input class="form-input" type="number" step="0.5" id="ce-cfg-d1"></div>
+                  <div class="form-group"><label class="form-label">Desconto até… Gerente (%)</label><input class="form-input" type="number" step="0.5" id="ce-cfg-d2"></div>
+                </div>
+                <button class="btn-sm btn-green" onclick="salvarConfigCultivoCE()">Salvar configurações</button>
+                <div id="ce-cfg-status" style="margin-top:8px;font-size:13px"></div>
+              </div>
             </div>
-            <button class="btn-sm btn-green" onclick="publicarCultivoCE()">Publicar cultivo</button>
-            <div id="ce-up-status" style="margin-top:8px;font-size:13px"></div>
           </div>
         </div>
       </div>
@@ -4592,6 +4636,7 @@ async function publicarCultivoCE() {
   fd.append('nome_exibicao', nome);
   fd.append('safra', document.getElementById('ce-up-safra').value.trim());
   fd.append('ufs', document.getElementById('ce-up-ufs').value.trim());
+  fd.append('aliases', document.getElementById('ce-up-aliases').value.trim());
   fd.append('avisos', document.getElementById('ce-up-avisos').value);
   fd.append('comissao_pct', document.getElementById('ce-up-comissao').value || '15');
   fd.append('despesas_resseguro_pct', document.getElementById('ce-up-despesas').value || '8');
@@ -4609,6 +4654,91 @@ async function publicarCultivoCE() {
     statusEl.innerHTML = `<span style="color:var(--g600)">✅ Publicado: ${res.municipios_count} municípios, UFs ${res.ufs.join(', ')}.</span>`;
     showToast('Cultivo publicado!', 'success');
     carregarCultivosCE();
+  } catch(e) {
+    statusEl.innerHTML = `<span style="color:var(--red)">Erro: ${escHtml(e.message)}</span>`;
+  }
+}
+
+// ── Condição Especial: sub-abas "Cultivos" / "Config especiais" ──
+function ceSubTab(tab) {
+  document.getElementById('ce-subtab-cultivos').style.display = tab === 'cultivos' ? '' : 'none';
+  document.getElementById('ce-subtab-config').style.display = tab === 'config' ? '' : 'none';
+  document.getElementById('ce-subtab-btn-cultivos').classList.toggle('active', tab === 'cultivos');
+  document.getElementById('ce-subtab-btn-config').classList.toggle('active', tab === 'config');
+  if (tab === 'config') carregarListaConfigCultivosCE();
+}
+
+// Edita só os parâmetros (nome/UFs/aliases/avisos/regras) de um cultivo já
+// publicado, sem precisar re-subir os CSVs -- pedido do usuário: um lugar
+// só pra ajustar carregamentos/gatilhos/alçadas de cada cultivo.
+window._ceCultivosCfgCache = [];
+async function carregarListaConfigCultivosCE() {
+  const sel = document.getElementById('ce-cfg-slug');
+  try {
+    const lista = await api('GET', '/condicao-especial/cultivos');
+    window._ceCultivosCfgCache = lista;
+    if (!lista.length) {
+      sel.innerHTML = '<option value="">Nenhum cultivo publicado ainda</option>';
+      document.getElementById('ce-cfg-form').style.display = 'none';
+      return;
+    }
+    sel.innerHTML = lista.map(c => `<option value="${escHtml(c.slug)}">${escHtml(c.nome_exibicao)} (${escHtml(c.slug)})</option>`).join('');
+    carregarConfigCultivoCE();
+  } catch(e) {
+    sel.innerHTML = '';
+    showToast('Erro ao carregar cultivos: ' + e.message, 'error');
+  }
+}
+
+function carregarConfigCultivoCE() {
+  const slug = document.getElementById('ce-cfg-slug').value;
+  const c = (window._ceCultivosCfgCache || []).find(x => x.slug === slug);
+  const form = document.getElementById('ce-cfg-form');
+  if (!c) { form.style.display = 'none'; return; }
+  form.style.display = '';
+  const r = c.regras_padrao || {};
+  document.getElementById('ce-cfg-nome').value = c.nome_exibicao || '';
+  document.getElementById('ce-cfg-safra').value = c.safra || '';
+  document.getElementById('ce-cfg-ufs').value = (c.ufs || []).join(', ');
+  document.getElementById('ce-cfg-aliases').value = (c.aliases || []).join(', ');
+  document.getElementById('ce-cfg-avisos').value = (c.avisos || []).join('\n');
+  document.getElementById('ce-cfg-comissao').value = r.comissao_pct ?? '';
+  document.getElementById('ce-cfg-despesas').value = r.despesas_resseguro_pct ?? '';
+  document.getElementById('ce-cfg-margem').value = r.margem_pct ?? '';
+  document.getElementById('ce-cfg-percentil').value = r.percentil || 'p75';
+  document.getElementById('ce-cfg-gdados').value = r.gatilho_dados ?? '';
+  document.getElementById('ce-cfg-gmax').value = r.gatilho_maximo ?? '';
+  document.getElementById('ce-cfg-d1').value = r.desconto_subscritor_pct ?? '';
+  document.getElementById('ce-cfg-d2').value = r.desconto_gerente_pct ?? '';
+  document.getElementById('ce-cfg-status').innerHTML = '';
+}
+
+async function salvarConfigCultivoCE() {
+  const slug = document.getElementById('ce-cfg-slug').value;
+  const statusEl = document.getElementById('ce-cfg-status');
+  if (!slug) return;
+  const num = (id) => { const v = document.getElementById(id).value; return v === '' ? null : Number(v); };
+  const body = {
+    nome_exibicao: document.getElementById('ce-cfg-nome').value.trim(),
+    safra: document.getElementById('ce-cfg-safra').value.trim(),
+    ufs: document.getElementById('ce-cfg-ufs').value.split(',').map(s => s.trim()).filter(Boolean),
+    aliases: document.getElementById('ce-cfg-aliases').value.split(',').map(s => s.trim()).filter(Boolean),
+    avisos: document.getElementById('ce-cfg-avisos').value.split('\n').map(s => s.trim()).filter(Boolean),
+    comissao_pct: num('ce-cfg-comissao'),
+    despesas_resseguro_pct: num('ce-cfg-despesas'),
+    margem_pct: num('ce-cfg-margem'),
+    percentil: document.getElementById('ce-cfg-percentil').value,
+    gatilho_dados: num('ce-cfg-gdados'),
+    gatilho_maximo: num('ce-cfg-gmax'),
+    desconto_subscritor_pct: num('ce-cfg-d1'),
+    desconto_gerente_pct: num('ce-cfg-d2'),
+  };
+  statusEl.innerHTML = '⏳ Salvando…';
+  try {
+    await api('PATCH', '/condicao-especial/cultivos/' + encodeURIComponent(slug) + '/config', body);
+    statusEl.innerHTML = '<span style="color:var(--g600)">✅ Configurações salvas.</span>';
+    showToast('Configurações do cultivo salvas.', 'success');
+    carregarListaConfigCultivosCE();
   } catch(e) {
     statusEl.innerHTML = `<span style="color:var(--red)">Erro: ${escHtml(e.message)}</span>`;
   }
@@ -11692,7 +11822,7 @@ async function preAnaliseBaixarPdf(pid) {
 
   function montarMesaCondicaoEspecial(container, opts) {
     if (!container) throw new Error("montarMesaCondicaoEspecial: container é obrigatório");
-    const o = Object.assign({ apiBaseUrl: "", getToken: () => null, cultivo: null, municipioInicial: null, municipioNomeUf: null }, opts);
+    const o = Object.assign({ apiBaseUrl: "", getToken: () => null, cultivo: null, cultivoNome: null, municipioInicial: null, municipioNomeUf: null }, opts);
 
     let destruido = false;
     let municipios = [];       // [{codigo_ibge, nome, uf}]
@@ -11815,15 +11945,27 @@ async function preAnaliseBaixarPdf(pid) {
       cultivos = await chamarApi("/condicao-especial/cultivos");
       const sel = $("mce-cultivo");
       sel.innerHTML = cultivos.map(c => `<option value="${esc(c.slug)}">${esc(c.nome_exibicao)} (${esc(c.safra || "")})</option>`).join("");
+      let naoAchouCultivo = false;
       if (!cultivoAtual || !cultivos.some(c => c.slug === cultivoAtual)) {
-        cultivoAtual = cultivos[0] ? cultivos[0].slug : null;
+        let achado = null;
+        if (o.cultivoNome) {
+          const alvo = normalizarNome(o.cultivoNome);
+          achado = cultivos.find(c => {
+            const candidatos = [c.slug, c.nome_exibicao, ...(c.aliases || [])].map(normalizarNome);
+            return candidatos.some(cand => cand && (cand === alvo || cand.includes(alvo) || alvo.includes(cand)));
+          });
+          naoAchouCultivo = !achado;
+        }
+        cultivoAtual = achado ? achado.slug : (cultivos[0] ? cultivos[0].slug : null);
       }
       sel.value = cultivoAtual || "";
       const meta = cultivos.find(c => c.slug === cultivoAtual);
       if (meta) {
         $("mce-eyebrow").textContent = `Subscrição · ${meta.nome_exibicao} · ${meta.safra || ""} · ${(meta.ufs || []).join(" · ")}`;
-        $("mce-avisos").innerHTML = (meta.avisos || []).length
-          ? `<div class="mce-note"><b>Atenção:</b> ${meta.avisos.map(esc).join(" ")}</div>` : "";
+        const avisos = (meta.avisos || []).map(esc).join(" ");
+        const avisoCultivo = naoAchouCultivo
+          ? `<div class="mce-note"><b>Atenção:</b> não achei um cultivo cadastrado pra "${esc(o.cultivoNome)}" -- confira se "${esc(meta.nome_exibicao)}" é mesmo o certo antes de simular.</div>` : "";
+        $("mce-avisos").innerHTML = avisoCultivo + (avisos ? `<div class="mce-note"><b>Atenção:</b> ${avisos}</div>` : "");
       }
     }
 
@@ -12106,20 +12248,23 @@ function abrirModalSimularCE(opts) {
     apiBaseUrl: BACKEND_URL,
     getToken: () => TOKEN,
     municipioNomeUf: opts.municipio ? { nome: opts.municipio, uf: opts.uf } : null,
+    cultivoNome: opts.cultivo || null,
   });
 }
 
 // Chamado pelos botões "🧮 Simular" das tabelas de Condição Especial/Auditor
-// -- pega município/UF do cache já montado por carregarCondicoesEspeciais()
+// -- pega município/UF/cultivo do cache já montado por carregarCondicoesEspeciais()
 // (window._ceCache), em vez de inserir esses campos crus dentro de um
-// onclick="" (evita problema de aspas/acentos no nome do município).
+// onclick="" (evita problema de aspas/acentos no nome do município). O
+// cultivo da proposta (texto livre, ex.: "Milho 2ª Safra") é usado pra
+// auto-selecionar o cultivo certo na Mesa (casando com aliases/nome/slug).
 function abrirModalSimularCEDaLista(jobId) {
   const ce = (window._ceCache || {})[jobId];
-  if (!ce || (!ce.municipio && !ce.uf)) {
+  if (!ce) {
     abrirModalSimularCE({});
     return;
   }
-  abrirModalSimularCE({ municipio: ce.municipio, uf: ce.uf });
+  abrirModalSimularCE({ municipio: ce.municipio, uf: ce.uf, cultivo: ce.cultivo });
 }
 </script>
 
