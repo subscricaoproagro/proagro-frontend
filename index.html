@@ -1097,6 +1097,7 @@
         <button class="tab-btn active" onclick="adminTab('usuarios')">Usuários</button>
         <button class="tab-btn" onclick="adminTab('config')">Servidor</button>
         <button class="tab-btn" onclick="adminTab('logs')">Logs</button>
+        <button class="tab-btn" onclick="adminTab('ce-cultivos')">Condição Especial</button>
       </div>
       <div id="admin-tab-usuarios">
         <div class="card">
@@ -1124,6 +1125,43 @@
         <div class="card">
           <div class="card-header"><div class="card-title">Log do sistema</div><button class="btn-sm btn-outline" onclick="document.getElementById('system-log').innerHTML=''">Limpar</button></div>
           <div class="card-body"><div class="log-panel" id="system-log"><p class="log-line inf">[INFO] Plataforma ProAgro v2.0 iniciada</p></div></div>
+        </div>
+      </div>
+      <div id="admin-tab-ce-cultivos" style="display:none">
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><div class="card-title">Cultivos publicados na Mesa de Condição Especial</div><button class="btn-sm btn-outline" onclick="carregarCultivosCE()">↻ Atualizar</button></div>
+          <div class="card-body" id="ce-cultivos-lista"><div style="text-align:center;color:var(--gray400);font-size:13px;padding:20px">Carregando…</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Publicar cultivo novo</div></div>
+          <div class="card-body">
+            <div class="config-notice">⚠️ <span>Precisa já ter os 2 arquivos prontos (curva_uf.csv e municipios.csv) -- mesmo tipo de trabalho que gerou os dados de Milho 2ª safra (curva de custo por UF + relatividade municipal, calibradas com o PSR). Isso aqui só publica os arquivos na plataforma; não faz a modelagem atuarial sozinho.</span></div>
+            <div class="form-grid">
+              <div class="form-group"><label class="form-label">Slug (identificador único)</label><input class="form-input" id="ce-up-slug" placeholder="ex.: soja_2027"></div>
+              <div class="form-group"><label class="form-label">Nome de exibição</label><input class="form-input" id="ce-up-nome" placeholder="ex.: Soja 2026/2027"></div>
+              <div class="form-group"><label class="form-label">Safra</label><input class="form-input" id="ce-up-safra" placeholder="ex.: 2026/2027"></div>
+              <div class="form-group"><label class="form-label">UFs (vírgula)</label><input class="form-input" id="ce-up-ufs" placeholder="ex.: PR,SP,MS -- vazio detecta sozinho"></div>
+            </div>
+            <div class="form-group"><label class="form-label">Avisos (um por linha -- aparecem no topo da Mesa)</label><textarea class="form-input" id="ce-up-avisos" rows="3" placeholder="Carregamentos provisórios -- substituir pelos valores reais da NTA."></textarea></div>
+            <div class="form-grid">
+              <div class="form-group"><label class="form-label">Comissão (%)</label><input class="form-input" type="number" step="0.5" id="ce-up-comissao" value="15"></div>
+              <div class="form-group"><label class="form-label">Despesas + resseguro (%)</label><input class="form-input" type="number" step="0.5" id="ce-up-despesas" value="8"></div>
+              <div class="form-group"><label class="form-label">Margem (%)</label><input class="form-input" type="number" step="0.5" id="ce-up-margem" value="5"></div>
+              <div class="form-group"><label class="form-label">Percentil de segurança</label>
+                <select class="form-input" id="ce-up-percentil"><option value="p50">P50</option><option value="p75" selected>P75</option><option value="p90">P90</option></select>
+              </div>
+              <div class="form-group"><label class="form-label">Gatilho com dado observado</label><input class="form-input" type="number" step="0.01" id="ce-up-gdados" value="0.70"></div>
+              <div class="form-group"><label class="form-label">Gatilho máximo (recusa acima)</label><input class="form-input" type="number" step="0.01" id="ce-up-gmax" value="0.75"></div>
+              <div class="form-group"><label class="form-label">Desconto até… Subscritor (%)</label><input class="form-input" type="number" step="0.5" id="ce-up-d1" value="10"></div>
+              <div class="form-group"><label class="form-label">Desconto até… Gerente (%)</label><input class="form-input" type="number" step="0.5" id="ce-up-d2" value="20"></div>
+            </div>
+            <div class="form-grid">
+              <div class="form-group"><label class="form-label">curva_uf.csv</label><input class="form-input" type="file" id="ce-up-curva" accept=".csv"></div>
+              <div class="form-group"><label class="form-label">municipios.csv</label><input class="form-input" type="file" id="ce-up-municipios" accept=".csv"></div>
+            </div>
+            <button class="btn-sm btn-green" onclick="publicarCultivoCE()">Publicar cultivo</button>
+            <div id="ce-up-status" style="margin-top:8px;font-size:13px"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -4503,8 +4541,77 @@ function adminTab(tab) {
   document.getElementById('admin-tab-usuarios').style.display = tab==='usuarios'?'':'none';
   document.getElementById('admin-tab-config').style.display = tab==='config'?'':'none';
   document.getElementById('admin-tab-logs').style.display = tab==='logs'?'':'none';
-  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['usuarios','config','logs'][i]===tab));
+  document.getElementById('admin-tab-ce-cultivos').style.display = tab==='ce-cultivos'?'':'none';
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['usuarios','config','logs','ce-cultivos'][i]===tab));
   if(tab==='usuarios') carregarUsuarios();
+  if(tab==='ce-cultivos') carregarCultivosCE();
+}
+
+// ── Condição Especial: gestão de cultivos (upload/remoção) -- admin only ──
+async function carregarCultivosCE() {
+  const wrap = document.getElementById('ce-cultivos-lista');
+  if (!wrap) return;
+  wrap.innerHTML = '<div style="text-align:center;color:var(--gray400);font-size:13px;padding:20px">Carregando…</div>';
+  try {
+    const lista = await api('GET', '/condicao-especial/cultivos');
+    if (!lista.length) { wrap.innerHTML = '<div style="text-align:center;color:var(--gray400);font-size:13px;padding:20px">Nenhum cultivo publicado ainda.</div>'; return; }
+    wrap.innerHTML = lista.map(c => `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--gray100)">
+        <div>
+          <div style="font-weight:700">${escHtml(c.nome_exibicao)} <span style="font-weight:400;color:var(--gray400);font-size:12px">(${escHtml(c.slug)})</span></div>
+          <div style="font-size:12px;color:var(--gray400)">${escHtml(c.safra||'')} · ${(c.ufs||[]).join(', ')} · ${c.municipios_count} municípios · atualizado ${escHtml(c.gerado_em||'')}</div>
+        </div>
+        <button class="btn-sm btn-danger" onclick="removerCultivoCE('${c.slug}')">🗑 Remover</button>
+      </div>`).join('');
+  } catch(e) {
+    wrap.innerHTML = `<div style="color:var(--red);font-size:13px;padding:20px">Erro ao carregar: ${escHtml(e.message)}</div>`;
+  }
+}
+
+async function removerCultivoCE(slug) {
+  if (!confirm(`Remover o cultivo "${slug}"? A Mesa de Condição Especial deixa de oferecer ele imediatamente.`)) return;
+  try {
+    await api('DELETE', '/condicao-especial/cultivos/' + encodeURIComponent(slug));
+    showToast('Cultivo removido.', 'success');
+    carregarCultivosCE();
+  } catch(e) {
+    showToast('Erro ao remover: ' + e.message, 'error');
+  }
+}
+
+async function publicarCultivoCE() {
+  const slug = document.getElementById('ce-up-slug').value.trim();
+  const nome = document.getElementById('ce-up-nome').value.trim();
+  const curvaFile = document.getElementById('ce-up-curva').files[0];
+  const munFile = document.getElementById('ce-up-municipios').files[0];
+  const statusEl = document.getElementById('ce-up-status');
+  if (!slug || !nome) { statusEl.innerHTML = '<span style="color:var(--red)">Preencha slug e nome de exibição.</span>'; return; }
+  if (!curvaFile || !munFile) { statusEl.innerHTML = '<span style="color:var(--red)">Selecione os 2 arquivos CSV.</span>'; return; }
+  const fd = new FormData();
+  fd.append('slug', slug);
+  fd.append('nome_exibicao', nome);
+  fd.append('safra', document.getElementById('ce-up-safra').value.trim());
+  fd.append('ufs', document.getElementById('ce-up-ufs').value.trim());
+  fd.append('avisos', document.getElementById('ce-up-avisos').value);
+  fd.append('comissao_pct', document.getElementById('ce-up-comissao').value || '15');
+  fd.append('despesas_resseguro_pct', document.getElementById('ce-up-despesas').value || '8');
+  fd.append('margem_pct', document.getElementById('ce-up-margem').value || '5');
+  fd.append('percentil', document.getElementById('ce-up-percentil').value);
+  fd.append('gatilho_dados', document.getElementById('ce-up-gdados').value || '0.70');
+  fd.append('gatilho_maximo', document.getElementById('ce-up-gmax').value || '0.75');
+  fd.append('desconto_subscritor_pct', document.getElementById('ce-up-d1').value || '10');
+  fd.append('desconto_gerente_pct', document.getElementById('ce-up-d2').value || '20');
+  fd.append('curva_uf', curvaFile);
+  fd.append('municipios', munFile);
+  statusEl.innerHTML = '⏳ Publicando…';
+  try {
+    const res = await api('POST', '/condicao-especial/cultivos/upload', fd, true);
+    statusEl.innerHTML = `<span style="color:var(--g600)">✅ Publicado: ${res.municipios_count} municípios, UFs ${res.ufs.join(', ')}.</span>`;
+    showToast('Cultivo publicado!', 'success');
+    carregarCultivosCE();
+  } catch(e) {
+    statusEl.innerHTML = `<span style="color:var(--red)">Erro: ${escHtml(e.message)}</span>`;
+  }
 }
 
 // ══════════════════════════════════════════
@@ -11603,7 +11710,7 @@ async function preAnaliseBaixarPdf(pid) {
             <div class="mce-eyebrow" id="mce-eyebrow">Subscrição · Condição Especial</div>
             <h2 class="mce-h1" id="mce-titulo">Mesa de Condição Especial</h2>
           </div>
-          <p class="mce-sub">Informe o município, a PG e a taxa pedidas. A mesa compara com o balcão e devolve gatilho, custo esperado, taxa técnica mínima, decisão e alçada.</p>
+          <p class="mce-sub">Informe o município e a PG pedida -- a mesa já devolve a menor taxa ofertável. Se o corretor já tiver uma taxa pedida, informe pra validar; senão deixe em branco.</p>
         </div>
         <div id="mce-avisos"></div>
         <div class="mce-grid">
@@ -11626,8 +11733,8 @@ async function preAnaliseBaixarPdf(pid) {
               <label class="mce-field">PG solicitada
                 <span class="mce-unit"><input class="mce-input" id="mce-pg" type="number" step="0.1" min="0" inputmode="decimal"><span>sc/ha</span></span>
               </label>
-              <label class="mce-field">Taxa solicitada
-                <span class="mce-unit"><input class="mce-input" id="mce-tx" type="number" step="0.01" min="0" inputmode="decimal"><span>%</span></span>
+              <label class="mce-field">Taxa pedida <span class="mce-hint">opcional -- em branco mostra a mínima ofertável</span>
+                <span class="mce-unit"><input class="mce-input" id="mce-tx" type="number" step="0.01" min="0" inputmode="decimal" placeholder="mínima ofertável"><span>%</span></span>
               </label>
               <label class="mce-check"><input id="mce-rep" type="checkbox"> Com cobertura de replantio (taxa REP)</label>
               <div class="mce-row2">
@@ -11787,15 +11894,19 @@ async function preAnaliseBaixarPdf(pid) {
     }
 
     async function simular() {
-      if (!st.codigo || !(st.pg > 0) || !(st.tx > 0)) {
+      if (!st.codigo || !(st.pg > 0)) {
         $("mce-verdict").className = "mce-verdict aguardando";
-        $("mce-pill").textContent = "Aguardando"; $("mce-vtitulo").textContent = "Informe o município, a PG e a taxa pedidas";
+        $("mce-pill").textContent = "Aguardando"; $("mce-vtitulo").textContent = "Informe o município e a PG pedida";
         $("mce-motivos").innerHTML = "";
         return;
       }
       try {
         const body = {
-          codigo_ibge: st.codigo, plano: st.plano, pg_pedida_sc_ha: st.pg, taxa_pedida_pct: st.tx,
+          // taxa_pedida_pct fica de fora quando o campo está vazio -- o backend
+          // devolve a MENOR taxa ofertável pra essa PG (modo cotação). Só vira
+          // "validar um pedido" quando o usuário digita uma taxa (st.tx > 0).
+          codigo_ibge: st.codigo, plano: st.plano, pg_pedida_sc_ha: st.pg,
+          ...(st.tx > 0 ? { taxa_pedida_pct: st.tx } : {}),
           com_replantio: st.rep, area_ha: st.area || null, preco_rs_sc: st.preco || null,
         };
         const res = await chamarApi(`/condicao-especial/${cultivoAtual}/simular`, { method: "POST", body: JSON.stringify(body) });
@@ -11820,10 +11931,15 @@ async function preAnaliseBaixarPdf(pid) {
       $("mce-k-pg-s").textContent = `${diffTab >= 0 ? "+" : ""}${nf(diffTab, 1)}% sobre a tabela`;
       $("mce-k-lc").textContent = pct(m.custo_esperado.media_pct);
       $("mce-k-lc-s").textContent = `${m.custo_esperado.percentil.toUpperCase()} ${pct(m.custo_esperado.percentil_pct)} · por LMI`;
-      const abaixoDaMinima = st.tx < m.taxa.tecnica_minima_pct;
+      const abaixoDaMinima = m.pedido.taxa_foi_pedida && m.pedido.taxa_pct < m.taxa.tecnica_minima_pct;
       $("mce-k-min").textContent = pct(m.taxa.tecnica_minima_pct);
       $("mce-k-min").className = "v" + (abaixoDaMinima ? " mce-tone-bad" : "");
-      $("mce-k-min-s").innerHTML = `pedida <b class="${abaixoDaMinima ? "mce-tone-bad" : "mce-tone-ok"}">${nf(st.tx, 2)}%</b> · referência ${pct(m.taxa.referencia_pct)}`;
+      $("mce-k-min-s").innerHTML = m.pedido.taxa_foi_pedida
+        ? `pedida <b class="${abaixoDaMinima ? "mce-tone-bad" : "mce-tone-ok"}">${nf(m.pedido.taxa_pct, 2)}%</b> · referência ${pct(m.taxa.referencia_pct)}`
+        : `esta já é a menor taxa ofertável · referência (balcão ajustado) ${pct(m.taxa.referencia_pct)}`;
+      // sem taxa digitada, o campo mostra a mínima calculada -- só decorativo,
+      // não mexe em st.tx (continua null até o usuário editar de verdade)
+      if (!(st.tx > 0)) $("mce-tx").value = m.pedido.taxa_pct.toFixed(2);
       const semAlcada = m.limites.fora_da_faixa_sustentada || abaixoDaMinima;
       $("mce-k-alc").textContent = semAlcada ? "—" : (m.decisao.alcada || "—").split("/")[0];
       $("mce-k-alc-s").textContent = semAlcada ? "pedido fora da política" : `gatilho: ${m.decisao.alcada_por_gatilho.split("/")[0]} · desconto: ${m.decisao.alcada_por_desconto.split("/")[0]}`;
@@ -11848,7 +11964,8 @@ async function preAnaliseBaixarPdf(pid) {
       const dif = (a, b) => { const d = b - a; return (d > 0 ? "+" : "") + nf(d, 2); };
       const linhas = [
         ["PG", nf(m.balcao.pg_sc_ha) + " sc/ha", nf(m.pedido.pg_sc_ha) + " sc/ha", dif(m.balcao.pg_sc_ha, m.pedido.pg_sc_ha) + " sc/ha"],
-        ["Taxa", pct(m.balcao.taxa_pct), nf(st.tx, 2) + "%", dif(m.balcao.taxa_pct, st.tx) + " p.p."],
+        [m.pedido.taxa_foi_pedida ? "Taxa" : "Taxa (mínima ofertável)", pct(m.balcao.taxa_pct),
+         nf(m.pedido.taxa_pct, 2) + "%", dif(m.balcao.taxa_pct, m.pedido.taxa_pct) + " p.p."],
       ];
       if (c.premio_balcao_rs_ha != null) {
         linhas.push(["Prêmio por ha", "R$ " + nf(c.premio_balcao_rs_ha, 2), "R$ " + nf(c.premio_pedido_rs_ha, 2), "R$ " + dif(c.premio_balcao_rs_ha, c.premio_pedido_rs_ha)]);
@@ -11883,7 +12000,7 @@ async function preAnaliseBaixarPdf(pid) {
       const W = 640, H = 300, ml = 50, mr = 14, mt = 12, mb = 32, pw = W - ml - mr, ph = H - mt - mb;
       const xs = g.pg_sc_ha, ref = g.taxa_referencia_pct, mn = g.taxa_minima_pct;
       const x0 = Math.min(...xs), x1 = Math.max(...xs);
-      const ys = [...ref, ...mn, st.tx || ref[0]];
+      const ys = [...ref, ...mn, m.pedido.taxa_pct];
       const y0 = Math.min(...ys) * 0.85, y1 = Math.max(...ys) * 1.08;
       const X = v => ml + (v - x0) / (x1 - x0 || 1) * pw;
       const Y = v => mt + (1 - (v - y0) / (y1 - y0 || 1)) * ph;
@@ -11895,9 +12012,10 @@ async function preAnaliseBaixarPdf(pid) {
       s += `<polyline points="${pts(ref)}" fill="none" stroke="var(--mce-brand)" stroke-width="2.5"/>`;
       s += `<polyline points="${pts(mn)}" fill="none" stroke="var(--mce-bad)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
       s += `<line x1="${ml}" x2="${W - mr}" y1="${mt + ph}" y2="${mt + ph}" stroke="var(--mce-muted)"/>`;
-      if (st.pg > 0 && st.tx > 0) {
-        const px = Math.min(Math.max(X(st.pg), ml), W - mr), py = Math.min(Math.max(Y(st.tx), mt), mt + ph);
-        const cor = m.limites.fora_da_faixa_sustentada ? "var(--mce-bad)" : (st.tx < m.taxa.tecnica_minima_pct ? "var(--mce-warn)" : "var(--mce-ok)");
+      if (st.pg > 0) {
+        const px = Math.min(Math.max(X(st.pg), ml), W - mr), py = Math.min(Math.max(Y(m.pedido.taxa_pct), mt), mt + ph);
+        const cor = m.limites.fora_da_faixa_sustentada ? "var(--mce-bad)"
+          : (m.pedido.taxa_foi_pedida && m.pedido.taxa_pct < m.taxa.tecnica_minima_pct ? "var(--mce-warn)" : "var(--mce-ok)");
         s += `<circle cx="${px}" cy="${py}" r="6" fill="${cor}" stroke="var(--mce-panel)" stroke-width="2"/>`;
       }
       $("mce-grafico").innerHTML = s;
