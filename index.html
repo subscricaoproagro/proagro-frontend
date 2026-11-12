@@ -6302,35 +6302,16 @@ async function carregarCondicoesEspeciais() {
     }
     // Prioridade sinalizada pelo analista de subscrição — vem do servidor
     // (ce.prioridade), não mais de localStorage, então aparece igual pra
-    // qualquer usuário (inclusive o supervisor). Dentro de cada grupo de
-    // prioridade, ordena por quem está esperando há mais tempo primeiro.
-    function _ceTempoEsperaMs(ce) {
-      const chegada = ce.data_chegada || ce.criado_em;
-      if (!chegada) return -Infinity;
-      const job = ce.job || {};
-      const inicio = Date.parse(chegada);
-      if (isNaN(inicio)) return -Infinity;
-      const fim = job.decisao_risco && (job.decisao_risco_em || job.concluido_at)
-        ? Date.parse(job.decisao_risco_em || job.concluido_at)
-        : Date.now();
-      return isNaN(fim) ? -Infinity : (fim - inicio);
-    }
-    const _ehAbaDrafts = ['draft_aguardando','draft_confirmado','draft_ativado'].includes(filtro);
+    // qualquer usuário (inclusive o supervisor). Itens fixados (📌) sempre
+    // no topo; dentro de cada grupo, ordem de chegada (mais recente primeiro
+    // -- a pedido do usuário, 2026-11-12, pra toda aba, não só Drafts).
     listaFiltrada.sort((a, b) => {
       const pa = a.prioridade ? 0 : 1;
       const pb = b.prioridade ? 0 : 1;
-      if (pa !== pb) return pa - pb;              // itens fixados (📌) sempre no topo
-      if (_ehAbaDrafts) {
-        // Só na aba de Drafts: mais recentes (por chegada) no topo
-        const ca = Date.parse(a.data_chegada || a.criado_em || 0) || 0;
-        const cb = Date.parse(b.data_chegada || b.criado_em || 0) || 0;
-        return cb - ca;
-      }
-      // Demais abas: comportamento original (pendentes antes; maior espera no topo)
-      const dpa = (a.job && a.job.decisao_risco) ? 1 : 0;
-      const dpb = (b.job && b.job.decisao_risco) ? 1 : 0;
-      if (dpa !== dpb) return dpa - dpb;
-      return _ceTempoEsperaMs(b) - _ceTempoEsperaMs(a);
+      if (pa !== pb) return pa - pb;
+      const ca = Date.parse(a.data_chegada || a.criado_em || 0) || 0;
+      const cb = Date.parse(b.data_chegada || b.criado_em || 0) || 0;
+      return cb - ca;
     });
     tbody.innerHTML = listaFiltrada.map(ce => {
       const job = ce.job || {};
