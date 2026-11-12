@@ -930,8 +930,8 @@
         <div class="card">
           <div class="overflow-x">
             <table class="jobs-table">
-              <thead><tr><th>Cultura</th><th>Local</th><th>Broker</th><th>Cliente</th><th>Decidido por</th><th>Prêmio</th><th>Chegada</th><th>Tempo Resp.</th><th>Status draft</th><th>Ações</th></tr></thead>
-              <tbody id="ce-tbody"><tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+              <thead><tr><th>Cultura</th><th>Local</th><th>Broker</th><th>Cliente</th><th>Decidido por</th><th>Prêmio</th><th>Chegada</th><th>Tempo Resp.</th><th>Status draft</th><th>Observações</th><th>Ações</th></tr></thead>
+              <tbody id="ce-tbody"><tr><td colspan="11" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -5918,7 +5918,10 @@ async function salvarFormCE() {
     _ceJobIds.add(_ceJobId); // atualiza Set imediatamente sem precisar recarregar
     closeModal('modal-form-ce');
     resetBotaoSalvarCE();
-    showToast('Condição especial salva com sucesso!', 'success');
+    // Pedido do usuário (2026-11-11): salvar não libera mais pro supervisor
+    // sozinho -- fica "aguardando análise do analista" até o clique em
+    // "Enviar para o Supervisor" na lista (ver liberarCEParaSupervisor).
+    showToast('Condição especial salva -- aguardando sua análise antes de enviar pro supervisor.', 'success');
     await carregarJobs();
     await carregarCondicoesEspeciais();
   } catch(e) {
@@ -6294,7 +6297,7 @@ async function carregarCondicoesEspeciais() {
     });
 
     if (!listaFiltrada.length) {
-      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada para este filtro.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--gray400);padding:40px">Nenhuma condição especial encontrada para este filtro.</td></tr>';
       return;
     }
     // Prioridade sinalizada pelo analista de subscrição — vem do servidor
@@ -6349,6 +6352,7 @@ async function carregarCondicoesEspeciais() {
         </td>
         <td>${ceTempoResposta(ce)}</td>
         <td>${ceStatusDraft(ce)}</td>
+        <td style="max-width:280px;white-space:pre-wrap;font-size:11.5px;color:var(--gray600)">${ce.observacoes ? escHtml(ce.observacoes) : '—'}</td>
         <td>
           <div class="ce-acoes-grid">
             <button class="btn-sm btn-green" style="font-size:11px;padding:3px 6px" onclick="baixarJob('${ce.job_id}')">⬇ Baixar</button>
@@ -6361,7 +6365,7 @@ async function carregarCondicoesEspeciais() {
       </tr>`;
     }).join('');
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--red);padding:40px">Erro ao carregar.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--red);padding:40px">Erro ao carregar.</td></tr>';
   }
 }
 
@@ -6969,6 +6973,16 @@ function renderBtnsCE(ce) {
              ' <span style="font-size:11px;font-weight:600;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;padding:3px 8px;border-radius:12px">✅ Resolvido manualmente</span>' +
              ' <button class="btn-sm btn-outline" onclick="desmarcarResolvidoCE(\'' + jobId + '\')">Desmarcar</button>';
     }
+    // Pedido do usuário (2026-11-11): salvar "Preencher CE" não libera mais
+    // direto pro supervisor -- fica "aguardando_analista" até esse clique
+    // explícito. Enquanto não liberada, nem mostra Aprovar/Balcão/Recusar
+    // (o backend já recusa decidir uma CE nesse estado, isso aqui é só o
+    // espelho visual -- ver bloqueio em /jobs/{id}/decisao-risco).
+    if (ce.status_revisao === 'aguardando_analista') {
+      return btnDados + ' ' + btnCorrigir +
+             ' <span style="font-size:11px;font-weight:600;color:#92400e;background:#fffbeb;border:1px solid #fde68a;padding:3px 8px;border-radius:12px">⏳ Aguardando análise do analista</span>' +
+             ' <button class="btn-sm btn-primary" onclick="liberarCEParaSupervisor(\'' + jobId + '\')">📤 Enviar para o Supervisor</button>';
+    }
     return btnDados + ' ' + btnCorrigir +
            ' <button class="btn-sm btn-primary" onclick="abrirAprovacaoCE(\'' + jobId + '\')">✅ Aprovar CE</button>' +
            ' <button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="abrirBalcao(\'' + jobId + '\')">🏦 Balcão</button>' +
@@ -7021,6 +7035,20 @@ function renderBtnsCE(ce) {
          ' <span style="font-size:12px;font-weight:600;color:' + cor + '">' + label + '</span>' +
          blocoReav +
          blocoDraft;
+}
+
+// Libera uma CE preenchida pelo analista pra fila de decisão do supervisor
+// -- pedido do usuário, 2026-11-11: salvar "Preencher CE" não é mais o
+// mesmo que mandar pro supervisor, precisa desse clique explícito à parte.
+async function liberarCEParaSupervisor(jobId) {
+  if (!confirm('Enviar esta Condição Especial para o supervisor decidir?')) return;
+  try {
+    await api('POST', '/jobs/' + jobId + '/condicao-especial/liberar-supervisor');
+    showToast('Enviado para o supervisor.', 'success');
+    carregarCondicoesEspeciais();
+  } catch(e) {
+    showToast('Erro ao enviar para o supervisor: ' + e.message, 'error');
+  }
 }
 
 // Coluna "Status draft": espelha confirmação do corretor + ativação do draft
