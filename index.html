@@ -1416,6 +1416,22 @@
           </div>
         </div>
       </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title" style="font-size:14px">7. Baixar Polígonos (KML) por ID de Proposta</div></div>
+        <div class="card-body">
+          <p style="color:var(--gray400);font-size:13px;margin-bottom:14px">
+            Busca todos os jobs ligados a um ID de proposta e baixa todos os polígonos (KML/KMZ) originais
+            num único .zip. Normalmente é 1 job por proposta, mas se houver mais de um (ex. talhões em
+            municípios diferentes), todos entram no mesmo arquivo.
+          </p>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <input type="text" id="gp-poligonos-id" class="form-input" placeholder="ID da proposta (ex.: 1282)" style="width:220px" onkeydown="if(event.key==='Enter')gpBaixarPoligonos()">
+            <button class="btn-sm btn-green" onclick="gpBaixarPoligonos()" style="padding:10px 20px">⬇ Baixar Polígonos</button>
+          </div>
+          <div id="gp-poligonos-status" style="margin-top:10px;font-size:13px"></div>
+        </div>
+      </div>
     </div>
 
     <div id="page-datas-zarc" class="page-section">
@@ -2117,6 +2133,26 @@ async function gpDownload() {
     const a = document.createElement('a'); a.href = url; a.download = 'gestao_propostas.xlsx'; a.click();
     URL.revokeObjectURL(url);
   } catch (e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function gpBaixarPoligonos() {
+  const idProposta = (document.getElementById('gp-poligonos-id').value || '').trim();
+  const statusEl = document.getElementById('gp-poligonos-status');
+  if (!idProposta) { statusEl.innerHTML = '<span style="color:var(--red)">Informe o ID da proposta.</span>'; return; }
+  statusEl.innerHTML = 'Buscando…';
+  try {
+    const res = await fetch(`${BACKEND_URL}/gestao-propostas/poligonos/${encodeURIComponent(idProposta)}`, {
+      headers: { 'Authorization': `Bearer ${TOKEN}` }
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail || 'Erro ao buscar polígonos'); }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `poligonos_proposta_${idProposta}.zip`; a.click();
+    URL.revokeObjectURL(url);
+    statusEl.innerHTML = `<span style="color:var(--g600)">✅ Download iniciado (proposta ${escHtml(idProposta)}).</span>`;
+  } catch (e) {
+    statusEl.innerHTML = `<span style="color:var(--red)">Erro: ${escHtml(e.message)}</span>`;
+  }
 }
 
 async function gpSyncOneDrive() {
