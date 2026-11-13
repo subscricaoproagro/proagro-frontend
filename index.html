@@ -1421,12 +1421,12 @@
         <div class="card-header"><div class="card-title" style="font-size:14px">7. Baixar Polígonos (KML) por ID de Proposta</div></div>
         <div class="card-body">
           <p style="color:var(--gray400);font-size:13px;margin-bottom:14px">
-            Busca todos os jobs ligados a um ID de proposta e baixa todos os polígonos (KML/KMZ) originais
-            num único .zip. Normalmente é 1 job por proposta, mas se houver mais de um (ex. talhões em
-            municípios diferentes), todos entram no mesmo arquivo.
+            Cole uma lista de IDs de proposta (vírgula, espaço ou um por linha) e baixa todos os polígonos
+            (KML/KMZ) num único .zip. Busca primeiro na pasta do OneDrive (Poligonos_sistema) e, se não
+            achar lá, no armazenamento antigo -- nunca traz os PDFs da proposta/relatório, só os polígonos.
           </p>
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <input type="text" id="gp-poligonos-id" class="form-input" placeholder="ID da proposta (ex.: 1282)" style="width:220px" onkeydown="if(event.key==='Enter')gpBaixarPoligonos()">
+          <textarea id="gp-poligonos-ids" class="form-input" rows="3" style="width:100%;max-width:520px;font-family:monospace" placeholder="Ex.: 1972, 1282, 1959&#10;1061"></textarea>
+          <div style="margin-top:8px">
             <button class="btn-sm btn-green" onclick="gpBaixarPoligonos()" style="padding:10px 20px">⬇ Baixar Polígonos</button>
           </div>
           <div id="gp-poligonos-status" style="margin-top:10px;font-size:13px"></div>
@@ -2136,20 +2136,24 @@ async function gpDownload() {
 }
 
 async function gpBaixarPoligonos() {
-  const idProposta = (document.getElementById('gp-poligonos-id').value || '').trim();
+  const txt = (document.getElementById('gp-poligonos-ids').value || '').trim();
+  const ids = (txt.match(/\d+/g) || []);
   const statusEl = document.getElementById('gp-poligonos-status');
-  if (!idProposta) { statusEl.innerHTML = '<span style="color:var(--red)">Informe o ID da proposta.</span>'; return; }
-  statusEl.innerHTML = 'Buscando…';
+  if (!ids.length) { statusEl.innerHTML = '<span style="color:var(--red)">Cole ao menos um ID de proposta.</span>'; return; }
+  statusEl.innerHTML = `Buscando ${ids.length} proposta(s)…`;
   try {
-    const res = await fetch(`${BACKEND_URL}/gestao-propostas/poligonos/${encodeURIComponent(idProposta)}`, {
-      headers: { 'Authorization': `Bearer ${TOKEN}` }
+    const res = await fetch(`${BACKEND_URL}/gestao-propostas/poligonos`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids })
     });
     if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.detail || 'Erro ao buscar polígonos'); }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `poligonos_proposta_${idProposta}.zip`; a.click();
+    const sufixo = ids.length === 1 ? ids[0] : `${ids.length}_propostas`;
+    const a = document.createElement('a'); a.href = url; a.download = `poligonos_${sufixo}.zip`; a.click();
     URL.revokeObjectURL(url);
-    statusEl.innerHTML = `<span style="color:var(--g600)">✅ Download iniciado (proposta ${escHtml(idProposta)}).</span>`;
+    statusEl.innerHTML = `<span style="color:var(--g600)">✅ Download iniciado (${ids.length} proposta(s)). Se alguma não foi encontrada, vem um aviso dentro do próprio .zip.</span>`;
   } catch (e) {
     statusEl.innerHTML = `<span style="color:var(--red)">Erro: ${escHtml(e.message)}</span>`;
   }
