@@ -3631,7 +3631,7 @@ function renderJobsTable(jobs) {
           ${concluido && j.tipo_analise==='condicao_especial' && (!j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '') && !j.decisao_risco && j.decisao === 'aprovado' && !_ceJobIds.has(j.id) ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirPreencherCE('${j.id}')">📋 Preencher Dados CE</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && (!j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '') && !j.decisao_risco && j.decisao === 'aprovado' && _ceVaziaJobIds.has(j.id) ? `<button class="btn-sm" style="background:#f9fafb;border:1px solid #e5e7eb;color:#374151" onclick="marcarResolvidoCEHistorico('${j.id}')" title="Use quando já foi tratado de verdade fora do sistema, mesmo sem os dados da CE preenchidos aqui">✅ Já Resolvido</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && (!j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '') && !j.decisao_risco && j.decisao === 'aprovado' && _ceResolvidaVaziaJobIds.has(j.id) ? `<span class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;cursor:default">✅ Resolvido manualmente</span> <button class="btn-sm btn-outline" onclick="desmarcarResolvidoCEHistorico('${j.id}')">Desmarcar</button>` : ''}
-          ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) && _ceAguardandoAnalistaJobIds.has(j.id) ? `<span class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e;cursor:default">⏳ Aguardando análise do analista</span> <button class="btn-sm btn-primary" onclick="liberarCEParaSupervisor('${j.id}')">📤 Enviar para o Supervisor</button>` : ''}
+          ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) && _ceAguardandoAnalistaJobIds.has(j.id) ? `<span class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e;cursor:default">⏳ Aguardando análise do analista</span> <button class="btn-sm btn-primary" onclick="abrirEdicaoCE('${j.id}', '${(j.nome_proponente||'').replace(/'/g,"\\'")}', '${(j.cpf||'').replace(/'/g,"\\'")}')">📋 Revisar e Enviar pro Supervisor</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) && !_ceAguardandoAnalistaJobIds.has(j.id) ? `<span class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;cursor:default">📨 Enviado para AR</span>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) && !_ceAguardandoAnalistaJobIds.has(j.id) ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="reavaliarCEAnalista('${j.id}')">🔄 Reavaliar</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) && !_ceAguardandoAnalistaJobIds.has(j.id) ? `<button class="btn-sm" style="background:${_cePrioridade.has(j.id)?'#fef2f2;border:1px solid #fca5a5;color:#b91c1c':'#fff7ed;border:1px solid #fed7aa;color:#c2410c'}" onclick="pedirPrioridadeCE('${j.id}')" title="Solicitar avaliação prioritária">${_cePrioridade.has(j.id)?'🔴 Prioritário':'🔔 Pedir Prioridade'}</button>` : ''}
@@ -5911,29 +5911,38 @@ function resetBotaoSalvarCE() {
     btnSalvar.disabled = false;
     btnSalvar.textContent = 'Salvar';
   }
+  const btnEnviar = document.getElementById('btn-enviar-supervisor-form-ce');
+  if (btnEnviar) {
+    btnEnviar.disabled = false;
+    btnEnviar.textContent = '📤 Enviar para o Supervisor';
+  }
 }
 
-async function salvarFormCE() {
-  // Modo "corrigir da Auditoria de CE" -- grava na planilha de Forms
-  // (solicitacoes_ce), não cria/atualiza Condição Especial nenhuma.
-  if (_ceAuditoriaId) { return salvarEdicaoAuditoriaCE(_ceAuditoriaId); }
-  // Proteção: _ceJobId não pode ser null
-  if (!_ceJobId) {
-    showToast('Erro interno: ID do job perdido. Feche o modal e tente novamente.', 'error');
-    return;
-  }
-  // Validação dos campos obrigatórios
+// Mostra/esconde o botão "Enviar para o Supervisor" dentro do modal
+// "Preencher CE" -- pedido do usuário (2026-11-16): revisar/corrigir uma CE
+// (manual ou preenchida sozinha pelo worker) e já mandar pro supervisor tem
+// que passar pelo MESMO modal de sempre, nunca só um confirm() sem mostrar
+// os dados. Escondido por padrão (ver _limparMarcacaoErroFormCE) -- só
+// aparece quando abrirPreencherCE/abrirEdicaoCE ligam explicitamente; fica
+// escondido no modo "corrigir da Auditoria de CE" (editarSolicitacaoAuditor),
+// que não lida com Condição Especial nenhuma.
+function _toggleBotaoEnviarSupervisorCE(mostrar) {
+  const btn = document.getElementById('btn-enviar-supervisor-form-ce');
+  if (btn) btn.style.display = mostrar ? '' : 'none';
+}
+
+// Validação + montagem do payload + POST -- extraído de salvarFormCE pra
+// ser reaproveitado também por salvarEEnviarFormCE (salvar e já liberar pro
+// supervisor num clique só). Retorna true se salvou, false se a validação
+// falhou (toast já mostrado); deixa exceções de rede subirem pro chamador.
+async function _executarSalvarDadosCE() {
   const broker    = document.getElementById('ce-broker')?.value.trim();
   const cliente   = document.getElementById('ce-cliente')?.value.trim();
   const municipio = document.getElementById('ce-municipio')?.value.trim();
   if (!broker || !cliente || !municipio) {
     showToast('Preencha pelo menos Broker, Cliente e Município antes de salvar.', 'error');
-    return;
+    return false;
   }
-  // Desabilita botão para evitar duplo clique
-  const btnSalvar = document.querySelector('#modal-form-ce .btn-primary');
-  if (btnSalvar) { btnSalvar.disabled = true; btnSalvar.textContent = 'Salvando...'; }
-
   const body = {
     broker:                       document.getElementById('ce-broker')?.value || '',
     email_corretora:              document.getElementById('ce-email-corretora')?.value.trim() || '',
@@ -5958,19 +5967,36 @@ async function salvarFormCE() {
     fecha_cosecha:                document.getElementById('ce-fecha-cosecha')?.value || '',
     observacoes_subscritor:       document.getElementById('ce-obs-subscritor')?.innerHTML || ''
   };
+  await api('POST', '/jobs/' + _ceJobId + '/condicao-especial', body);
+  // Se o job não tinha decisão ainda (ex: stuck em CE sem aprovação), aprova agora
+  if (window._ceJobSemDecisao) {
+    await api('POST', '/jobs/' + _ceJobId + '/decisao', { decisao: 'aprovado', justificativa: '' });
+    window._ceJobSemDecisao = false;
+  }
+  _ceJobIds.add(_ceJobId); // atualiza Set imediatamente sem precisar recarregar
+  return true;
+}
+
+async function salvarFormCE() {
+  // Modo "corrigir da Auditoria de CE" -- grava na planilha de Forms
+  // (solicitacoes_ce), não cria/atualiza Condição Especial nenhuma.
+  if (_ceAuditoriaId) { return salvarEdicaoAuditoriaCE(_ceAuditoriaId); }
+  // Proteção: _ceJobId não pode ser null
+  if (!_ceJobId) {
+    showToast('Erro interno: ID do job perdido. Feche o modal e tente novamente.', 'error');
+    return;
+  }
+  // Desabilita botão para evitar duplo clique
+  const btnSalvar = document.querySelector('#modal-form-ce .btn-primary');
+  if (btnSalvar) { btnSalvar.disabled = true; btnSalvar.textContent = 'Salvando...'; }
   try {
-    await api('POST', '/jobs/' + _ceJobId + '/condicao-especial', body);
-    // Se o job não tinha decisão ainda (ex: stuck em CE sem aprovação), aprova agora
-    if (window._ceJobSemDecisao) {
-      await api('POST', '/jobs/' + _ceJobId + '/decisao', { decisao: 'aprovado', justificativa: '' });
-      window._ceJobSemDecisao = false;
-    }
-    _ceJobIds.add(_ceJobId); // atualiza Set imediatamente sem precisar recarregar
+    const ok = await _executarSalvarDadosCE();
+    if (!ok) { resetBotaoSalvarCE(); return; }
     closeModal('modal-form-ce');
     resetBotaoSalvarCE();
     // Pedido do usuário (2026-11-11): salvar não libera mais pro supervisor
-    // sozinho -- fica "aguardando análise do analista" até o clique em
-    // "Enviar para o Supervisor" na lista (ver liberarCEParaSupervisor).
+    // sozinho -- fica "aguardando análise do analista" até um clique
+    // explícito em "Enviar para o Supervisor" (aqui no modal, ou na lista).
     showToast('Condição especial salva -- aguardando sua análise antes de enviar pro supervisor.', 'success');
     await carregarJobs();
     await carregarCondicoesEspeciais();
@@ -5980,8 +6006,36 @@ async function salvarFormCE() {
   }
 }
 
+// Salva (igual salvarFormCE) e, se dar certo, já libera pro supervisor num
+// clique só -- pedido do usuário (2026-11-16): revisar/corrigir os dados de
+// uma CE (preenchida manualmente ou sozinha pelo worker) e mandar pro
+// supervisor tem que passar pelo modal de sempre (igual o "Preencher CE" já
+// era), nunca um confirm() sem mostrar os dados antes de enviar.
+async function salvarEEnviarFormCE() {
+  if (!_ceJobId) {
+    showToast('Erro interno: ID do job perdido. Feche o modal e tente novamente.', 'error');
+    return;
+  }
+  const btnEnviar = document.getElementById('btn-enviar-supervisor-form-ce');
+  if (btnEnviar) { btnEnviar.disabled = true; btnEnviar.textContent = 'Enviando...'; }
+  try {
+    const ok = await _executarSalvarDadosCE();
+    if (!ok) { resetBotaoSalvarCE(); return; }
+    await api('POST', '/jobs/' + _ceJobId + '/condicao-especial/liberar-supervisor');
+    closeModal('modal-form-ce');
+    resetBotaoSalvarCE();
+    showToast('Enviado para o supervisor.', 'success');
+    await carregarJobs();
+    await carregarCondicoesEspeciais();
+  } catch(e) {
+    showToast('Erro ao enviar para o supervisor: ' + e.message, 'error');
+    resetBotaoSalvarCE();
+  }
+}
+
 function _limparMarcacaoErroFormCE() {
   _ceAuditoriaId = null;
+  _toggleBotaoEnviarSupervisorCE(false);
   const cpfBuscaEl = document.getElementById('ce-cpf-busca');
   if (cpfBuscaEl) cpfBuscaEl.oninput = () => buscarSolicitacaoCE();
   document.querySelectorAll('#modal-form-ce .ce-input-erro').forEach(el => el.classList.remove('ce-input-erro'));
@@ -6000,6 +6054,7 @@ async function abrirPreencherCE(jobId) {
   _limparMarcacaoErroFormCE();
   _ceJobId = jobId;
   resetBotaoSalvarCE();
+  _toggleBotaoEnviarSupervisorCE(true);
   window._ceJobSemDecisao = false;
   const modalCE = document.getElementById('modal-form-ce');
   if (modalCE) modalCE.scrollTop = 0;
@@ -6837,6 +6892,7 @@ async function abrirEdicaoCE(jobId, nomeProponente, cpf) {
   // "corrigir da Auditoria de CE" vazar pro fluxo normal.
   _limparMarcacaoErroFormCE();
   _ceJobId = jobId;
+  _toggleBotaoEnviarSupervisorCE(true);
   try {
     let ce = {};
     try {
@@ -7012,7 +7068,7 @@ function renderBtnsCE(ce) {
     if (ce.status_revisao === 'aguardando_analista') {
       return btnDados + ' ' + btnCorrigir +
              ' <span style="font-size:11px;font-weight:600;color:#92400e;background:#fffbeb;border:1px solid #fde68a;padding:3px 8px;border-radius:12px">⏳ Aguardando análise do analista</span>' +
-             ' <button class="btn-sm btn-primary" onclick="liberarCEParaSupervisor(\'' + jobId + '\')">📤 Enviar para o Supervisor</button>';
+             ' <button class="btn-sm btn-primary" onclick="abrirEdicaoCE(\'' + jobId + '\', \'' + (ce.cliente || '').replace(/'/g,"\\'") + '\', \'\')">📋 Revisar e Enviar pro Supervisor</button>';
     }
     return btnDados + ' ' + btnCorrigir +
            ' <button class="btn-sm btn-primary" onclick="abrirAprovacaoCE(\'' + jobId + '\')">✅ Aprovar CE</button>' +
@@ -7066,21 +7122,6 @@ function renderBtnsCE(ce) {
          ' <span style="font-size:12px;font-weight:600;color:' + cor + '">' + label + '</span>' +
          blocoReav +
          blocoDraft;
-}
-
-// Libera uma CE preenchida pelo analista pra fila de decisão do supervisor
-// -- pedido do usuário, 2026-11-11: salvar "Preencher CE" não é mais o
-// mesmo que mandar pro supervisor, precisa desse clique explícito à parte.
-async function liberarCEParaSupervisor(jobId) {
-  if (!confirm('Enviar esta Condição Especial para o supervisor decidir?')) return;
-  try {
-    await api('POST', '/jobs/' + jobId + '/condicao-especial/liberar-supervisor');
-    showToast('Enviado para o supervisor.', 'success');
-    carregarCondicoesEspeciais();
-    if (typeof carregarJobs === 'function') carregarJobs();
-  } catch(e) {
-    showToast('Erro ao enviar para o supervisor: ' + e.message, 'error');
-  }
 }
 
 // Coluna "Status draft": espelha confirmação do corretor + ativação do draft
@@ -9660,6 +9701,7 @@ function renderizarMapaSobreposicoes(dados) {
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px">
         <button class="btn btn-outline" onclick="fecharModalFormCE()">Cancelar</button>
         <button class="btn btn-primary" onclick="salvarFormCE()">Salvar</button>
+        <button class="btn btn-primary" id="btn-enviar-supervisor-form-ce" style="display:none;background:#166534" onclick="salvarEEnviarFormCE()">📤 Enviar para o Supervisor</button>
       </div>
     </div>
   </div>
