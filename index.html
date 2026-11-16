@@ -3631,7 +3631,7 @@ function renderJobsTable(jobs) {
           ${concluido && j.tipo_analise==='condicao_especial' && (!j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '') && !j.decisao_risco && j.decisao === 'aprovado' && !_ceJobIds.has(j.id) ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="abrirPreencherCE('${j.id}')">📋 Preencher Dados CE</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && (!j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '') && !j.decisao_risco && j.decisao === 'aprovado' && _ceVaziaJobIds.has(j.id) ? `<button class="btn-sm" style="background:#f9fafb;border:1px solid #e5e7eb;color:#374151" onclick="marcarResolvidoCEHistorico('${j.id}')" title="Use quando já foi tratado de verdade fora do sistema, mesmo sem os dados da CE preenchidos aqui">✅ Já Resolvido</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && (!j.id_proposta || String(j.id_proposta).trim() === '0' || String(j.id_proposta).trim() === '') && !j.decisao_risco && j.decisao === 'aprovado' && _ceResolvidaVaziaJobIds.has(j.id) ? `<span class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;cursor:default">✅ Resolvido manualmente</span> <button class="btn-sm btn-outline" onclick="desmarcarResolvidoCEHistorico('${j.id}')">Desmarcar</button>` : ''}
-          ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) && _ceAguardandoAnalistaJobIds.has(j.id) ? `<span class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e;cursor:default">⏳ Aguardando análise do analista</span> <button class="btn-sm btn-primary" onclick="abrirEdicaoCE('${j.id}', '${(j.nome_proponente||'').replace(/'/g,"\\'")}', '${(j.cpf||'').replace(/'/g,"\\'")}')">📋 Revisar e Enviar pro Supervisor</button>` : ''}
+          ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) && _ceAguardandoAnalistaJobIds.has(j.id) ? `<span class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e;cursor:default">⏳ Aguardando análise do analista</span> <button class="btn-sm btn-primary" onclick="abrirEdicaoCE('${j.id}', '${(j.nome_proponente||'').replace(/'/g,"\\'")}', '${(j.cpf||'').replace(/'/g,"\\'")}')">📋 Revisar e Enviar pra AT</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) && !_ceAguardandoAnalistaJobIds.has(j.id) ? `<span class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534;cursor:default">📨 Enviado para AR</span>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) && !_ceAguardandoAnalistaJobIds.has(j.id) ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="reavaliarCEAnalista('${j.id}')">🔄 Reavaliar</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && !j.decisao_risco && j.decisao === 'aprovado' && _ceJobIds.has(j.id) && !_ceAguardandoAnalistaJobIds.has(j.id) ? `<button class="btn-sm" style="background:${_cePrioridade.has(j.id)?'#fef2f2;border:1px solid #fca5a5;color:#b91c1c':'#fff7ed;border:1px solid #fed7aa;color:#c2410c'}" onclick="pedirPrioridadeCE('${j.id}')" title="Solicitar avaliação prioritária">${_cePrioridade.has(j.id)?'🔴 Prioritário':'🔔 Pedir Prioridade'}</button>` : ''}
@@ -5662,6 +5662,12 @@ function setStatus(itemId, status) {
 // CONDIÇÃO ESPECIAL
 // ══════════════════════════════════════════
 let _ceJobId = null;
+// true quando o modal "Preencher CE" abriu pra REVISAR uma CE já
+// preenchida (não pra preencher uma vazia) -- em modo revisão, achar 1 só
+// resultado na busca por CPF não sobrescreve os campos sozinho (ver
+// buscarSolicitacaoCE); achar 2+ ainda mostra a caixinha de escolha
+// normalmente, porque aí é uma decisão real que vale a pena revisar.
+let _ceModoRevisao = false;
 let _ceJobIds = new Set(); // job_ids que já têm CE salva
 // job_ids com CE preenchida mas ainda "aguardando_analista" (não liberada pro
 // supervisor) -- usado pra tabela geral de Propostas não mostrar "Enviado
@@ -5729,11 +5735,20 @@ async function buscarSolicitacaoCE() {
     }
 
     if (_solCEEncontradas.length === 1) {
-      // Apenas um resultado — preenche direto
       const brokerUnico = _solCEEncontradas[0].corretora || _solCEEncontradas[0].responsavel || 'corretor não informado';
-      if (elStatus) elStatus.textContent = `✅ Solicitação encontrada: ${_solCEEncontradas[0].produtor} (broker: ${brokerUnico})`;
       if (elWrap) elWrap.style.display = 'none';
-      preencherCamposCE(_solCEEncontradas[0]);
+      if (_ceModoRevisao) {
+        // Modo revisão (CE já preenchida, só confirmando o CPF) -- não
+        // sobrescreve os campos sozinho: o que já está na tela pode ter
+        // passado por resolução mais cuidadosa (área do KML x Forms,
+        // unidade de preço/produtividade plausível) que essa busca crua
+        // não reproduz.
+        if (elStatus) elStatus.textContent = `✅ Única solicitação no Forms pra esse CPF: ${_solCEEncontradas[0].produtor} (broker: ${brokerUnico}) -- os dados já preenchidos acima batem com ela.`;
+      } else {
+        // Modo preencher (CE vazia) -- preenche direto, como sempre.
+        if (elStatus) elStatus.textContent = `✅ Solicitação encontrada: ${_solCEEncontradas[0].produtor} (broker: ${brokerUnico})`;
+        preencherCamposCE(_solCEEncontradas[0]);
+      }
     } else {
       // Múltiplos resultados — mostra dropdown com broker + município, pra
       // diferenciar solicitações do mesmo cliente vindas de brokers diferentes.
@@ -5914,7 +5929,7 @@ function resetBotaoSalvarCE() {
   const btnEnviar = document.getElementById('btn-enviar-supervisor-form-ce');
   if (btnEnviar) {
     btnEnviar.disabled = false;
-    btnEnviar.textContent = '📤 Enviar para o Supervisor';
+    btnEnviar.textContent = '📤 Enviar para a AT';
   }
 }
 
@@ -5999,7 +6014,7 @@ async function salvarFormCE() {
     // Pedido do usuário (2026-11-11): salvar não libera mais pro supervisor
     // sozinho -- fica "aguardando análise do analista" até um clique
     // explícito em "Enviar para o Supervisor" (aqui no modal, ou na lista).
-    showToast('Condição especial salva -- aguardando sua análise antes de enviar pro supervisor.', 'success');
+    showToast('Condição especial salva -- aguardando sua análise antes de enviar pra AT.', 'success');
     await carregarJobs();
     await carregarCondicoesEspeciais();
   } catch(e) {
@@ -6027,17 +6042,18 @@ async function salvarEEnviarFormCE() {
     await api('POST', '/jobs/' + _ceJobId + '/condicao-especial/liberar-supervisor');
     closeModal('modal-form-ce');
     resetBotaoSalvarCE();
-    showToast('Enviado para o supervisor.', 'success');
+    showToast('Enviado para a AT.', 'success');
     await carregarJobs();
     await carregarCondicoesEspeciais();
   } catch(e) {
-    showToast('Erro ao enviar para o supervisor: ' + e.message, 'error');
+    showToast('Erro ao enviar para a AT: ' + e.message, 'error');
     resetBotaoSalvarCE();
   }
 }
 
 function _limparMarcacaoErroFormCE() {
   _ceAuditoriaId = null;
+  _ceModoRevisao = false;
   _toggleBotaoEnviarSupervisorCE(false);
   // Bug real confirmado (2026-11-16): editarSolicitacaoAuditor() troca o
   // título do modal pra "✏️ Corrigir solicitação — [nome]" e nunca
@@ -6945,12 +6961,24 @@ async function abrirEdicaoCE(jobId, nomeProponente, cpf) {
     calcularCE();
     openModal('modal-form-ce');
 
-    // Se o form abriu vazio (sem CE existente) e temos CPF/CNPJ do job,
-    // preenche o campo de busca e dispara a pesquisa automaticamente
-    if (!ce.broker && !ce.cliente && cpf) {
+    // Pedido do usuário (2026-11-16): o CPF precisa aparecer sempre nessa
+    // busca -- é ele que traz as solicitações do Forms, inclusive quando
+    // há mais de uma pro mesmo produtor (ex.: municípios/talhões
+    // diferentes), mostrando a caixinha de selecionar. Se a CE já estava
+    // preenchida (pelo worker ou manualmente), entra em "modo revisão":
+    // mostra o CPF e a busca roda normal (inclusive a caixinha de
+    // escolha, se houver 2+), mas NÃO sobrescreve os campos sozinha
+    // quando só há 1 resultado -- os valores já na tela podem ter passado
+    // por resolução mais cuidadosa (ex.: área do KML x Forms, unidade de
+    // preço/produtividade plausível) que uma nova busca ingênua apagaria.
+    // Só troca os campos se o analista escolher explicitamente outra
+    // solicitação na caixinha (preencherCEpelaMunicipio), ou se a CE
+    // estava mesmo vazia (fluxo de sempre, sobrescreve direto).
+    if (cpf) {
       const elCpf = document.getElementById('ce-cpf-busca');
       if (elCpf) {
         elCpf.value = cpf;
+        _ceModoRevisao = !!(ce.broker || ce.cliente);
         await buscarSolicitacaoCE();
       }
     }
@@ -9718,7 +9746,7 @@ function renderizarMapaSobreposicoes(dados) {
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px">
         <button class="btn btn-outline" onclick="fecharModalFormCE()">Cancelar</button>
         <button class="btn btn-primary" onclick="salvarFormCE()">Salvar</button>
-        <button class="btn btn-primary" id="btn-enviar-supervisor-form-ce" style="display:none;background:#166534" onclick="salvarEEnviarFormCE()">📤 Enviar para o Supervisor</button>
+        <button class="btn btn-primary" id="btn-enviar-supervisor-form-ce" style="display:none;background:#166534" onclick="salvarEEnviarFormCE()">📤 Enviar para a AT</button>
       </div>
     </div>
   </div>
