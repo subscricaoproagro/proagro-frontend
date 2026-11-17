@@ -3632,6 +3632,7 @@ function renderJobsTable(jobs) {
       <td>
         <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
           <button class="btn-sm btn-outline" onclick="verJob('${j.id}')">Detalhes</button>
+          <button class="btn-sm btn-outline" onclick="baixarKmlDoJob('${j.id}')" title="Baixa o KML do job como está agora no disco -- funciona mesmo com o job em execução ou com erro">⬇️ KML</button>
           ${concluido ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="verRelatorio('${j.id}')" title="Visualizar relatório completo">📄 Ver</button>` : ''}
           ${concluido ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8" onclick="abrirModalSobreposicoes('${j.id}')" title="Ver sobreposições em mapa (CAR, PRODES, CNFP, INCRA)">🗺️ Sobreposições</button>` : ''}
           ${renderBadgeObservacao(j)}
@@ -9146,6 +9147,7 @@ function _gerarXlsx(ce, job) {
         <div style="font-size:12px;color:var(--gray400);margin-top:2px" id="sobreposicoes-modal-subtitulo">Dispensa conferência manual no QGIS</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn-sm btn-outline" style="font-size:12px" onclick="baixarKmlAtualJob()">⬇️ Baixar KML</button>
         <button class="btn-sm btn-outline" style="font-size:12px" onclick="recalcularSobreposicoes()">🔄 Recalcular</button>
         <button class="modal-close" onclick="closeModal('modal-sobreposicoes')">✕</button>
       </div>
@@ -11504,6 +11506,21 @@ async function recVerSalvo(){
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=nome;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);
  }catch(e){document.getElementById('rec-message').textContent=e.message;}
 }
+
+async function baixarKmlDoJob(jobId){
+ if(!jobId)return;
+ try{
+  const res=await fetch(`${BACKEND_URL}/jobs/${jobId}/sobreposicoes/kml-atual`,{headers:{Authorization:`Bearer ${TOKEN}`,'ngrok-skip-browser-warning':'true'}});
+  if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.detail||'Não consegui baixar o KML deste job.');}
+  const blob=await res.blob();
+  const cd=res.headers.get('Content-Disposition')||'';const m=cd.match(/filename="(.+)"/);const nome=m?m[1]:`job-${jobId}.kml`;
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=nome;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);
+ }catch(e){showToast('❌ '+e.message,'error');}
+}
+// Mantido por compatibilidade -- botão do modal de Sobreposições usa o job
+// que já está aberto ali (_sobreposicoesModalJobIdAtual).
+function baixarKmlAtualJob(){ baixarKmlDoJob(_sobreposicoesModalJobIdAtual); }
+
 async function recAbrirEmail(){
  const r=recResultado;if(!r?.liberado)return;
  const painel=document.getElementById('rec-email-painel');
