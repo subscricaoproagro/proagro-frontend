@@ -9239,15 +9239,20 @@ async function verRelatorio(jobId) {
     btnRecusaDef.style.display = isSistema ? '' : 'none';
     const verEmailBtn = (job.justificativa && job.decisao && job.decisao !== 'aprovado')
       ? ` <button class="btn-sm btn-outline" style="font-size:11px;padding:4px 10px" onclick="verUltimaObservacao('${jobId}')">📧 Ver e-mail enviado</button>` : '';
+    // Decisão automática (robô aprovou/recusou sozinho, sem analista) pode
+    // sempre ser revertida por aqui -- só decisão humana já tomada é que
+    // trava os botões (não tem por que o analista reconsiderar a própria
+    // decisão nesse modal; isso se faz por "Reavaliar").
+    const foiAutomatico = job.decisao_por === 'automatico';
     if (job.decisao === 'aprovado') {
       info.innerHTML = '<span style="color:#166534;font-weight:600">✅ Proposta Aprovada</span>' + (job.decisao_por ? ' por ' + job.decisao_por : '');
-      btnAprovar.style.display = 'none';
-      btnObs.style.display = 'none';
-      btnRecusaDef.style.display = 'none';
+      btnAprovar.style.display = foiAutomatico ? '' : 'none';
+      btnObs.style.display = foiAutomatico ? '' : 'none';
+      btnRecusaDef.style.display = (foiAutomatico && isSistema) ? '' : 'none';
     } else if (job.decisao === 'recusado') {
       info.innerHTML = '<span style="color:#c0392b;font-weight:600">❌ Proposta Recusada</span>' + (job.decisao_por ? ' por ' + job.decisao_por : '') + (job.justificativa ? '<br><span style="font-size:12px">' + job.justificativa + '</span>' : '') + verEmailBtn;
-      btnAprovar.style.display = 'none';
-      btnObs.style.display = 'none';
+      btnAprovar.style.display = foiAutomatico ? '' : 'none';
+      btnObs.style.display = foiAutomatico ? '' : 'none';
       btnRecusaDef.style.display = 'none';
     } else if (job.decisao === 'aguardando_reenvio') {
       info.innerHTML = '<span style="color:#92400e;font-weight:600">📝 Aguardando Reenvio</span>' + (job.decisao_por ? ' por ' + job.decisao_por : '') + (job.justificativa ? '<br><span style="font-size:12px">' + job.justificativa.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim() + '</span>' : '') + verEmailBtn;
