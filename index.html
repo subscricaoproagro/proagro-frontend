@@ -9248,7 +9248,11 @@ async function verRelatorio(jobId) {
       info.innerHTML = '<span style="color:#166534;font-weight:600">✅ Proposta Aprovada</span>' + (job.decisao_por ? ' por ' + job.decisao_por : '');
       btnAprovar.style.display = foiAutomatico ? '' : 'none';
       btnObs.style.display = foiAutomatico ? '' : 'none';
-      btnRecusaDef.style.display = (foiAutomatico && isSistema) ? '' : 'none';
+      // Recusar definitiva é restrito a Sistema só na decisão humana normal
+      // (CE decide o destino final com a AT, mais na frente). Revertendo uma
+      // decisão AUTOMÁTICA o job ainda nem entrou nesse fluxo -- então vale
+      // pra Sistema e pra CE igual.
+      btnRecusaDef.style.display = foiAutomatico ? '' : 'none';
     } else if (job.decisao === 'recusado') {
       info.innerHTML = '<span style="color:#c0392b;font-weight:600">❌ Proposta Recusada</span>' + (job.decisao_por ? ' por ' + job.decisao_por : '') + (job.justificativa ? '<br><span style="font-size:12px">' + job.justificativa + '</span>' : '') + verEmailBtn;
       btnAprovar.style.display = foiAutomatico ? '' : 'none';
