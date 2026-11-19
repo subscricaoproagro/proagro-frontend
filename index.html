@@ -410,6 +410,7 @@
       <button class="topbar-btn" id="admin-btn" onclick="showPage('admin')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg></span><span class="sidebar-label">Admin</span></button>
       <button class="topbar-btn" id="observacoes-pendentes-btn" onclick="showPage('observacoes-pendentes')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span><span class="sidebar-label">Observações Pendentes</span><span id="obs-pendentes-sino" class="esg-sino-alerta" style="display:none" title="Há observações aguardando aprovação"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2Zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2Z"/></svg></span></button>
       <button class="topbar-btn" id="monitoramento-btn" onclick="abrirMonitoramento()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span><span class="sidebar-label">Monitoramento de Campo</span></button>
+      <button class="topbar-btn" id="sinistros-btn" onclick="showPage('sinistros')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg></span><span class="sidebar-label">Sinistros</span></button>
       <button class="topbar-btn" id="extrator-btn" onclick="abrirExtratorPropostas()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></span><span class="sidebar-label">Extrator de Propostas</span></button>
       <button class="topbar-btn" id="esg-btn" onclick="showPage('esg')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg></span><span class="sidebar-label">Atualização ESG</span><span id="esg-sino-alerta" class="esg-sino-alerta" style="display:none" title="Existem bases desatualizadas"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2Zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2Z"/></svg></span></button>
       <button class="topbar-btn" id="datas-zarc-btn" onclick="showPage('datas-zarc');dzInit()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span><span class="sidebar-label">Datas Zarc</span></button>
@@ -1010,6 +1011,38 @@
             <thead><tr><th>Data</th><th>Referência</th><th>Cultura</th><th>Município</th><th>Área (ha)</th><th>Status</th><th>Criado por</th><th>PDF</th></tr></thead>
             <tbody id="pre-analise-historico-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-sinistros" class="page-section">
+      <div class="section-header">
+        <div>
+          <div class="section-title">🚜 Sinistros — Agenda de Vistorias</div>
+          <div class="section-sub">Vistorias agendadas (monitoramento, preliminar, final, replantio) — vem direto do sistema de vistorias.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="date" id="sinistros-data-inicio" class="form-input" style="max-width:160px">
+          <span style="color:var(--gray400)">até</span>
+          <input type="date" id="sinistros-data-fim" class="form-input" style="max-width:160px">
+          <button class="btn-sm btn-primary" onclick="carregarSinistros()">🔍 Buscar</button>
+        </div>
+      </div>
+      <div id="sinistros-resultado"><p style="text-align:center;color:var(--gray400);padding:40px">Carregando…</p></div>
+    </div>
+
+    <!-- Modal: Painel de detalhe do sinistro (vem da API externa de vistorias) -->
+    <div class="modal-overlay" id="modal-sinistro-detalhe" style="align-items:flex-start;padding:20px;overflow-y:auto">
+      <div class="modal" style="max-width:720px;margin:auto;width:100%">
+        <div class="modal-header" style="position:sticky;top:0;background:var(--white);z-index:10;border-bottom:2px solid #1e5c2e">
+          <div>
+            <div class="modal-title" style="color:#1e5c2e" id="sinistro-detalhe-titulo">Sinistro</div>
+            <div style="font-size:12px;color:var(--gray400);margin-top:2px" id="sinistro-detalhe-subtitulo"></div>
+          </div>
+          <button class="modal-close" onclick="closeModal('modal-sinistro-detalhe')">✕</button>
+        </div>
+        <div class="modal-body" id="sinistro-detalhe-body" style="padding:24px;background:#fff">
+          <div style="text-align:center;padding:40px;color:var(--gray400)">Carregando…</div>
         </div>
       </div>
     </div>
@@ -3042,6 +3075,7 @@ function showPage(page) {
   if (page === 'painel-comercial') carregarPainelComercial();
   if (page === 'observacoes-pendentes') carregarObservacoesPendentes();
   if (page === 'pre-analise') carregarHistoricoPreAnalise();
+  if (page === 'sinistros') carregarSinistros();
   document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.topbar-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
@@ -3056,6 +3090,7 @@ function showPage(page) {
     'auditor-ce':          'auditor-ce-btn',
     'condicao-especial':   'ce-btn',
     'pre-analise':         'pre-analise-btn',
+    'sinistros':           'sinistros-btn',
     'endosso':             'endosso-btn',
     'admin':               'admin-btn',
     'datas-zarc':          'datas-zarc-btn',
@@ -4448,6 +4483,7 @@ const _PG = {
   'relatorio-esg-mensal': { label: 'Relatório Mensal ESG', btn: 'rem-btn'       },
   'painel-comercial': { label: 'Painel Comercial',    btn: 'painel-comercial-btn' },
   'observacoes-pendentes': { label: 'Observações Pendentes', btn: 'observacoes-pendentes-btn' },
+  'sinistros':     { label: 'Sinistros',              btn: 'sinistros-btn'     },
 };
 const _PG_DEFAULTS = {
   admin:      Object.keys(_PG),
@@ -12027,6 +12063,218 @@ async function carregarHistoricoPreAnalise() {
     }).join('');
   } catch (e) {
     tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#b91c1c;padding:40px">Erro ao carregar: ${e.message}</td></tr>`;
+  }
+}
+
+// ══════════════════════════════════════════
+// SINISTROS — agenda de vistorias (API externa, projeto Supabase separado
+// de vistorias -- o backend que faz a ponte, o navegador nunca vê a chave).
+// A pedido do usuário (2026-11-19).
+// ══════════════════════════════════════════
+const _SINISTROS_UF_SIGLA = {
+  'ACRE':'AC','ALAGOAS':'AL','AMAPÁ':'AP','AMAZONAS':'AM','BAHIA':'BA','CEARÁ':'CE',
+  'DISTRITO FEDERAL':'DF','ESPÍRITO SANTO':'ES','GOIÁS':'GO','MARANHÃO':'MA',
+  'MATO GROSSO':'MT','MATO GROSSO DO SUL':'MS','MINAS GERAIS':'MG','PARÁ':'PA',
+  'PARAÍBA':'PB','PARANÁ':'PR','PERNAMBUCO':'PE','PIAUÍ':'PI','RIO DE JANEIRO':'RJ',
+  'RIO GRANDE DO NORTE':'RN','RIO GRANDE DO SUL':'RS','RONDÔNIA':'RO','RORAIMA':'RR',
+  'SANTA CATARINA':'SC','SÃO PAULO':'SP','SERGIPE':'SE','TOCANTINS':'TO',
+};
+const _SINISTROS_STATUS_ESTILO = {
+  realizada:  { label: 'Realizada',  bg: '#dcfce7', cor: '#166534' },
+  pendente:   { label: 'Pendente',   bg: '#fef9c3', cor: '#854d0e' },
+  agendada:   { label: 'Agendada',   bg: '#dbeafe', cor: '#1e40af' },
+  cancelada:  { label: 'Cancelada',  bg: '#fee2e2', cor: '#991b1b' },
+};
+const _SINISTROS_DIAS_SEMANA = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+
+function _sinistrosUfSigla(uf) {
+  if (!uf) return '—';
+  const t = uf.trim().toUpperCase();
+  return _SINISTROS_UF_SIGLA[t] || (t.length === 2 ? t : uf);
+}
+
+function _sinistrosTipoLabel(tipo) {
+  if (!tipo) return '—';
+  return tipo.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+}
+
+function _sinistrosStatusBadge(status) {
+  const s = _SINISTROS_STATUS_ESTILO[(status || '').toLowerCase()]
+    || { label: status || '—', bg: '#f3f4f6', cor: '#374151' };
+  return `<span style="background:${s.bg};color:${s.cor};font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap">${s.label}</span>`;
+}
+
+function _sinistrosCartao(v) {
+  const p = v.propostas || {};
+  const tecnico = (v.tecnicos && v.tecnicos.nome) || null;
+  const cidadeUf = [p.municipio, _sinistrosUfSigla(p.uf)].filter(Boolean).join('/');
+  return `<div onclick="_sinistrosAbrirDetalhe('${v.id}')" style="cursor:pointer;background:#fff;border:1px solid var(--gray100);border-radius:10px;padding:12px 14px;margin-bottom:10px" onmouseover="this.style.borderColor='#86efac'" onmouseout="this.style.borderColor='var(--gray100)'">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+      <div style="font-weight:700;font-size:13px;color:#111827">${p.id_proposta || '—'} - ${(p.nome_cliente || '—').trim()}</div>
+      ${_sinistrosStatusBadge(v.status_inspecao)}
+    </div>
+    <div style="font-size:12px;margin-top:4px">
+      <span style="color:#166534;font-weight:600">${_sinistrosTipoLabel(v.tipo)}</span>
+      ${tecnico ? ` · <span style="color:var(--gray600)">${tecnico}</span>` : ''}
+    </div>
+    <div style="font-size:12px;color:var(--gray600);margin-top:2px">${p.cultura || '—'}${cidadeUf ? ' · ' + cidadeUf : ''}</div>
+  </div>`;
+}
+
+const _SINISTROS_DOC_TIPO_LABEL = {
+  proposta: 'Proposta', kml: 'KML', relatorio: 'Relatório', draft: 'Draft',
+};
+
+function _sinistrosCampo(label, valor) {
+  if (valor === null || valor === undefined || valor === '') return '';
+  return `<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px">
+    <span style="color:var(--gray400)">${label}</span>
+    <span style="color:#111827;font-weight:600;text-align:right">${valor}</span>
+  </div>`;
+}
+
+async function _sinistrosAbrirDetalhe(vistoriaId) {
+  openModal('modal-sinistro-detalhe');
+  const titulo = document.getElementById('sinistro-detalhe-titulo');
+  const subtitulo = document.getElementById('sinistro-detalhe-subtitulo');
+  const body = document.getElementById('sinistro-detalhe-body');
+  titulo.textContent = 'Sinistro';
+  subtitulo.textContent = '';
+  body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray400)">Carregando…</div>';
+  try {
+    const v = await api('GET', `/sinistros/vistorias/${vistoriaId}/detalhe`);
+    const p = v.propostas || {};
+    const cidadeUf = [p.municipio, _sinistrosUfSigla(p.uf)].filter(Boolean).join(' / ');
+    titulo.textContent = `${p.id_proposta || '—'} - ${(p.nome_cliente || '—').trim()}`;
+    subtitulo.textContent = [p.cultura, [p.municipio, _sinistrosUfSigla(p.uf)].filter(Boolean).join('/'), p.area ? `${p.area} ha` : null].filter(Boolean).join(' · ');
+
+    const numeroSinistro = v.sinistro_hdi ? `${v.sinistro_hdi}${v.sinistro_evento ? ' · ' + v.sinistro_evento : ''}` : null;
+    const folioReplantio = v.folio || v.sinistro_folio || null;
+
+    const mapaHtml = (p.latitude && p.longitude)
+      ? `<iframe src="https://maps.google.com/maps?q=${p.latitude},${p.longitude}&z=15&output=embed" style="width:100%;height:220px;border:1px solid #d1d5db;border-radius:8px" loading="lazy"></iframe>`
+      : '<div style="font-size:12px;color:var(--gray400)">Sem coordenadas cadastradas.</div>';
+
+    const docs = v.documentos || [];
+    const docsHtml = docs.length
+      ? docs.map(d => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px">
+          <div style="min-width:0">
+            <span style="background:#f0fdf4;color:#166534;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;margin-right:6px">${_SINISTROS_DOC_TIPO_LABEL[d.tipo] || d.tipo || '—'}</span>
+            <span style="color:#111827">${d.nome_arquivo || '—'}</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="btn-sm" style="padding:4px 10px;font-size:12px" onclick="_sinistrosAbrirDocumento('${d.id}','${(d.nome_arquivo||'documento').replace(/'/g,"\\'")}','ver')">👁️ Ver</button>
+            <button class="btn-sm" style="padding:4px 10px;font-size:12px" onclick="_sinistrosAbrirDocumento('${d.id}','${(d.nome_arquivo||'documento').replace(/'/g,"\\'")}','baixar')">⬇️ Baixar</button>
+          </div>
+        </div>`).join('')
+      : '<div style="font-size:12px;color:var(--gray400)">Nenhum documento anexado.</div>';
+
+    body.innerHTML = `
+      <div style="font-size:12px;font-weight:700;color:var(--gray400);letter-spacing:.04em;margin-bottom:6px">INFORMAÇÕES DA APÓLICE</div>
+      <div style="background:#f9fafb;border-radius:8px;padding:4px 12px;margin-bottom:18px">
+        ${_sinistrosCampo('N° do Sinistro', numeroSinistro)}
+        ${_sinistrosCampo('Apólice HDI', p.apolice_hdi)}
+        ${_sinistrosCampo('Apólice ProAgro', p.apolice_proagro)}
+        ${_sinistrosCampo('Itens', p.itens)}
+        ${_sinistrosCampo('Tipo de Ajuste', p.tipo_ajuste)}
+        ${_sinistrosCampo('Produto', p.produto)}
+        ${_sinistrosCampo('Cultura', p.cultura)}
+        ${_sinistrosCampo('Município/UF', cidadeUf)}
+        ${_sinistrosCampo('Área total (apólice)', p.area ? `${p.area} ha` : null)}
+      </div>
+
+      ${folioReplantio ? `
+      <div style="font-size:12px;font-weight:700;color:var(--gray400);letter-spacing:.04em;margin-bottom:6px">FÓLIO DO REPLANTIO — APÓLICE</div>
+      <div style="background:#f9fafb;border-radius:8px;padding:4px 12px;margin-bottom:18px">
+        ${_sinistrosCampo('Fólio', folioReplantio)}
+        ${_sinistrosCampo('Área do item', v.area_item ? `${v.area_item} ha` : null)}
+      </div>` : ''}
+
+      <div style="font-size:12px;font-weight:700;color:var(--gray400);letter-spacing:.04em;margin-bottom:6px">LOCALIZAÇÃO DA ÁREA</div>
+      <div style="margin-bottom:18px">${mapaHtml}</div>
+
+      <div style="font-size:12px;font-weight:700;color:var(--gray400);letter-spacing:.04em;margin-bottom:6px">DOCUMENTOS ENVIADOS PELA SEGURADORA</div>
+      <div>${docsHtml}</div>
+    `;
+  } catch (e) {
+    body.innerHTML = `<p style="text-align:center;color:#b91c1c;padding:40px">Erro ao carregar: ${e.message}</p>`;
+  }
+}
+
+async function _sinistrosAbrirDocumento(docId, nomeArquivo, modo) {
+  try {
+    const res = await fetch(`${BACKEND_URL}/sinistros/documentos/${docId}/baixar`, {
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'Falha ao abrir documento.'); }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    if (modo === 'baixar') {
+      const a = document.createElement('a'); a.href = url; a.download = nomeArquivo; a.click();
+    } else {
+      window.open(url, '_blank');
+    }
+  } catch (e) {
+    alert('❌ ' + e.message);
+  }
+}
+
+function _sinistrosFormatarData(iso) {
+  // "2026-11-16" -> "Segunda · 16/11/2026" (sem depender de fuso -- parse manual)
+  const [ano, mes, dia] = iso.split('-').map(Number);
+  const d = new Date(ano, mes - 1, dia);
+  const diaSemana = _SINISTROS_DIAS_SEMANA[d.getDay()];
+  return `${diaSemana} · ${String(dia).padStart(2,'0')}/${String(mes).padStart(2,'0')}/${ano}`;
+}
+
+async function carregarSinistros() {
+  const container = document.getElementById('sinistros-resultado');
+  const elIni = document.getElementById('sinistros-data-inicio');
+  const elFim = document.getElementById('sinistros-data-fim');
+  if (!elIni.value) {
+    const hoje = new Date();
+    elIni.value = hoje.toISOString().slice(0, 10);
+  }
+  container.innerHTML = '<p style="text-align:center;color:var(--gray400);padding:40px">Carregando…</p>';
+  try {
+    let url = `/sinistros/vistorias?data_inicio=${elIni.value}`;
+    if (elFim.value) url += `&data_fim=${elFim.value}`;
+    const lista = await api('GET', url);
+    if (!lista.length) {
+      container.innerHTML = '<p style="text-align:center;color:var(--gray400);padding:40px">Nenhuma vistoria agendada nesse período.</p>';
+      return;
+    }
+    // Agrupa por data_agendamento -> periodo (manha/tarde/null="A definir")
+    const porData = {};
+    for (const v of lista) {
+      const data = v.data_agendamento || 'sem-data';
+      const per = v.periodo === 'manha' ? 'manha' : v.periodo === 'tarde' ? 'tarde' : 'outro';
+      (porData[data] = porData[data] || { manha: [], tarde: [], outro: [] })[per].push(v);
+    }
+    const PERIODOS = [
+      { key: 'manha', label: '🌅 Manhã' },
+      { key: 'tarde', label: '🌤️ Tarde' },
+      { key: 'outro', label: '🕐 A definir' },
+    ];
+    container.innerHTML = Object.keys(porData).sort().map(data => {
+      const grupos = porData[data];
+      const total = grupos.manha.length + grupos.tarde.length + grupos.outro.length;
+      const titulo = data === 'sem-data' ? 'Sem data definida' : _sinistrosFormatarData(data);
+      const colunas = PERIODOS.map(per => {
+        const itens = grupos[per.key];
+        if (!itens.length) return '';
+        return `<div style="flex:1;min-width:220px">
+          <div style="font-size:12px;font-weight:700;color:var(--gray600);margin-bottom:8px">${per.label} (${itens.length})</div>
+          ${itens.map(_sinistrosCartao).join('')}
+        </div>`;
+      }).join('');
+      return `<div class="card" style="margin-bottom:16px">
+        <div style="font-weight:700;font-size:15px;color:#111827;margin-bottom:14px">${titulo} <span style="color:var(--gray400);font-weight:400">(${total})</span></div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">${colunas}</div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    container.innerHTML = `<p style="text-align:center;color:#b91c1c;padding:40px">Erro ao carregar: ${e.message}</p>`;
   }
 }
 
