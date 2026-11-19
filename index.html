@@ -12123,13 +12123,52 @@ function _sinistrosCartao(v) {
 
 const _SINISTROS_DOC_TIPO_LABEL = {
   proposta: 'Proposta', kml: 'KML', relatorio: 'Relatório', draft: 'Draft',
+  seguradora: 'Seguradora', laudo: 'Laudo', foto: 'Foto', gpx: 'GPS',
+  nfs: 'NFS', estudo_previo: 'Estudo prévio', carta_autorizacao: 'Carta de autorização',
+  relatorio_foto: 'Relatório/Foto', outro: 'Outro',
 };
+// Documentos "seguradora" (apólice/aviso enviados pela seguradora) só têm
+// Baixar na tela de referência -- os demais têm Ver + Baixar.
+const _SINISTROS_DOC_SO_BAIXAR = new Set(['seguradora']);
 
 function _sinistrosCampo(label, valor) {
   if (valor === null || valor === undefined || valor === '') return '';
   return `<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px">
     <span style="color:var(--gray400)">${label}</span>
     <span style="color:#111827;font-weight:600;text-align:right">${valor}</span>
+  </div>`;
+}
+
+function _sinistrosListaDocumentos(docs) {
+  if (!docs || !docs.length) return '<div style="font-size:12px;color:var(--gray400)">Nenhum documento anexado.</div>';
+  return docs.map(d => {
+    const soBaixar = _SINISTROS_DOC_SO_BAIXAR.has(d.tipo);
+    const nome = (d.nome_arquivo || 'documento').replace(/'/g, "\\'");
+    const endpoint = d.origem === 'vistoria_anexos' ? 'anexos' : 'documentos';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px">
+      <div style="min-width:0">
+        <span style="background:${soBaixar ? '#fef3c7' : '#f0fdf4'};color:${soBaixar ? '#92400e' : '#166534'};font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;margin-right:6px">${_SINISTROS_DOC_TIPO_LABEL[d.tipo] || d.tipo || '—'}</span>
+        <span style="color:#111827">${d.nome_arquivo || '—'}</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        ${soBaixar ? '' : `<button class="btn-sm" style="padding:4px 10px;font-size:12px" onclick="_sinistrosAbrirArquivo('${endpoint}','${d.id}','${nome}','ver')">👁️ Ver</button>`}
+        <button class="btn-sm" style="padding:4px 10px;font-size:12px" onclick="_sinistrosAbrirArquivo('${endpoint}','${d.id}','${nome}','baixar')">⬇️ Baixar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function _sinistrosCartaoVisita(v) {
+  const data = v.data_agendamento ? _sinistrosFormatarData(v.data_agendamento).split(' · ')[1] : null;
+  return `<div style="border:1px solid var(--gray100);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <div style="font-weight:700;font-size:13px;color:#111827">${_sinistrosTipoLabel(v.tipo)}${data ? ' · ' + data : ''}</div>
+      ${_sinistrosStatusBadge(v.status_inspecao)}
+    </div>
+    <div style="font-size:12px;color:var(--gray600);margin-top:4px">
+      ${[v.tecnico, v.periodo === 'manha' ? 'Manhã' : v.periodo === 'tarde' ? 'Tarde' : null, v.ordem_trabalho ? 'OT ' + v.ordem_trabalho : null, v.qtd_itens > 1 ? v.qtd_itens + ' itens' : null].filter(Boolean).join(' · ') || '—'}
+    </div>
+    ${v.observacoes ? `<div style="font-size:12px;color:var(--gray600);margin-top:4px;font-style:italic">"${v.observacoes}"</div>` : ''}
   </div>`;
 }
 
@@ -12142,32 +12181,43 @@ async function _sinistrosAbrirDetalhe(vistoriaId) {
   subtitulo.textContent = '';
   body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray400)">Carregando…</div>';
   try {
-    const v = await api('GET', `/sinistros/vistorias/${vistoriaId}/detalhe`);
-    const p = v.propostas || {};
+    const dados = await api('GET', `/sinistros/vistorias/${vistoriaId}/detalhe`);
+    const p = dados.proposta || {};
     const cidadeUf = [p.municipio, _sinistrosUfSigla(p.uf)].filter(Boolean).join(' / ');
     titulo.textContent = `${p.id_proposta || '—'} - ${(p.nome_cliente || '—').trim()}`;
     subtitulo.textContent = [p.cultura, [p.municipio, _sinistrosUfSigla(p.uf)].filter(Boolean).join('/'), p.area ? `${p.area} ha` : null].filter(Boolean).join(' · ');
 
-    const numeroSinistro = v.sinistro_hdi ? `${v.sinistro_hdi}${v.sinistro_evento ? ' · ' + v.sinistro_evento : ''}` : null;
-    const folioReplantio = v.folio || v.sinistro_folio || null;
+    const numeroSinistro = dados.sinistro_hdi
+      ? `<span style="color:#b91c1c">${dados.sinistro_hdi}${dados.sinistro_evento ? ' · ' + dados.sinistro_evento : ''}</span>` : null;
+
+    const itens = dados.itens || [];
+    const folioHtml = itens.length
+      ? `<div style="font-size:12px;font-weight:700;color:var(--gray400);letter-spacing:.04em;margin-bottom:6px">FÓLIO DO REPLANTIO — POR ITEM (AJUSTE POR ÁREA PARCIAL)</div>
+         <div style="margin-bottom:18px">
+           ${itens.map(it => `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 12px;background:#f9fafb;border-radius:8px;margin-bottom:4px;font-size:13px">
+             <span style="color:#111827;font-weight:600">${it.sinistro_folio || '—'}</span>
+             <span style="color:var(--gray400);text-align:right">Item ${it.item} · ${it.area_item || '—'} ha · fólio monit. ${it.folio || '—'}</span>
+           </div>`).join('')}
+         </div>`
+      : `<div style="font-size:12px;font-weight:700;color:var(--gray400);letter-spacing:.04em;margin-bottom:6px">FÓLIO DO REPLANTIO — APÓLICE</div>
+         <div style="background:#f9fafb;border-radius:8px;padding:4px 12px;margin-bottom:18px">
+           ${_sinistrosCampo('Fólio', dados.sinistro_folio || '—')}
+         </div>`;
 
     const mapaHtml = (p.latitude && p.longitude)
-      ? `<iframe src="https://maps.google.com/maps?q=${p.latitude},${p.longitude}&z=15&output=embed" style="width:100%;height:220px;border:1px solid #d1d5db;border-radius:8px" loading="lazy"></iframe>`
+      ? `<iframe src="https://maps.google.com/maps?q=${p.latitude},${p.longitude}&z=15&output=embed" style="width:100%;height:220px;border:1px solid #d1d5db;border-radius:8px" loading="lazy"></iframe>
+         <a href="https://www.google.com/maps?q=${p.latitude},${p.longitude}" target="_blank" rel="noopener" style="font-size:12px;color:#1d4ed8;display:inline-block;margin-top:4px">Abrir no Google Maps ↗</a>`
       : '<div style="font-size:12px;color:var(--gray400)">Sem coordenadas cadastradas.</div>';
 
-    const docs = v.documentos || [];
-    const docsHtml = docs.length
-      ? docs.map(d => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px">
-          <div style="min-width:0">
-            <span style="background:#f0fdf4;color:#166534;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;margin-right:6px">${_SINISTROS_DOC_TIPO_LABEL[d.tipo] || d.tipo || '—'}</span>
-            <span style="color:#111827">${d.nome_arquivo || '—'}</span>
-          </div>
-          <div style="display:flex;gap:6px;flex-shrink:0">
-            <button class="btn-sm" style="padding:4px 10px;font-size:12px" onclick="_sinistrosAbrirDocumento('${d.id}','${(d.nome_arquivo||'documento').replace(/'/g,"\\'")}','ver')">👁️ Ver</button>
-            <button class="btn-sm" style="padding:4px 10px;font-size:12px" onclick="_sinistrosAbrirDocumento('${d.id}','${(d.nome_arquivo||'documento').replace(/'/g,"\\'")}','baixar')">⬇️ Baixar</button>
-          </div>
-        </div>`).join('')
-      : '<div style="font-size:12px;color:var(--gray400)">Nenhum documento anexado.</div>';
+    const visitas = dados.visitas || [];
+    const visitasHtml = visitas.length
+      ? visitas.map(_sinistrosCartaoVisita).join('')
+      : '<div style="font-size:12px;color:var(--gray400)">Nenhuma visita cadastrada.</div>';
+
+    const historico = dados.historico_anexos || [];
+    const historicoHtml = historico.length
+      ? _sinistrosListaDocumentos(historico)
+      : '<div style="font-size:12px;color:var(--gray400)">Nenhum documento de visitas anteriores.</div>';
 
     body.innerHTML = `
       <div style="font-size:12px;font-weight:700;color:var(--gray400);letter-spacing:.04em;margin-bottom:6px">INFORMAÇÕES DA APÓLICE</div>
@@ -12183,30 +12233,31 @@ async function _sinistrosAbrirDetalhe(vistoriaId) {
         ${_sinistrosCampo('Área total (apólice)', p.area ? `${p.area} ha` : null)}
       </div>
 
-      ${folioReplantio ? `
-      <div style="font-size:12px;font-weight:700;color:var(--gray400);letter-spacing:.04em;margin-bottom:6px">FÓLIO DO REPLANTIO — APÓLICE</div>
-      <div style="background:#f9fafb;border-radius:8px;padding:4px 12px;margin-bottom:18px">
-        ${_sinistrosCampo('Fólio', folioReplantio)}
-        ${_sinistrosCampo('Área do item', v.area_item ? `${v.area_item} ha` : null)}
-      </div>` : ''}
+      ${folioHtml}
 
       <div style="font-size:12px;font-weight:700;color:var(--gray400);letter-spacing:.04em;margin-bottom:6px">LOCALIZAÇÃO DA ÁREA</div>
       <div style="margin-bottom:18px">${mapaHtml}</div>
 
       <div style="font-size:12px;font-weight:700;color:var(--gray400);letter-spacing:.04em;margin-bottom:6px">DOCUMENTOS ENVIADOS PELA SEGURADORA</div>
-      <div>${docsHtml}</div>
+      <div style="margin-bottom:18px">${_sinistrosListaDocumentos(dados.documentos)}</div>
+
+      <div style="font-size:12px;font-weight:700;color:var(--gray400);letter-spacing:.04em;margin-bottom:6px">HISTÓRICO DE ANEXOS DA ÁREA (TODAS AS VISITAS)</div>
+      <div style="margin-bottom:18px">${historicoHtml}</div>
+
+      <div style="font-size:12px;font-weight:700;color:var(--gray400);letter-spacing:.04em;margin-bottom:6px">VISITAS DA APÓLICE</div>
+      <div>${visitasHtml}</div>
     `;
   } catch (e) {
     body.innerHTML = `<p style="text-align:center;color:#b91c1c;padding:40px">Erro ao carregar: ${e.message}</p>`;
   }
 }
 
-async function _sinistrosAbrirDocumento(docId, nomeArquivo, modo) {
+async function _sinistrosAbrirArquivo(endpoint, id, nomeArquivo, modo) {
   try {
-    const res = await fetch(`${BACKEND_URL}/sinistros/documentos/${docId}/baixar`, {
+    const res = await fetch(`${BACKEND_URL}/sinistros/${endpoint}/${id}/baixar`, {
       headers: { Authorization: `Bearer ${TOKEN}` },
     });
-    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'Falha ao abrir documento.'); }
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'Falha ao abrir arquivo.'); }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     if (modo === 'baixar') {
