@@ -12509,12 +12509,29 @@ function _sinistrosRenderizarResumo(linhas, safraLabel) {
   `;
 }
 
+function _sinistrosPrioridade(l) {
+  // Os que ainda vão passar por vistoria ficam no topo: 1º os "em aberto"
+  // (sem data agendada -- precisam de atenção da analista), depois os
+  // "agendados" (já tem data marcada), por último os já concluídos. A
+  // pedido da analista de sinistro (2026-11-23): ela precisa ver os avisos
+  // em aberto/agendados primeiro, não enterrados embaixo dos concluídos.
+  if (l.final_classe === 'pend_agend') return 0;
+  if (l.final_classe === 'agendada') return 1;
+  return 2; // realizada = concluído
+}
+
+function _sinistrosStatusLabel(l) {
+  if (l.final_classe === 'realizada') return { texto: 'Concluído', cor: '#166534' };
+  if (l.final_classe === 'agendada') return { texto: 'Agendado', cor: '#b45309' };
+  return { texto: 'Em aberto', cor: '#b91c1c' };
+}
+
 function _sinistrosRenderizarPainel() {
   const safra = document.getElementById('sinistros-filtro-safra').value;
   const porSafra = safra ? _sinistrosPainelDados.filter(l => l.safra === safra) : _sinistrosPainelDados;
   _sinistrosRenderizarResumo(porSafra, safra ? 'safra ' + safra : null);
 
-  const filtradas = _sinistrosFiltrar();
+  const filtradas = _sinistrosFiltrar().sort((a, b) => _sinistrosPrioridade(a) - _sinistrosPrioridade(b));
   document.getElementById('sinistros-contador').textContent =
     `${filtradas.length} sinistro(s) · ${safra ? 'safra ' + safra : 'todas as safras'} · clique numa linha para abrir`;
 
@@ -12538,17 +12555,17 @@ function _sinistrosRenderizarPainel() {
       <td>${_sinistrosFormatarDataCurta(l.vigencia_fim)}</td>
       <td>${_sinistrosFormatarDataCurta(l.vistoria_preliminar)}</td>
       <td>${_sinistrosFormatarDataCurta(l.vistoria_final)}</td>
-      <td>${l.status === 'Concluído' ? '<span style="color:#166534;font-weight:700">Concluído</span>' : '<span style="color:#b91c1c;font-weight:700">Pendente</span>'}</td>
+      <td><span style="color:${_sinistrosStatusLabel(l).cor};font-weight:700">${_sinistrosStatusLabel(l).texto}</span></td>
     </tr>
   `).join('');
 }
 
 function _sinistrosExportarExcel() {
-  const linhas = _sinistrosFiltrar();
+  const linhas = _sinistrosFiltrar().sort((a, b) => _sinistrosPrioridade(a) - _sinistrosPrioridade(b));
   const cab = ['N° Sinistro', 'Apólice HDI', 'Apólice ProAgro', 'Segurado', 'Município', 'UF', 'Corretora', 'Técnico', 'Cobertura', 'Evento', 'Vigência Início', 'Vigência Fim', 'Vistoria Preliminar', 'Vistoria Final', 'Status'];
   const linhasCsv = linhas.map(l => [
     l.sinistro_hdi, l.apolice_hdi, l.apolice_proagro, l.segurado, l.municipio, l.uf, l.corretora, l.tecnico,
-    l.cobertura, l.evento, l.vigencia_inicio, l.vigencia_fim, l.vistoria_preliminar, l.vistoria_final, l.status,
+    l.cobertura, l.evento, l.vigencia_inicio, l.vigencia_fim, l.vistoria_preliminar, l.vistoria_final, _sinistrosStatusLabel(l).texto,
   ]);
   const csv = [cab, ...linhasCsv].map(linha => linha.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n');
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
