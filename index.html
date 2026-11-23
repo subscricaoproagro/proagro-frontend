@@ -1035,8 +1035,9 @@
             <th>N° SINISTRO</th><th>APÓLICE HDI</th><th>APÓLICE PROAGRO</th><th>SEGURADO</th>
             <th>MUNICÍPIO/UF</th><th>CORRETORA</th><th>TÉCNICO</th><th>COBERTURA</th><th>EVENTO</th>
             <th>VIGÊNCIA INÍCIO</th><th>VIGÊNCIA FIM</th><th>VISTORIA PRELIMINAR</th><th>VISTORIA FINAL</th><th>STATUS</th>
+            <th>PRÊMIO</th><th>IS</th>
           </tr></thead>
-          <tbody id="sinistros-tabela-corpo"><tr><td colspan="14" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+          <tbody id="sinistros-tabela-corpo"><tr><td colspan="16" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -12300,9 +12301,16 @@ async function _sinistrosAbrirDetalhe(vistoriaId) {
            ${_sinistrosCampo('Fólio', dados.sinistro_folio || '—')}
          </div>`;
 
-    const mapaHtml = (p.latitude && p.longitude)
-      ? `<iframe src="https://maps.google.com/maps?q=${p.latitude},${p.longitude}&z=15&output=embed" style="width:100%;height:220px;border:1px solid #d1d5db;border-radius:8px" loading="lazy"></iframe>
-         <a href="https://www.google.com/maps?q=${p.latitude},${p.longitude}" target="_blank" rel="noopener" style="font-size:12px;color:#1d4ed8;display:inline-block;margin-top:4px">Abrir no Google Maps ↗</a>`
+    // A API de vistorias grava latitude/longitude como texto com vírgula
+    // decimal (ex.: "-24,248915") -- jogado direto no "q=lat,lng" do Google
+    // Maps isso virava 4 valores separados por vírgula (ilegível pro
+    // Maps), que caía no mapa-múndi padrão em vez de dar zoom na área.
+    // Bug real confirmado em produção (2026-11-23, caso MANOEL BELMONTE).
+    const latNorm = p.latitude ? String(p.latitude).trim().replace(',', '.') : null;
+    const lonNorm = p.longitude ? String(p.longitude).trim().replace(',', '.') : null;
+    const mapaHtml = (latNorm && lonNorm && !isNaN(parseFloat(latNorm)) && !isNaN(parseFloat(lonNorm)))
+      ? `<iframe src="https://maps.google.com/maps?q=${latNorm},${lonNorm}&z=15&output=embed" style="width:100%;height:220px;border:1px solid #d1d5db;border-radius:8px" loading="lazy"></iframe>
+         <a href="https://www.google.com/maps?q=${latNorm},${lonNorm}" target="_blank" rel="noopener" style="font-size:12px;color:#1d4ed8;display:inline-block;margin-top:4px">Abrir no Google Maps ↗</a>`
       : '<div style="font-size:12px;color:var(--gray400)">Sem coordenadas cadastradas.</div>';
 
     const visitas = dados.visitas || [];
@@ -12314,6 +12322,53 @@ async function _sinistrosAbrirDetalhe(vistoriaId) {
     const historicoHtml = historico.length
       ? _sinistrosListaDocumentos(historico)
       : '<div style="font-size:12px;color:var(--gray400)">Nenhum documento de visitas anteriores.</div>';
+
+    // Prêmio/IS/Preço Saca/Prod. Garantida/Nível de Cobertura/Taxa vêm de
+    // gestao_propostas (nosso próprio Supabase, espelho da matriz), casados
+    // por id_proposta -- nem toda proposta tem match (ex.: ainda sem
+    // subscrição), então financeiro pode vir null. A pedido do usuário
+    // (2026-11-23): "o prêmio não tem na gestão de propostas? a IS tbm não
+    // tem? -- Faça tudo".
+    const fin = dados.financeiro || {};
+    const financeiroHtml = dados.financeiro
+      ? `<div style="font-size:12px;font-weight:700;color:var(--gray400);letter-spacing:.04em;margin-bottom:6px">FINANCEIRO (GESTÃO DE PROPOSTAS)</div>
+         <div style="background:#f9fafb;border-radius:8px;padding:4px 12px;margin-bottom:18px">
+           ${_sinistrosCampo('Prêmio Total', _sinistrosFormatarMoeda(fin.premio_total_rs))}
+           ${_sinistrosCampo('Prêmio Pago', _sinistrosFormatarMoeda(fin.premio_pago_rs))}
+           ${_sinistrosCampo('Importância Segurada (IS)', _sinistrosFormatarMoeda(fin.importancia_segurada))}
+           ${_sinistrosCampo('Preço Saca', _sinistrosFormatarMoeda(fin.preco_sc))}
+           ${_sinistrosCampo('Prod. Garantida', fin.produtividade_garantida != null ? `${fin.produtividade_garantida} kg/ha` : null)}
+           ${_sinistrosCampo('Nível de Cobertura', fin.nivel_cobertura != null ? `${(fin.nivel_cobertura * 100).toFixed(0)}%` : null)}
+           ${_sinistrosCampo('Taxa', fin.taxa != null ? `${(fin.taxa * 100).toFixed(2)}%` : null)}
+         </div>`
+      : '';
+
+    // Timeline unificada: comentários de técnico (observações livres) +
+    // log de reagendamento de vistoria, por ordem cronológica. motivo do
+    // reagendamento vem gravado como "texto§§autor§§papel" -- já separado
+    // pelo backend em motivo_texto/motivo_autor.
+    const timeline = [
+      ...(dados.comentarios || []).map(c => ({
+        data: c.criado_em, tipo: 'comentário',
+        autor: [c.autor_nome, c.autor_papel].filter(Boolean).join(' · '),
+        texto: c.texto,
+      })),
+      ...(dados.reagendamentos || []).map(r => ({
+        data: r.criado_em, tipo: 'reagendamento',
+        autor: r.motivo_autor,
+        texto: `Vistoria reagendada de ${_sinistrosFormatarDataCurta(r.data_anterior)} para ${_sinistrosFormatarDataCurta(r.data_nova)}${r.motivo_texto ? ' — ' + r.motivo_texto : ''}`,
+      })),
+    ].sort((a, b) => new Date(a.data) - new Date(b.data));
+    const timelineHtml = timeline.length
+      ? timeline.map(t => `<div style="border:1px solid var(--gray100);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:${t.tipo === 'reagendamento' ? '#b45309' : '#1d4ed8'}">${t.tipo}</span>
+            <span style="font-size:11px;color:var(--gray400)">${t.data ? new Date(t.data).toLocaleString('pt-BR') : '—'}</span>
+          </div>
+          <div style="font-size:13px;color:#111827;margin-top:4px">${t.texto || '—'}</div>
+          ${t.autor ? `<div style="font-size:11px;color:var(--gray400);margin-top:2px">${t.autor}</div>` : ''}
+        </div>`).join('')
+      : '<div style="font-size:12px;color:var(--gray400)">Nenhuma observação ou reagendamento registrado.</div>';
 
     body.innerHTML = `
       <div style="font-size:12px;font-weight:700;color:var(--gray400);letter-spacing:.04em;margin-bottom:6px">INFORMAÇÕES DA APÓLICE</div>
@@ -12329,10 +12384,15 @@ async function _sinistrosAbrirDetalhe(vistoriaId) {
         ${_sinistrosCampo('Área total (apólice)', p.area ? `${p.area} ha` : null)}
       </div>
 
+      ${financeiroHtml}
+
       ${folioHtml}
 
       <div style="font-size:12px;font-weight:700;color:var(--gray400);letter-spacing:.04em;margin-bottom:6px">LOCALIZAÇÃO DA ÁREA</div>
       <div style="margin-bottom:18px">${mapaHtml}</div>
+
+      <div style="font-size:12px;font-weight:700;color:var(--gray400);letter-spacing:.04em;margin-bottom:6px">HISTÓRICO DO SINISTRO (OBSERVAÇÕES E REAGENDAMENTOS)</div>
+      <div style="margin-bottom:18px">${timelineHtml}</div>
 
       <div style="font-size:12px;font-weight:700;color:var(--gray400);letter-spacing:.04em;margin-bottom:6px">DOCUMENTOS ENVIADOS PELA SEGURADORA</div>
       <div style="margin-bottom:18px">${_sinistrosListaDocumentos(dados.documentos)}</div>
@@ -12395,13 +12455,13 @@ function _sinistrosFormatarDataCurta(iso) {
 
 async function carregarPainelSinistros() {
   const corpo = document.getElementById('sinistros-tabela-corpo');
-  corpo.innerHTML = '<tr><td colspan="14" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
+  corpo.innerHTML = '<tr><td colspan="16" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr>';
   try {
     _sinistrosPainelDados = await api('GET', '/sinistros/painel');
     _sinistrosPopularFiltros();
     _sinistrosRenderizarPainel();
   } catch (e) {
-    corpo.innerHTML = `<tr><td colspan="14" style="text-align:center;color:#b91c1c;padding:40px">Erro ao carregar: ${e.message}</td></tr>`;
+    corpo.innerHTML = `<tr><td colspan="16" style="text-align:center;color:#b91c1c;padding:40px">Erro ao carregar: ${e.message}</td></tr>`;
   }
 }
 
@@ -12537,7 +12597,7 @@ function _sinistrosRenderizarPainel() {
 
   const corpo = document.getElementById('sinistros-tabela-corpo');
   if (!filtradas.length) {
-    corpo.innerHTML = '<tr><td colspan="14" style="text-align:center;color:var(--gray400);padding:40px">Nenhum sinistro encontrado.</td></tr>';
+    corpo.innerHTML = '<tr><td colspan="16" style="text-align:center;color:var(--gray400);padding:40px">Nenhum sinistro encontrado.</td></tr>';
     return;
   }
   corpo.innerHTML = filtradas.map(l => `
@@ -12556,16 +12616,25 @@ function _sinistrosRenderizarPainel() {
       <td>${_sinistrosFormatarDataCurta(l.vistoria_preliminar)}</td>
       <td>${_sinistrosFormatarDataCurta(l.vistoria_final)}</td>
       <td><span style="color:${_sinistrosStatusLabel(l).cor};font-weight:700">${_sinistrosStatusLabel(l).texto}</span></td>
+      <td style="text-align:right">${_sinistrosFormatarMoeda(l.premio_total_rs)}</td>
+      <td style="text-align:right">${_sinistrosFormatarMoeda(l.importancia_segurada)}</td>
     </tr>
   `).join('');
 }
 
+function _sinistrosFormatarMoeda(v) {
+  const n = typeof v === 'number' ? v : parseFloat(v);
+  if (v == null || isNaN(n)) return '—';
+  return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function _sinistrosExportarExcel() {
   const linhas = _sinistrosFiltrar().sort((a, b) => _sinistrosPrioridade(a) - _sinistrosPrioridade(b));
-  const cab = ['N° Sinistro', 'Apólice HDI', 'Apólice ProAgro', 'Segurado', 'Município', 'UF', 'Corretora', 'Técnico', 'Cobertura', 'Evento', 'Vigência Início', 'Vigência Fim', 'Vistoria Preliminar', 'Vistoria Final', 'Status'];
+  const cab = ['N° Sinistro', 'Apólice HDI', 'Apólice ProAgro', 'Segurado', 'Município', 'UF', 'Corretora', 'Técnico', 'Cobertura', 'Evento', 'Vigência Início', 'Vigência Fim', 'Vistoria Preliminar', 'Vistoria Final', 'Status', 'Prêmio (R$)', 'IS (R$)'];
   const linhasCsv = linhas.map(l => [
     l.sinistro_hdi, l.apolice_hdi, l.apolice_proagro, l.segurado, l.municipio, l.uf, l.corretora, l.tecnico,
     l.cobertura, l.evento, l.vigencia_inicio, l.vigencia_fim, l.vistoria_preliminar, l.vistoria_final, _sinistrosStatusLabel(l).texto,
+    l.premio_total_rs, l.importancia_segurada,
   ]);
   const csv = [cab, ...linhasCsv].map(linha => linha.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n');
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
