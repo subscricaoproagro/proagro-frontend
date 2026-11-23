@@ -400,7 +400,7 @@
       <button class="topbar-btn active" id="dashboard-btn" onclick="showPage('dashboard')"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span><span class="sidebar-label">Dashboard</span></button>
       <button class="topbar-btn" id="dashboard-sv-btn" onclick="showPage('dashboard-supervisor')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span><span class="sidebar-label">Dashboard</span></button>
       <button class="topbar-btn" id="nova-analise-btn" onclick="showPage('nova-analise')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/><path d="M12 11v6"/><path d="M9 14h6"/></svg></span><span class="sidebar-label">Nova Análise</span></button>
-      <button class="topbar-btn" id="historico-btn" onclick="showPage('historico')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span><span class="sidebar-label">Histórico</span></button>
+      <button class="topbar-btn" id="historico-btn" onclick="showPage('historico')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span><span class="sidebar-label">Histórico</span><span id="sistema-pendente-sino" class="esg-sino-alerta" style="display:none" title="Há propostas aguardando decisão"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2Zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2Z"/></svg></span></button>
       <button class="topbar-btn" id="solicitacoes-btn" onclick="showPage('solicitacoes')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg></span><span class="sidebar-label">Solicitações CE</span></button>
       <button class="topbar-btn" id="auditor-ce-btn" onclick="showPage('auditor-ce')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><span class="sidebar-label">Auditor de CE</span></button>
       <button class="topbar-btn" id="assistente-btn" onclick="showPage('assistente')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg></span><span class="sidebar-label">Assistente IA</span></button>
@@ -2765,6 +2765,18 @@ async function api(method, path, body = null, isForm = false, _tentativa = 1) {
     if (res.status === 401) { handleLogout(); throw new Error('Sessão expirada.'); }
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
+      // Decisão de proposta de Sistema fora do prazo de 10min úteis -- pede
+      // a justificativa do atraso na hora e reenvia automaticamente, em vez
+      // de só devolver o erro cru. Cobre TODOS os pontos do front que chamam
+      // POST /jobs/{id}/decisao (modal de relatório, modal de decisão, etc.)
+      // sem precisar duplicar essa lógica em cada um deles. A pedido do
+      // usuário (2026-11-23).
+      if (res.status === 400 && method === 'POST' && path.includes('/decisao') && !isForm
+          && err.detail && err.detail.startsWith('ATRASO:') && body && !body.justificativa_atraso) {
+        const motivo = prompt(err.detail.replace('ATRASO:', '').trim() + '\n\nDigite o motivo do atraso para poder salvar a decisão:');
+        if (!motivo || !motivo.trim()) throw new Error('Justificativa do atraso é obrigatória para salvar essa decisão.');
+        return api(method, path, { ...body, justificativa_atraso: motivo.trim() }, isForm, _tentativa);
+      }
       throw new Error(err.detail || 'Erro desconhecido.');
     }
     return res.json();
@@ -2834,6 +2846,10 @@ async function enterApp() {
   document.getElementById('top-avatar').textContent = initials;
   document.getElementById('top-username').textContent = currentUser.name;
 
+  // Rastreio de uso (só o Admin consulta depois) -- login nunca bloqueia a
+  // entrada no app se a chamada falhar. A pedido do usuário (2026-11-23).
+  api('POST', '/auditoria/evento', { evento: 'login' }).catch(() => {});
+
   // CEO com acesso total: modo somente-leitura desativado (todos os botões ativos).
   // if (currentUser.role === 'ceo') ativarModoSomenteLeituraCeo();
 
@@ -2896,6 +2912,17 @@ async function enterApp() {
   if (currentUser.role === 'analista' || currentUser.role === 'admin') {
     const _epBtn = document.getElementById('extrator-btn');
     if (_epBtn) _epBtn.style.display = '';
+  }
+
+  // Sino de "Proposta de Sistema aguardando decisão" -- avisa Admin/Analista
+  // sem precisar entrar no Histórico, igual ao sino de ESG/Observações
+  // Pendentes. Confere na entrada e depois a cada 60s. A pedido do usuário
+  // (2026-11-23): "coloque um sininho... pra alertar o analista que chegou
+  // uma nova proposta".
+  if (currentUser.role === 'admin' || currentUser.role === 'analista') {
+    _atualizarSinoSistemaPendente();
+    clearInterval(_sinoSistemaPendenteTimer);
+    _sinoSistemaPendenteTimer = setInterval(_atualizarSinoSistemaPendente, 60000);
   }
 
   // Usuário de Campo: acessa APENAS o Monitoramento de Campo
@@ -2978,7 +3005,12 @@ async function enterApp() {
 }
 
 function handleLogout() {
+  // Rastreio de uso -- dispara ANTES de limpar o TOKEN (senão o pedido vai
+  // sem Authorization e o backend nunca sabe quem deslogou). Fire-and-forget
+  // de propósito: logout não pode travar esperando a rede.
+  if (TOKEN) api('POST', '/auditoria/evento', { evento: 'logout' }).catch(() => {});
   clearInterval(pollingInterval);
+  clearInterval(_sinoSistemaPendenteTimer);
   TOKEN = ''; currentUser = null;
   sessionStorage.removeItem('pa_token');
   sessionStorage.removeItem('pa_user');
@@ -3071,10 +3103,17 @@ async function verificarBackend() {
 // ══════════════════════════════════════════
 // NAVEGAÇÃO
 // ══════════════════════════════════════════
+let _ultimaPaginaAuditada = null;
 function showPage(page) {
   window.scrollTo(0, 0);
   const contentArea = document.querySelector('.content-area');
   if (contentArea) contentArea.scrollTop = 0;
+  // Rastreio de uso -- só registra quando a página realmente muda (evita
+  // spam de chamadas quando algo chama showPage(mesmaPagina) de novo).
+  if (page !== _ultimaPaginaAuditada) {
+    _ultimaPaginaAuditada = page;
+    api('POST', '/auditoria/evento', { evento: 'pagina', pagina: page }).catch(() => {});
+  }
   if (page === 'condicao-especial') carregarCondicoesEspeciais();
   if (page === 'gestao-propostas') gpAoAbrirPagina();
   if (page === 'solicitacoes') carregarSolicitacoes();
@@ -3664,6 +3703,15 @@ function renderJobsTable(jobs) {
     const viaCeBadge = (isSistemaProp && j.via_ce_real)
       ? ' <span title="Proposta de Sistema derivada de Condição Especial" style="font-size:11px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:4px;padding:1px 5px;font-weight:600">⭐ Via CE</span>'
       : '';
+    // SLA de 10min úteis pra decisão inicial de QUALQUER job (Sistema OU
+    // Condição Especial -- as duas passam pela mesma etapa) -- reaproveita
+    // _minutosComerciaisEntre (já usada no "Tempo Aval.") pra sinalizar quem
+    // já estourou o prazo sem decisão. A pedido do usuário (2026-11-23,
+    // "nas propostas de condições especiais, tbm deve ter o tempo").
+    const atrasadaBadge = (semDecisao && j.concluido_at
+        && _minutosComerciaisEntre(Date.parse(j.concluido_at), Date.now()) > 10)
+      ? ' <span title="Mais de 10 minutos úteis sem decisão -- vai pedir justificativa do atraso" style="font-size:11px;background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;border-radius:4px;padding:1px 5px;font-weight:600">⏰ Atrasada</span>'
+      : '';
     return `
     <tr>
       <td><strong>${j.id_proposta}</strong>${viaCeBadge}</td>
@@ -3672,7 +3720,7 @@ function renderJobsTable(jobs) {
       <td>${j.corretor || '—'}</td>
       <td style="font-size:12px;color:var(--gray400)">${j.analista_email || "Não atribuído"}</td>
       <td style="font-size:12px;color:var(--gray400)">${formatDate(j.created_at)}</td>
-      <td>${renderStatusBadge(j)}${j.cancelada_matriz ? ' <span title="Consta como cancelada na matriz (Gestão de Propostas) -- não alterou a decisão já tomada aqui" style="font-size:11px;background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;border-radius:4px;padding:1px 5px;font-weight:600">⚠ Cancelada na matriz</span>' : ''}</td>
+      <td>${renderStatusBadge(j)}${j.cancelada_matriz ? ' <span title="Consta como cancelada na matriz (Gestão de Propostas) -- não alterou a decisão já tomada aqui" style="font-size:11px;background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;border-radius:4px;padding:1px 5px;font-weight:600">⚠ Cancelada na matriz</span>' : ''}${atrasadaBadge}</td>
       <td class="pend-cell" id="pend-cell-${j.id}">${pendInicial(j.id)}</td>
       <td style="font-size:11px;white-space:nowrap">${jobTempoAvaliacao(j)}</td>
       <td>
@@ -4564,10 +4612,47 @@ async function carregarUsuarios() {
           ${u.email!==currentUser?.email?`<button class="btn-sm btn-outline" onclick="editarAcesso('${u.id}',${JSON.stringify(pags).replace(/"/g,'&quot;')})">📝 Acesso</button>`:''}
           <button class="btn-sm btn-outline" onclick="resetarSenhaUsuario('${u.id}','${escHtml(u.name).replace(/'/g,"\\'")}')">🔑 Resetar senha</button>
           ${u.email!==currentUser?.email?`<button class="btn-sm btn-outline" onclick="toggleUser('${u.id}',${!u.active})">${u.active?'Desativar':'Ativar'}</button>`:''}
+          <button class="btn-sm btn-outline" onclick="abrirAuditoriaUsuario('${u.email}','${escHtml(u.name).replace(/'/g,"\\'")}')" title="Rastreio de uso -- login/logout e páginas acessadas">🕵️ Atividade</button>
         </div>
       </div>`;
     }).join('');
   } catch(e) { showToast('Erro ao carregar usuários: '+e.message,'error'); }
+}
+
+async function abrirAuditoriaUsuario(email, nome) {
+  // Rastreio de uso -- só o Admin chega até aqui (tela Admin inteira já é
+  // admin-only; a consulta em si também é bloqueada no backend pra quem não
+  // for admin). A pedido do usuário (2026-11-23): "rastreador de uso... isso
+  // deve ficar somente para o admin ver".
+  const existente = document.getElementById('modal-auditoria-usuario');
+  if (existente) existente.remove();
+  const m = document.createElement('div');
+  m.id = 'modal-auditoria-usuario'; m.className = 'modal-overlay'; m.style.display = 'flex';
+  m.innerHTML = `<div class="modal" style="max-width:720px">
+    <div class="modal-header"><div class="modal-title">🕵️ Atividade de ${escHtml(nome)}</div><button class="modal-close" onclick="document.getElementById('modal-auditoria-usuario').remove()">✕</button></div>
+    <div class="modal-body" id="modal-auditoria-usuario-body"><div style="text-align:center;padding:30px;color:var(--gray400)">Carregando…</div></div>
+  </div>`;
+  document.body.appendChild(m);
+  const body = document.getElementById('modal-auditoria-usuario-body');
+  try {
+    const eventos = await api('GET', '/auditoria/eventos?usuario=' + encodeURIComponent(email) + '&dias=30');
+    if (!eventos.length) {
+      body.innerHTML = '<p style="text-align:center;color:var(--gray400);padding:30px">Nenhum evento registrado nos últimos 30 dias.</p>';
+      return;
+    }
+    const ICONE_EVENTO = { login: '🟢 Login', logout: '🔴 Logout', pagina: '📄 Página' };
+    body.innerHTML = `<div class="overflow-x"><table class="jobs-table">
+      <thead><tr><th>Data/Hora</th><th>Evento</th><th>Página</th><th>IP</th></tr></thead>
+      <tbody>${eventos.map(e => `<tr>
+        <td style="white-space:nowrap">${formatDate(e.criado_em)}</td>
+        <td>${ICONE_EVENTO[e.evento] || e.evento}</td>
+        <td>${e.pagina ? (_PG[e.pagina]?.label || e.pagina) : '—'}</td>
+        <td style="font-size:11px;color:var(--gray400)">${e.ip || '—'}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  } catch (e) {
+    body.innerHTML = `<p style="text-align:center;color:#b91c1c;padding:30px">Erro ao carregar: ${e.message}</p>`;
+  }
 }
 
 async function editarAcesso(userId, pagsAtuais) {
@@ -5593,6 +5678,21 @@ function _atualizarSinoObsPendentes(qtd) {
   const sino = document.getElementById('obs-pendentes-sino');
   if (!sino || qtd === null) return;
   sino.style.display = qtd > 0 ? '' : 'none';
+}
+
+let _sinoSistemaPendenteTimer = null;
+async function _atualizarSinoSistemaPendente() {
+  const sino = document.getElementById('sistema-pendente-sino');
+  if (!sino) return;
+  try {
+    const resumo = await api('GET', '/jobs/resumo');
+    // Sistema e Condição Especial passam pela mesma decisão inicial -- conta
+    // as duas (mesmo critério ampliado do SLA de 10min). A pedido do usuário
+    // (2026-11-23, "nas propostas de condições especiais, tbm deve ter o tempo").
+    const qtd = (resumo || []).filter(j => j.status === 'concluido' && !j.decisao && !j.decisao_risco).length;
+    sino.style.display = qtd > 0 ? 'flex' : 'none';
+    sino.title = qtd > 0 ? `${qtd} proposta(s) aguardando decisão` : 'Há propostas aguardando decisão';
+  } catch (e) { /* silencioso -- não interrompe o uso normal do app */ }
 }
 
 async function abrirRevisaoObservacaoPendente(id) {
@@ -9313,7 +9413,15 @@ async function verRelatorio(jobId) {
       btnObs.style.display = '';
       btnRecusaDef.style.display = isSistema ? '' : 'none';
     } else {
-      info.textContent = 'Registre sua decisão:';
+      // SLA de 10min úteis pra decisão inicial (Sistema OU CE) -- só avisa
+      // aqui; quem realmente exige a justificativa do atraso é o backend
+      // (POST /jobs/{id}/decisao), então isso nunca fica só no front.
+      const minsAtraso = job.concluido_at ? _minutosComerciaisEntre(Date.parse(job.concluido_at), Date.now()) : 0;
+      if (minsAtraso > 10) {
+        info.innerHTML = '<span style="color:#b91c1c;font-weight:600">⏰ Fora do prazo de 10 minutos úteis</span> -- ao decidir, o sistema vai pedir a justificativa do atraso.';
+      } else {
+        info.textContent = 'Registre sua decisão:';
+      }
       btnAprovar.style.display = '';
       btnObs.style.display = '';
     }
