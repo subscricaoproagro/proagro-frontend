@@ -1204,9 +1204,9 @@
             <table class="jobs-table">
               <thead><tr>
                 <th>Número do aviso</th><th>Nº do sinistro</th><th>Apólice ProAgro</th><th>Produtor / Segurado</th>
-                <th>Propriedade</th><th>Cultura</th><th>Status do aviso</th><th>Data do sinistro</th><th>Data do aviso</th><th>Ações</th>
+                <th>Propriedade</th><th>Cultura</th><th>Status do aviso</th><th>Status da vistoria</th><th>Data do sinistro</th><th>Data do aviso</th><th>Ações</th>
               </tr></thead>
-              <tbody id="avs-tbody"><tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+              <tbody id="avs-tbody"><tr><td colspan="11" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -3142,10 +3142,14 @@ async function enterApp() {
     .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
 
   // ── PÁGINA INICIAL (determinística, antes de qualquer carregamento que possa falhar) ──
-  // Admin fica no Dashboard (padrão). Os demais vão pra 1ª página que o role/paginas permite.
+  // Admin ia pro Dashboard por padrão -- mas o menu Dashboard foi retirado
+  // de circulação (2026-11-24), então ficar "preso" lá sem conseguir
+  // voltar por nenhum botão do menu não faz sentido. Agora Admin também
+  // cai na Esteira de Análises, igual ao Analista. Os demais vão pra 1ª
+  // página que o role/paginas permite.
   (function _paginaInicial(){
     const role = currentUser.role;
-    if (role === 'admin') return;                        // Dashboard
+    if (role === 'admin')      { showPage('historico'); return; }
     if (role === 'supervisor') { showPage('condicao-especial'); return; }
     if (role === 'analista')   { showPage('historico'); return; }
     const pags = (currentUser.paginas && currentUser.paginas.length)
@@ -12719,8 +12723,19 @@ async function carregarAvisosSinistros() {
     document.getElementById('avs-kpi-novos').textContent = total - revisados;
     renderAvisosSinistros();
   } catch (e) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--danger);padding:40px">Erro ao carregar avisos: ${e.message}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--danger);padding:40px">Erro ao carregar avisos: ${e.message}</td></tr>`;
   }
+}
+
+function _avisosSinistrosStatusVistoriaHtml(visitas) {
+  // Reaproveita os mesmos _sinistrosTipoLabel/_sinistrosStatusBadge da aba
+  // Vistorias (mesmo texto/cor) -- usuário apontou que só "já tem vistoria"
+  // (sim/não) não basta, precisa ver o status de cada visita (Preliminar/
+  // Final: pendente, agendada, realizada...) (2026-11-24).
+  if (!visitas || !visitas.length) return '<span style="color:var(--gray400)">Sem vistoria ainda</span>';
+  return visitas.map(v => `<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;white-space:nowrap">
+    <span style="color:var(--gray600)">${_sinistrosTipoLabel(v.tipo)}:</span> ${_sinistrosStatusBadge(v.status)}
+  </div>`).join('');
 }
 
 function renderAvisosSinistros() {
@@ -12736,16 +12751,13 @@ function renderAvisosSinistros() {
   lista = lista.slice().sort((a, b) => (a.revisado === b.revisado) ? 0 : (a.revisado ? 1 : -1));
 
   if (!lista.length) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Nenhum aviso de sinistro encontrado ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--gray400);padding:40px">Nenhum aviso de sinistro encontrado ainda.</td></tr>';
     return;
   }
 
   tbody.innerHTML = lista.map(a => `<tr>
     <td class="mono">${a.numero_aviso || '—'}</td>
-    <td class="mono">
-      ${a.no_siniestro || '—'}
-      ${a.tem_vistoria ? '<div style="margin-top:3px"><span class="badge badge-success" style="font-size:10px;white-space:nowrap"><span class="badge-dot"></span>Já tem vistoria</span></div>' : ''}
-    </td>
+    <td class="mono">${a.no_siniestro || '—'}</td>
     <td style="font-size:12px">${a.poliza_proagro || '—'}</td>
     <td style="font-size:12px">
       <div style="font-weight:500">${a.nome_produtor || '—'}</div>
@@ -12754,6 +12766,7 @@ function renderAvisosSinistros() {
     <td style="font-size:12px">${a.nome_predio || '—'}</td>
     <td style="font-size:12px">${a.cultivo || '—'}</td>
     <td style="font-size:12px">${a.estatus_aviso || '—'}</td>
+    <td style="font-size:12px">${_avisosSinistrosStatusVistoriaHtml(a.visitas)}</td>
     <td style="font-size:12px">${a.data_siniestro ? formatarDataHora(a.data_siniestro) : '—'}</td>
     <td style="font-size:12px">${a.data_aviso ? formatarDataHora(a.data_aviso) : '—'}</td>
     <td>${a.revisado
