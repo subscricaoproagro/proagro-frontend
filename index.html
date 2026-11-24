@@ -8619,11 +8619,6 @@ async function carregarAuditorCE() {
   }
 }
 
-// Prioridade de revisão: erro primeiro (precisa de ação), depois corrigido,
-// ok por último -- otimização pedida pelo usuário pra quem audita não
-// precisar garimpar os erros no meio da lista inteira.
-const _AUD_PRIORIDADE = { erro: 0, corrigido: 1, ok: 2 };
-
 function renderAuditorCE() {
   const tbody = document.getElementById('aud-tbody');
   if (!tbody) return;
@@ -8640,11 +8635,9 @@ function renderAuditorCE() {
   if (buscaCpf) {
     lista = lista.filter(r => (r.cpf_cnpj || '').replace(/\D/g, '').includes(buscaCpf));
   }
-  lista = lista.slice().sort((a, b) => {
-    const pa = _AUD_PRIORIDADE[a.status_geral] ?? 9, pb = _AUD_PRIORIDADE[b.status_geral] ?? 9;
-    if (pa !== pb) return pa - pb;
-    return new Date(a.criado_em || 0) - new Date(b.criado_em || 0);
-  });
+  // Ordem cronológica, mais novo primeiro, independente do status
+  // (pedido do usuário em 2026-11-24 -- antes priorizava erro/corrigido/ok).
+  lista = lista.slice().sort((a, b) => new Date(b.criado_em || 0) - new Date(a.criado_em || 0));
 
   if (!lista.length) {
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Nenhum registro encontrado.</td></tr>';
