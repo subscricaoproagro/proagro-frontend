@@ -6752,7 +6752,14 @@ async function carregarCondicoesEspeciais() {
     // Cache por job_id (usado para ver detalhes da reavaliação)
     window._ceCache = {};
     lista.forEach(ce => { window._ceCache[ce.job_id] = ce; });
-    // Filtra: remove tipo 'sistema', propostas != 0, e CEs sem dados preenchidos
+    // Filtra: remove tipo 'sistema', propostas != 0, CEs sem dados preenchidos,
+    // e propostas já recusadas automaticamente pelo sistema (ex.: UF não
+    // atendida) ANTES de chegar a qualquer análise -- "job.decisao" é o
+    // pré-filtro automático, diferente de "job.decisao_risco" (a decisão do
+    // supervisor no fluxo de CE). Uma proposta com job.decisao='recusado' já
+    // está morta/encerrada e não deveria aparecer como pendente na Fila de CE
+    // (usuário reportou em 2026-11-24, print mostrando "Aguardando análise do
+    // analista" aqui e "Recusada" na Esteira, pro mesmo job).
     const listaSemSistema = lista.filter(ce => {
       if (!ce.job) return true;
       if (ce.job.tipo_analise === 'sistema') return false;
@@ -6762,6 +6769,7 @@ async function carregarCondicoesEspeciais() {
       const idP = String(ce.job.id_proposta || '0').trim();
       if (idP !== '0' && idP !== '') return false;
       if (!ce.cliente && !ce.municipio) return false;
+      if (ce.job.decisao === 'recusado' && !ce.job.decisao_risco) return false;
       return true;
     });
 
