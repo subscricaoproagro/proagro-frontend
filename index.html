@@ -12770,7 +12770,7 @@ function renderAvisosSinistros() {
     <td style="font-size:12px">${a.data_siniestro ? formatarDataHora(a.data_siniestro) : '—'}</td>
     <td style="font-size:12px">${a.data_aviso ? formatarDataHora(a.data_aviso) : '—'}</td>
     <td style="white-space:nowrap">
-      <button class="btn-sm btn-outline" onclick="avisarStatusVistoriaHdi('${a.no_siniestro || ''}')">Avisar Status de Vistoria</button>
+      <button class="btn-sm btn-outline" onclick="avisarStatusVistoriaHdi('${a.numero_aviso || ''}')">Avisar Status de Vistoria</button>
       ${a.revisado
         ? '<span class="badge badge-success" style="margin-left:6px"><span class="badge-dot"></span>Revisado</span>'
         : `<button class="btn-sm btn-outline" style="margin-left:6px" onclick="marcarAvisoSinistroRevisado(${a.id})">Marcar como revisado</button>`}
