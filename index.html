@@ -12769,10 +12769,27 @@ function renderAvisosSinistros() {
     <td style="font-size:12px">${_avisosSinistrosStatusVistoriaHtml(a.visitas)}</td>
     <td style="font-size:12px">${a.data_siniestro ? formatarDataHora(a.data_siniestro) : '—'}</td>
     <td style="font-size:12px">${a.data_aviso ? formatarDataHora(a.data_aviso) : '—'}</td>
-    <td>${a.revisado
-      ? '<span class="badge badge-success"><span class="badge-dot"></span>Revisado</span>'
-      : `<button class="btn-sm btn-outline" onclick="marcarAvisoSinistroRevisado(${a.id})">Marcar como revisado</button>`}</td>
+    <td style="white-space:nowrap">
+      <button class="btn-sm btn-outline" onclick="avisarStatusVistoriaHdi('${a.no_siniestro || ''}')">Avisar Status de Vistoria</button>
+      ${a.revisado
+        ? '<span class="badge badge-success" style="margin-left:6px"><span class="badge-dot"></span>Revisado</span>'
+        : `<button class="btn-sm btn-outline" style="margin-left:6px" onclick="marcarAvisoSinistroRevisado(${a.id})">Marcar como revisado</button>`}
+    </td>
   </tr>`).join('');
+}
+
+// "Avisar Status de Vistoria" -- caminho ASSISTIDO (não automatizado por
+// servidor): a HDI tem firewall anti-bot (Akamai) que bloqueia automação
+// headless, então em vez de um robô, isso abre o portal real da HDI numa
+// aba nova com o Nº do sinistro na própria URL (?proagro_sinistro=...) --
+// o script instalado no navegador da analista (Tampermonkey) lê esse
+// parâmetro, faz login sozinho, busca o sinistro e, na tela "RETORNO
+// PERITO", preenche Nome do perito/Data/Observações. A analista só confere
+// e clica em Concluir. Decidido com o usuário em 2026-11-24.
+function avisarStatusVistoriaHdi(numeroSinistro) {
+  const url = new URL('https://www.hdi.com.br/hdiprestador/');
+  if (numeroSinistro) url.searchParams.set('proagro_sinistro', numeroSinistro);
+  window.open(url.toString(), '_blank', 'noopener');
 }
 
 async function marcarAvisoSinistroRevisado(id) {
