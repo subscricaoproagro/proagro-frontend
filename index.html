@@ -48,55 +48,55 @@
      não mexe no .jobs-table/.badge globais (usados por Painel Comercial e
      Condição Especial também) nem nos botões de ação da tabela, que
      continuam exatamente como eram. */
-  :is(#page-historico, #page-auditor-ce) .es-head{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:20px}
-  :is(#page-historico, #page-auditor-ce) .es-title{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;color:var(--gray900);margin:0 0 4px;letter-spacing:-.01em}
-  :is(#page-historico, #page-auditor-ce) .es-sub{font-size:13.5px;color:var(--gray400)}
-  :is(#page-historico, #page-auditor-ce) .es-live{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--gray100);border-radius:999px;padding:7px 14px;font-size:12px;font-weight:600;color:var(--gray600);box-shadow:var(--shadow-sm)}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-head{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:20px}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-title{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;color:var(--gray900);margin:0 0 4px;letter-spacing:-.01em}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-sub{font-size:13.5px;color:var(--gray400)}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-live{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--gray100);border-radius:999px;padding:7px 14px;font-size:12px;font-weight:600;color:var(--gray600);box-shadow:var(--shadow-sm)}
   @keyframes esPulse{0%{box-shadow:0 0 0 0 rgba(45,138,85,.5)}70%{box-shadow:0 0 0 6px rgba(45,138,85,0)}100%{box-shadow:0 0 0 0 rgba(45,138,85,0)}}
-  :is(#page-historico, #page-auditor-ce) .es-live-dot{width:7px;height:7px;border-radius:50%;background:var(--g500);animation:esPulse 2s infinite;flex-shrink:0}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-live-dot{width:7px;height:7px;border-radius:50%;background:var(--g500);animation:esPulse 2s infinite;flex-shrink:0}
 
-  :is(#page-historico, #page-auditor-ce) .es-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}
-  :is(#page-historico, #page-auditor-ce) .es-kpi{background:#fff;border:1px solid var(--gray100);border-radius:var(--r-lg);padding:16px 18px;box-shadow:var(--shadow-sm);display:flex;align-items:center;gap:13px}
-  :is(#page-historico, #page-auditor-ce) .es-kpi .ic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-  :is(#page-historico, #page-auditor-ce) .es-kpi .num{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:var(--gray900);line-height:1.1;font-variant-numeric:tabular-nums}
-  :is(#page-historico, #page-auditor-ce) .es-kpi .lbl{font-size:11px;color:var(--gray400);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
-  :is(#page-historico, #page-auditor-ce) .es-kpi .delta{font-size:10.5px;color:var(--gray400);margin-top:3px}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-kpi{background:#fff;border:1px solid var(--gray100);border-radius:var(--r-lg);padding:16px 18px;box-shadow:var(--shadow-sm);display:flex;align-items:center;gap:13px}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-kpi .ic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-kpi .num{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:var(--gray900);line-height:1.1;font-variant-numeric:tabular-nums}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-kpi .lbl{font-size:11px;color:var(--gray400);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-kpi .delta{font-size:10.5px;color:var(--gray400);margin-top:3px}
 
-  :is(#page-historico, #page-auditor-ce) .es-toolbar{background:#fff;border:1px solid var(--gray100);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-  :is(#page-historico, #page-auditor-ce) .es-search{display:flex;align-items:center;gap:7px;flex:1 1 260px;min-width:220px;border:1.5px solid var(--gray200);border-radius:9px;padding:0 10px}
-  :is(#page-historico, #page-auditor-ce) .es-search svg{color:var(--gray400);flex-shrink:0}
-  :is(#page-historico, #page-auditor-ce) .es-search input{border:none;outline:none;padding:9px 6px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--gray900);flex:1;min-width:0;background:transparent}
-  :is(#page-historico, #page-auditor-ce) .es-search .es-search-sep{width:1px;align-self:stretch;background:var(--gray100);margin:6px 0}
-  :is(#page-historico, #page-auditor-ce) .es-tb-btn{padding:9px 14px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;border:1.5px solid var(--gray200);background:#fff;color:var(--gray700);display:inline-flex;align-items:center;gap:7px}
-  :is(#page-historico, #page-auditor-ce) .es-tb-btn:hover{border-color:var(--gray400)}
-  :is(#page-historico, #page-auditor-ce) .es-tb-btn.danger{border-color:#fecaca;color:var(--red)}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-toolbar{background:#fff;border:1px solid var(--gray100);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-search{display:flex;align-items:center;gap:7px;flex:1 1 260px;min-width:220px;border:1.5px solid var(--gray200);border-radius:9px;padding:0 10px}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-search svg{color:var(--gray400);flex-shrink:0}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-search input{border:none;outline:none;padding:9px 6px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--gray900);flex:1;min-width:0;background:transparent}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-search .es-search-sep{width:1px;align-self:stretch;background:var(--gray100);margin:6px 0}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-tb-btn{padding:9px 14px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;border:1.5px solid var(--gray200);background:#fff;color:var(--gray700);display:inline-flex;align-items:center;gap:7px}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-tb-btn:hover{border-color:var(--gray400)}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-tb-btn.danger{border-color:#fecaca;color:var(--red)}
 
-  :is(#page-historico, #page-auditor-ce) .es-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
-  :is(#page-historico, #page-auditor-ce) .es-chip{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--gray100);border-radius:10px;padding:7px 13px;font-size:12px;font-weight:600;color:var(--gray700);cursor:pointer;box-shadow:var(--shadow-sm)}
-  :is(#page-historico, #page-auditor-ce) .es-chip:hover{border-color:var(--gray200)}
-  :is(#page-historico, #page-auditor-ce) .es-chip .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-  :is(#page-historico, #page-auditor-ce) .es-chip .n{font-variant-numeric:tabular-nums;color:var(--gray900);font-weight:700}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-chip{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--gray100);border-radius:10px;padding:7px 13px;font-size:12px;font-weight:600;color:var(--gray700);cursor:pointer;box-shadow:var(--shadow-sm)}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-chip:hover{border-color:var(--gray200)}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-chip .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-chip .n{font-variant-numeric:tabular-nums;color:var(--gray900);font-weight:700}
 
-  :is(#page-historico, #page-auditor-ce) .es-results{background:#fff;border:1px solid var(--gray100);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);padding:13px 18px;margin-bottom:18px}
-  :is(#page-historico, #page-auditor-ce) .es-results-title{font-size:10.5px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px}
-  :is(#page-historico, #page-auditor-ce) .es-results-groups{display:flex;align-items:center;gap:26px;flex-wrap:wrap}
-  :is(#page-historico, #page-auditor-ce) .es-rgroup{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-  :is(#page-historico, #page-auditor-ce) .es-rgroup-label{font-size:12px;font-weight:700;color:var(--gray700);margin-right:2px}
-  :is(#page-historico, #page-auditor-ce) .es-rstat{display:flex;align-items:baseline;gap:6px}
-  :is(#page-historico, #page-auditor-ce) .es-rstat .rn{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
-  :is(#page-historico, #page-auditor-ce) .es-rstat .rl{font-size:11.5px;color:var(--gray400);font-weight:500}
-  :is(#page-historico, #page-auditor-ce) .es-rstat-total{padding-right:14px;margin-right:2px;border-right:1px solid var(--gray100)}
-  :is(#page-historico, #page-auditor-ce) .es-rstat-total .rn{font-size:19px;color:var(--gray900)}
-  :is(#page-historico, #page-auditor-ce) .es-rstat-total .rl{color:var(--gray700);font-weight:700}
-  :is(#page-historico, #page-auditor-ce) .es-rsep{width:1px;align-self:stretch;background:var(--gray100)}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-results{background:#fff;border:1px solid var(--gray100);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);padding:13px 18px;margin-bottom:18px}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-results-title{font-size:10.5px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-results-groups{display:flex;align-items:center;gap:26px;flex-wrap:wrap}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-rgroup{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-rgroup-label{font-size:12px;font-weight:700;color:var(--gray700);margin-right:2px}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-rstat{display:flex;align-items:baseline;gap:6px}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-rstat .rn{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-rstat .rl{font-size:11.5px;color:var(--gray400);font-weight:500}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-rstat-total{padding-right:14px;margin-right:2px;border-right:1px solid var(--gray100)}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-rstat-total .rn{font-size:19px;color:var(--gray900)}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-rstat-total .rl{color:var(--gray700);font-weight:700}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-rsep{width:1px;align-self:stretch;background:var(--gray100)}
 
-  :is(#page-historico, #page-auditor-ce) .es-seg{display:flex;background:var(--gray50);border:1px solid var(--gray100);border-radius:10px;padding:3px;gap:2px;margin-bottom:0}
-  :is(#page-historico, #page-auditor-ce) .es-seg button{border:none;background:transparent;padding:8px 18px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--gray600);cursor:pointer}
-  :is(#page-historico, #page-auditor-ce) .es-seg button.active{background:var(--g900);color:#fff}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-seg{display:flex;background:var(--gray50);border:1px solid var(--gray100);border-radius:10px;padding:3px;gap:2px;margin-bottom:0}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-seg button{border:none;background:transparent;padding:8px 18px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--gray600);cursor:pointer}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-seg button.active{background:var(--g900);color:#fff}
 
-  :is(#page-historico, #page-auditor-ce) .jobs-table thead th{position:sticky;top:0;background:var(--gray50);font-family:'DM Sans',sans-serif}
-  :is(#page-historico, #page-auditor-ce) .jobs-table td .mono{font-family:'JetBrains Mono',monospace;font-weight:500}
-  :is(#page-historico, #page-auditor-ce) .es-avatar{width:24px;height:24px;border-radius:50%;background:var(--g100);color:var(--g700);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-right:6px;flex-shrink:0;vertical-align:middle}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .jobs-table thead th{position:sticky;top:0;background:var(--gray50);font-family:'DM Sans',sans-serif}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .jobs-table td .mono{font-family:'JetBrains Mono',monospace;font-weight:500}
+  :is(#page-historico, #page-auditor-ce, #page-sinistros) .es-avatar{width:24px;height:24px;border-radius:50%;background:var(--g100);color:var(--g700);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-right:6px;flex-shrink:0;vertical-align:middle}
 
   .form-group{margin-bottom:20px}
   .form-label{display:block;font-size:12px;font-weight:500;color:var(--gray600);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
@@ -1141,24 +1141,75 @@
           <div class="section-sub">Todos os sinistros e replantios por apólice. Clique numa linha para abrir a apólice e ver a programação de inspeção, datas, status e documentos por visita.</div>
         </div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-        <select id="sinistros-filtro-safra" class="form-input" style="max-width:170px" onchange="_sinistrosRenderizarPainel()"></select>
-        <input type="text" id="sinistros-filtro-busca" class="form-input" style="flex:1;min-width:220px" placeholder="Buscar nº do sinistro, apólice HDI, segurado ou município…" oninput="_sinistrosRenderizarPainel()">
-        <select id="sinistros-filtro-tecnico" class="form-input" style="max-width:200px" onchange="_sinistrosRenderizarPainel()"></select>
-        <button class="btn-sm" onclick="_sinistrosExportarExcel()">⬇️ Exportar Excel</button>
+
+      <div id="sinistros-abas" class="es-seg" style="margin-bottom:16px">
+        <button id="sinistros-aba-vistorias" class="active" onclick="sinistrosSetAba('vistorias')">Vistorias</button>
+        <button id="sinistros-aba-avisos" onclick="sinistrosSetAba('avisos')">Avisos de Sinistros</button>
       </div>
-      <div id="sinistros-contador" style="font-size:12px;color:var(--gray400);margin-bottom:10px"></div>
-      <div id="sinistros-resumo" class="card" style="margin-bottom:16px;overflow-x:auto"></div>
-      <div class="card" style="overflow-x:auto">
-        <table class="jobs-table" id="sinistros-tabela">
-          <thead><tr>
-            <th>N° SINISTRO</th><th>APÓLICE HDI</th><th>APÓLICE PROAGRO</th><th>SEGURADO</th>
-            <th>MUNICÍPIO/UF</th><th>CORRETORA</th><th>TÉCNICO</th><th>COBERTURA</th><th>EVENTO</th>
-            <th>VIGÊNCIA INÍCIO</th><th>VIGÊNCIA FIM</th><th>VISTORIA PRELIMINAR</th><th>VISTORIA FINAL</th><th>STATUS</th>
-            <th>PRÊMIO</th><th>IS</th>
-          </tr></thead>
-          <tbody id="sinistros-tabela-corpo"><tr><td colspan="16" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
-        </table>
+
+      <div id="sinistros-painel-vistorias">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+          <select id="sinistros-filtro-safra" class="form-input" style="max-width:170px" onchange="_sinistrosRenderizarPainel()"></select>
+          <input type="text" id="sinistros-filtro-busca" class="form-input" style="flex:1;min-width:220px" placeholder="Buscar nº do sinistro, apólice HDI, segurado ou município…" oninput="_sinistrosRenderizarPainel()">
+          <select id="sinistros-filtro-tecnico" class="form-input" style="max-width:200px" onchange="_sinistrosRenderizarPainel()"></select>
+          <button class="btn-sm" onclick="_sinistrosExportarExcel()">⬇️ Exportar Excel</button>
+        </div>
+        <div id="sinistros-contador" style="font-size:12px;color:var(--gray400);margin-bottom:10px"></div>
+        <div id="sinistros-resumo" class="card" style="margin-bottom:16px;overflow-x:auto"></div>
+        <div class="card" style="overflow-x:auto">
+          <table class="jobs-table" id="sinistros-tabela">
+            <thead><tr>
+              <th>N° SINISTRO</th><th>APÓLICE HDI</th><th>APÓLICE PROAGRO</th><th>SEGURADO</th>
+              <th>MUNICÍPIO/UF</th><th>CORRETORA</th><th>TÉCNICO</th><th>COBERTURA</th><th>EVENTO</th>
+              <th>VIGÊNCIA INÍCIO</th><th>VIGÊNCIA FIM</th><th>VISTORIA PRELIMINAR</th><th>VISTORIA FINAL</th><th>STATUS</th>
+              <th>PRÊMIO</th><th>IS</th>
+            </tr></thead>
+            <tbody id="sinistros-tabela-corpo"><tr><td colspan="16" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Avisos de Sinistros: alimentado pelo polling automático (a cada 2h,
+           8h-22h) que verifica a matriz por novos avisos tipo "Sinistro" --
+           a pedido do usuário (2026-11-24). -->
+      <div id="sinistros-painel-avisos" style="display:none">
+        <div class="es-kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+          <div class="es-kpi">
+            <div class="ic" style="background:#eff6ff;color:#1d4ed8"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+            <div><div class="num" id="avs-kpi-novos">—</div><div class="lbl">Não revisados</div></div>
+          </div>
+          <div class="es-kpi">
+            <div class="ic" style="background:var(--g50);color:var(--g600)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+            <div><div class="num" id="avs-kpi-revisados">—</div><div class="lbl">Revisados</div></div>
+          </div>
+          <div class="es-kpi">
+            <div class="ic" style="background:var(--g900);color:var(--gold)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 8 4-8 4-8-4 8-4Z"/><path d="m4 10 8 4 8-4"/><path d="m4 14 8 4 8-4"/></svg></div>
+            <div><div class="num" id="avs-kpi-total">—</div><div class="lbl">Total detectado</div></div>
+          </div>
+        </div>
+
+        <div class="es-toolbar">
+          <div class="es-search">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="avs-busca" placeholder="Nº do sinistro, apólice, produtor ou propriedade" oninput="renderAvisosSinistros()">
+          </div>
+          <button class="es-tb-btn" onclick="verificarAvisosSinistrosAgora()" id="avs-btn-verificar">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 11a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 13a9 9 0 0 1-15 6.7L3 16"/></svg>
+            Verificar agora
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="overflow-x">
+            <table class="jobs-table">
+              <thead><tr>
+                <th>Nº do sinistro</th><th>Apólice ProAgro</th><th>Produtor / Segurado</th>
+                <th>Propriedade</th><th>Cultura</th><th>Status do aviso</th><th>Data do aviso</th><th>Ações</th>
+              </tr></thead>
+              <tbody id="avs-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -3081,6 +3132,15 @@ async function enterApp() {
     mcAplicarPaginas(currentUser.paginas, false);
   }
 
+  // Menus retirados de circulação a pedido do usuário (2026-11-24): não devem
+  // mais aparecer no menu lateral pra NINGUÉM, independente de role/paginas.
+  // Roda logo depois da autoridade final de páginas (inclusive depois do
+  // "admin sempre vê tudo" acima) e ANTES de qualquer chamada assíncrona
+  // (carregarJobs/carregarStats/etc. mais abaixo) -- se ficasse só no fim da
+  // função, uma falha de rede nessas chamadas impedia esse bloco de rodar.
+  ['dashboard-btn', 'nova-analise-btn', 'solicitacoes-btn', 'assistente-btn', 'monitoramento-btn', 'extrator-btn']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+
   // ── PÁGINA INICIAL (determinística, antes de qualquer carregamento que possa falhar) ──
   // Admin fica no Dashboard (padrão). Os demais vão pra 1ª página que o role/paginas permite.
   (function _paginaInicial(){
@@ -3120,13 +3180,6 @@ async function enterApp() {
     else if (id === 'page-solicitacoes') carregarSolicitacoes();
     else carregarJobs();  // histórico / dashboard
   }, 30000);
-
-  // Menus retirados de circulação a pedido do usuário (2026-11-24): não devem
-  // mais aparecer no menu lateral pra NINGUÉM, independente de role/paginas.
-  // Roda por último, depois de toda a lógica de role/permissões acima, pra
-  // garantir que nada reexiba esses botões.
-  ['dashboard-btn', 'nova-analise-btn', 'solicitacoes-btn', 'assistente-btn', 'monitoramento-btn', 'extrator-btn']
-    .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
 }
 
 function handleLogout() {
@@ -3249,7 +3302,7 @@ function showPage(page) {
   if (page === 'nova-analise') esgVerificarBloqueioNovaAnalise();
   if (page === 'painel-comercial') carregarPainelComercial();
   if (page === 'pre-analise') carregarHistoricoPreAnalise();
-  if (page === 'sinistros') carregarPainelSinistros();
+  if (page === 'sinistros') { carregarPainelSinistros(); carregarAvisosSinistros(); }
   document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.topbar-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
@@ -12638,6 +12691,96 @@ function _sinistrosFormatarDataCurta(iso) {
   if (!iso) return '—';
   const [ano, mes, dia] = iso.split('-');
   return `${dia}/${mes}/${ano}`;
+}
+
+// ───────────────────────────── Avisos de Sinistros ─────────────────────────────
+// Submenu dentro do Painel de Sinistros -- lista o que o polling automático
+// (servidor, a cada 2h das 8h às 22h) foi detectando na matriz. A pedido do
+// usuário (2026-11-24): "checar de 2 em 2h... e colocar isso no painel de
+// sinistros... acho melhor criar um submenu chamado avisos de sinistros".
+function sinistrosSetAba(aba) {
+  const vistorias = aba === 'vistorias';
+  document.getElementById('sinistros-aba-vistorias').classList.toggle('active', vistorias);
+  document.getElementById('sinistros-aba-avisos').classList.toggle('active', !vistorias);
+  document.getElementById('sinistros-painel-vistorias').style.display = vistorias ? '' : 'none';
+  document.getElementById('sinistros-painel-avisos').style.display = vistorias ? 'none' : '';
+}
+
+let _avisosSinistrosCache = [];
+
+async function carregarAvisosSinistros() {
+  const tbody = document.getElementById('avs-tbody');
+  try {
+    _avisosSinistrosCache = await api('GET', '/sinistros/avisos');
+    const total = _avisosSinistrosCache.length;
+    const revisados = _avisosSinistrosCache.filter(a => a.revisado).length;
+    document.getElementById('avs-kpi-total').textContent = total;
+    document.getElementById('avs-kpi-revisados').textContent = revisados;
+    document.getElementById('avs-kpi-novos').textContent = total - revisados;
+    renderAvisosSinistros();
+  } catch (e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--danger);padding:40px">Erro ao carregar avisos: ${e.message}</td></tr>`;
+  }
+}
+
+function renderAvisosSinistros() {
+  const tbody = document.getElementById('avs-tbody');
+  if (!tbody) return;
+  const busca = (document.getElementById('avs-busca')?.value || '').trim().toLowerCase();
+  let lista = _avisosSinistrosCache;
+  if (busca) {
+    lista = lista.filter(a => [a.no_siniestro, a.poliza_proagro, a.nome_produtor, a.segurado, a.nome_predio]
+      .some(v => (v || '').toLowerCase().includes(busca)));
+  }
+  // Não revisados primeiro, mais recentes primeiro dentro de cada grupo.
+  lista = lista.slice().sort((a, b) => (a.revisado === b.revisado) ? 0 : (a.revisado ? 1 : -1));
+
+  if (!lista.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Nenhum aviso de sinistro encontrado ainda.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = lista.map(a => `<tr>
+    <td class="mono">${a.no_siniestro || '—'}</td>
+    <td style="font-size:12px">${a.poliza_proagro || '—'}</td>
+    <td style="font-size:12px">
+      <div style="font-weight:500">${a.nome_produtor || '—'}</div>
+      <div style="color:var(--gray400)">${a.segurado || ''}</div>
+    </td>
+    <td style="font-size:12px">${a.nome_predio || '—'}</td>
+    <td style="font-size:12px">${a.cultivo || '—'}</td>
+    <td style="font-size:12px">${a.estatus_aviso || '—'}</td>
+    <td style="font-size:12px">${a.data_aviso ? formatarDataHora(a.data_aviso) : '—'}</td>
+    <td>${a.revisado
+      ? '<span class="badge badge-success"><span class="badge-dot"></span>Revisado</span>'
+      : `<button class="btn-sm btn-outline" onclick="marcarAvisoSinistroRevisado(${a.id})">Marcar como revisado</button>`}</td>
+  </tr>`).join('');
+}
+
+async function marcarAvisoSinistroRevisado(id) {
+  try {
+    await api('POST', `/sinistros/avisos/${id}/marcar-revisado`);
+    await carregarAvisosSinistros();
+  } catch (e) {
+    alert('Não foi possível marcar como revisado: ' + e.message);
+  }
+}
+
+async function verificarAvisosSinistrosAgora() {
+  const btn = document.getElementById('avs-btn-verificar');
+  const textoOriginal = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = 'Verificando…';
+  try {
+    const r = await api('POST', '/sinistros/avisos/verificar-agora');
+    await carregarAvisosSinistros();
+    if (r.novos > 0) alert(`${r.novos} novo(s) aviso(s) de sinistro encontrado(s).`);
+  } catch (e) {
+    alert('Não foi possível verificar agora: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = textoOriginal;
+  }
 }
 
 async function carregarPainelSinistros() {
