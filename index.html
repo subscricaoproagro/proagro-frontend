@@ -4268,10 +4268,6 @@ function renderizarPainelComercial() {
             ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="pcAlternarInclusaoDraft('${ce.job_id}')">📌 Inclusão solicitada</button>`
             : `<button class="btn-sm btn-outline" onclick="pcAlternarInclusaoDraft('${ce.job_id}')">📌 Pedir inclusão no draft</button>`)
         : '';
-      const drSis = (ce.job && ce.job.decisao_risco) ? ce.job.decisao_risco : null;
-      const btnReenviarEmail = drSis
-        ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#0369a1" onclick="abrirReenvioSimplesCE('${ce.job_id}','${drSis}')">📨 Reenviar Email</button>`
-        : '';
       const btnHistorico = `<button class="btn-sm btn-outline" onclick="pcAbrirHistorico('${ce.job_id}')">📜 Histórico</button>`;
       const btnVerObs = ce.tem_observacao
         ? `<button class="btn-sm btn-outline" onclick="pcVerObservacoes('${ce.job_id}')">👁 Ver e-mail</button>`
@@ -4288,7 +4284,7 @@ function renderizarPainelComercial() {
         <td>${impedimentosHtml}</td>
         <td class="pend-cell" id="pend-cell-ce-${ce.job_id}">${pendInicial(ce.job_id, 'Comercial')}</td>
         <td>${efetivadaHtml}</td>
-        <td style="display:flex;gap:6px;flex-wrap:wrap">${btnPrioridade}${btnInclusao}${btnReenviarEmail}${btnHistorico}${btnVerObs}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">${btnPrioridade}${btnInclusao}${btnHistorico}${btnVerObs}</td>
       </tr>`;
     }).join('');
 
