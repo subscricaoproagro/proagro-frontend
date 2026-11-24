@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -1191,7 +1191,7 @@
         <div class="es-toolbar">
           <div class="es-search">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-            <input id="avs-busca" placeholder="Nº do sinistro, apólice, produtor ou propriedade" oninput="renderAvisosSinistros()">
+            <input id="avs-busca" placeholder="Número do aviso, nº do sinistro, apólice, produtor ou propriedade" oninput="renderAvisosSinistros()">
           </div>
           <button class="es-tb-btn" onclick="verificarAvisosSinistrosAgora()" id="avs-btn-verificar">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 11a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 13a9 9 0 0 1-15 6.7L3 16"/></svg>
@@ -1203,10 +1203,10 @@
           <div class="overflow-x">
             <table class="jobs-table">
               <thead><tr>
-                <th>Nº do sinistro</th><th>Apólice ProAgro</th><th>Produtor / Segurado</th>
-                <th>Propriedade</th><th>Cultura</th><th>Status do aviso</th><th>Data do aviso</th><th>Ações</th>
+                <th>Número do aviso</th><th>Nº do sinistro</th><th>Apólice ProAgro</th><th>Produtor / Segurado</th>
+                <th>Propriedade</th><th>Cultura</th><th>Status do aviso</th><th>Data do sinistro</th><th>Data do aviso</th><th>Ações</th>
               </tr></thead>
-              <tbody id="avs-tbody"><tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
+              <tbody id="avs-tbody"><tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Carregando…</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -12719,7 +12719,7 @@ async function carregarAvisosSinistros() {
     document.getElementById('avs-kpi-novos').textContent = total - revisados;
     renderAvisosSinistros();
   } catch (e) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--danger);padding:40px">Erro ao carregar avisos: ${e.message}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--danger);padding:40px">Erro ao carregar avisos: ${e.message}</td></tr>`;
   }
 }
 
@@ -12729,19 +12729,23 @@ function renderAvisosSinistros() {
   const busca = (document.getElementById('avs-busca')?.value || '').trim().toLowerCase();
   let lista = _avisosSinistrosCache;
   if (busca) {
-    lista = lista.filter(a => [a.no_siniestro, a.poliza_proagro, a.nome_produtor, a.segurado, a.nome_predio]
+    lista = lista.filter(a => [a.numero_aviso, a.no_siniestro, a.poliza_proagro, a.nome_produtor, a.segurado, a.nome_predio]
       .some(v => (v || '').toLowerCase().includes(busca)));
   }
   // Não revisados primeiro, mais recentes primeiro dentro de cada grupo.
   lista = lista.slice().sort((a, b) => (a.revisado === b.revisado) ? 0 : (a.revisado ? 1 : -1));
 
   if (!lista.length) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray400);padding:40px">Nenhum aviso de sinistro encontrado ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray400);padding:40px">Nenhum aviso de sinistro encontrado ainda.</td></tr>';
     return;
   }
 
   tbody.innerHTML = lista.map(a => `<tr>
-    <td class="mono">${a.no_siniestro || '—'}</td>
+    <td class="mono">${a.numero_aviso || '—'}</td>
+    <td class="mono">
+      ${a.no_siniestro || '—'}
+      ${a.tem_vistoria ? '<div style="margin-top:3px"><span class="badge badge-success" style="font-size:10px;white-space:nowrap"><span class="badge-dot"></span>Já tem vistoria</span></div>' : ''}
+    </td>
     <td style="font-size:12px">${a.poliza_proagro || '—'}</td>
     <td style="font-size:12px">
       <div style="font-weight:500">${a.nome_produtor || '—'}</div>
@@ -12750,6 +12754,7 @@ function renderAvisosSinistros() {
     <td style="font-size:12px">${a.nome_predio || '—'}</td>
     <td style="font-size:12px">${a.cultivo || '—'}</td>
     <td style="font-size:12px">${a.estatus_aviso || '—'}</td>
+    <td style="font-size:12px">${a.data_siniestro ? formatarDataHora(a.data_siniestro) : '—'}</td>
     <td style="font-size:12px">${a.data_aviso ? formatarDataHora(a.data_aviso) : '—'}</td>
     <td>${a.revisado
       ? '<span class="badge badge-success"><span class="badge-dot"></span>Revisado</span>'
