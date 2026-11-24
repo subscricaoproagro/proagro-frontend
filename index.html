@@ -2993,6 +2993,13 @@ async function enterApp() {
     else if (id === 'page-solicitacoes') carregarSolicitacoes();
     else carregarJobs();  // histórico / dashboard
   }, 30000);
+
+  // Menus retirados de circulação a pedido do usuário (2026-11-24): não devem
+  // mais aparecer no menu lateral pra NINGUÉM, independente de role/paginas.
+  // Roda por último, depois de toda a lógica de role/permissões acima, pra
+  // garantir que nada reexiba esses botões.
+  ['dashboard-btn', 'nova-analise-btn', 'solicitacoes-btn', 'assistente-btn', 'monitoramento-btn', 'extrator-btn']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
 }
 
 function handleLogout() {
