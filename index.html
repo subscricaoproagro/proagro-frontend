@@ -6,7 +6,7 @@
 <meta name="supported-color-schemes" content="light">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ProAgro Seguros — Subscrição</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=Space+Grotesk:wght@600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
   :root {
     --g50:#f0faf4;--g100:#d4f0e0;--g200:#a8e0c0;--g500:#2d8a55;--g600:#1e6b40;--g700:#155130;--g900:#0a2818;
@@ -42,6 +42,61 @@
   .la-btn-primary:hover{background:var(--g700)}
   .la-btn-primary:disabled{opacity:.6;cursor:not-allowed}
   .la-fineprint{margin:20px 0 0;text-align:center;font-size:10.5px;color:var(--gray400);line-height:1.6}
+
+  /* ESTEIRA DE ANÁLISES (ex-"Histórico") — redesign 2026-11-24. Escopado em
+     #page-historico de propósito: não mexe no .jobs-table/.badge globais
+     (usados por Painel Comercial e Condição Especial também) nem nos
+     botões de ação da tabela, que continuam exatamente como eram. */
+  #page-historico .es-head{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:20px}
+  #page-historico .es-title{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;color:var(--gray900);margin:0 0 4px;letter-spacing:-.01em}
+  #page-historico .es-sub{font-size:13.5px;color:var(--gray400)}
+  #page-historico .es-live{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--gray100);border-radius:999px;padding:7px 14px;font-size:12px;font-weight:600;color:var(--gray600);box-shadow:var(--shadow-sm)}
+  @keyframes esPulse{0%{box-shadow:0 0 0 0 rgba(45,138,85,.5)}70%{box-shadow:0 0 0 6px rgba(45,138,85,0)}100%{box-shadow:0 0 0 0 rgba(45,138,85,0)}}
+  #page-historico .es-live-dot{width:7px;height:7px;border-radius:50%;background:var(--g500);animation:esPulse 2s infinite;flex-shrink:0}
+
+  #page-historico .es-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}
+  #page-historico .es-kpi{background:#fff;border:1px solid var(--gray100);border-radius:var(--r-lg);padding:16px 18px;box-shadow:var(--shadow-sm);display:flex;align-items:center;gap:13px}
+  #page-historico .es-kpi .ic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  #page-historico .es-kpi .num{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:var(--gray900);line-height:1.1;font-variant-numeric:tabular-nums}
+  #page-historico .es-kpi .lbl{font-size:11px;color:var(--gray400);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+  #page-historico .es-kpi .delta{font-size:10.5px;color:var(--gray400);margin-top:3px}
+
+  #page-historico .es-toolbar{background:#fff;border:1px solid var(--gray100);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  #page-historico .es-search{display:flex;align-items:center;gap:7px;flex:1 1 260px;min-width:220px;border:1.5px solid var(--gray200);border-radius:9px;padding:0 10px}
+  #page-historico .es-search svg{color:var(--gray400);flex-shrink:0}
+  #page-historico .es-search input{border:none;outline:none;padding:9px 6px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--gray900);flex:1;min-width:0;background:transparent}
+  #page-historico .es-search .es-search-sep{width:1px;align-self:stretch;background:var(--gray100);margin:6px 0}
+  #page-historico .es-tb-btn{padding:9px 14px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;border:1.5px solid var(--gray200);background:#fff;color:var(--gray700);display:inline-flex;align-items:center;gap:7px}
+  #page-historico .es-tb-btn:hover{border-color:var(--gray400)}
+  #page-historico .es-tb-btn.danger{border-color:#fecaca;color:var(--red)}
+
+  #page-historico .es-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  #page-historico .es-chip{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--gray100);border-radius:10px;padding:7px 13px;font-size:12px;font-weight:600;color:var(--gray700);cursor:pointer;box-shadow:var(--shadow-sm)}
+  #page-historico .es-chip:hover{border-color:var(--gray200)}
+  #page-historico .es-chip .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  #page-historico .es-chip .n{font-variant-numeric:tabular-nums;color:var(--gray900);font-weight:700}
+
+  #page-historico .es-results{background:#fff;border:1px solid var(--gray100);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);padding:13px 18px;margin-bottom:18px}
+  #page-historico .es-results-title{font-size:10.5px;font-weight:700;color:var(--gray400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px}
+  #page-historico .es-results-groups{display:flex;align-items:center;gap:26px;flex-wrap:wrap}
+  #page-historico .es-rgroup{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  #page-historico .es-rgroup-label{font-size:12px;font-weight:700;color:var(--gray700);margin-right:2px}
+  #page-historico .es-rstat{display:flex;align-items:baseline;gap:6px}
+  #page-historico .es-rstat .rn{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+  #page-historico .es-rstat .rl{font-size:11.5px;color:var(--gray400);font-weight:500}
+  #page-historico .es-rstat-total{padding-right:14px;margin-right:2px;border-right:1px solid var(--gray100)}
+  #page-historico .es-rstat-total .rn{font-size:19px;color:var(--gray900)}
+  #page-historico .es-rstat-total .rl{color:var(--gray700);font-weight:700}
+  #page-historico .es-rsep{width:1px;align-self:stretch;background:var(--gray100)}
+
+  #page-historico .es-seg{display:flex;background:var(--gray50);border:1px solid var(--gray100);border-radius:10px;padding:3px;gap:2px;margin-bottom:0}
+  #page-historico .es-seg button{border:none;background:transparent;padding:8px 18px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--gray600);cursor:pointer}
+  #page-historico .es-seg button.active{background:var(--g900);color:#fff}
+
+  #page-historico .jobs-table thead th{position:sticky;top:0;background:var(--gray50);font-family:'DM Sans',sans-serif}
+  #page-historico .jobs-table td .mono{font-family:'JetBrains Mono',monospace;font-weight:500}
+  #page-historico .es-avatar{width:24px;height:24px;border-radius:50%;background:var(--g100);color:var(--g700);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-right:6px;flex-shrink:0;vertical-align:middle}
+
   .form-group{margin-bottom:20px}
   .form-label{display:block;font-size:12px;font-weight:500;color:var(--gray600);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
   .form-input{width:100%;padding:12px 16px;border:1.5px solid var(--gray200);border-radius:var(--r-md);font-family:'DM Sans',sans-serif;font-size:15px;color:var(--gray900);background:#fff;transition:border-color .2s,box-shadow .2s;outline:none}
@@ -393,7 +448,7 @@
       <button class="topbar-btn active" id="dashboard-btn" onclick="showPage('dashboard')"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span><span class="sidebar-label">Dashboard</span></button>
       <button class="topbar-btn" id="dashboard-sv-btn" onclick="showPage('dashboard-supervisor')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span><span class="sidebar-label">Dashboard</span></button>
       <button class="topbar-btn" id="nova-analise-btn" onclick="showPage('nova-analise')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/><path d="M12 11v6"/><path d="M9 14h6"/></svg></span><span class="sidebar-label">Nova Análise</span></button>
-      <button class="topbar-btn" id="historico-btn" onclick="showPage('historico')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span><span class="sidebar-label">Histórico</span><span id="sistema-pendente-sino" class="esg-sino-alerta" style="display:none" title="Há propostas aguardando decisão"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2Zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2Z"/></svg></span></button>
+      <button class="topbar-btn" id="historico-btn" onclick="showPage('historico')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span><span class="sidebar-label">Esteira de Análises</span><span id="sistema-pendente-sino" class="esg-sino-alerta" style="display:none" title="Há propostas aguardando decisão"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2Zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2Z"/></svg></span></button>
       <button class="topbar-btn" id="solicitacoes-btn" onclick="showPage('solicitacoes')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg></span><span class="sidebar-label">Solicitações CE</span></button>
       <button class="topbar-btn" id="auditor-ce-btn" onclick="showPage('auditor-ce')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><span class="sidebar-label">Auditor de CE</span></button>
       <button class="topbar-btn" id="assistente-btn" onclick="showPage('assistente')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg></span><span class="sidebar-label">Assistente IA</span></button>
@@ -680,10 +735,10 @@
       <div class="card" style="margin-bottom:20px">
         <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;padding:16px 16px 0">
           <div>
-            <div class="section-title" style="font-size:15px">✉ Avisos de E-mail — Possíveis Pedidos de Condição Especial</div>
+            <div class="section-title" style="font-size:15px;font-family:'Space Grotesk',sans-serif;display:flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>Avisos de E-mail — Possíveis Pedidos de Condição Especial</div>
             <div class="section-sub" style="font-size:12px">Detectados automaticamente na caixa de e-mail (por CPF/CNPJ + palavras-chave). Revise e trate manualmente.</div>
           </div>
-          <button class="btn-sm btn-outline" onclick="carregarAvisosCeEmail()">↻ Atualizar</button>
+          <button class="btn-sm btn-outline" onclick="carregarAvisosCeEmail()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-2px"><path d="M21 2v6h-6"/><path d="M3 11a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 13a9 9 0 0 1-15 6.7L3 16"/></svg>Atualizar</button>
         </div>
         <div class="overflow-x" style="padding:12px 16px 16px">
           <table class="jobs-table">
@@ -693,64 +748,106 @@
         </div>
       </div>
 
-      <div class="section-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div class="es-head">
         <div>
-          <div class="section-title">Histórico de Análises</div>
-          <div class="section-sub">Todos os jobs executados</div>
+          <div class="es-title">Esteira de Análises</div>
+          <div class="es-sub">Acompanhamento em tempo real das propostas — Sistema e Condição Especial</div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <input class="form-input" id="hist-filter-proposta" placeholder="Nº da proposta" style="width:140px;padding:8px 12px" oninput="buscarPropostaComDebounce()">
-          <input class="form-input" id="hist-filter-cliente" placeholder="Nome do Cliente" style="width:160px;padding:8px 12px" oninput="buscarPropostaComDebounce()">
-          <select class="form-input" id="hist-filter" style="width:auto;padding:8px 12px" onchange="carregarJobs()">
-            <option value="">Todos</option>
-            <option value="aguardando">⏳ Aguardando processamento</option>
-            <option value="processando">🔄 Em execução</option>
-            <option value="aguardando_analise_sistema">⏳ Aguardando Análise do Analista (Sistema)</option>
-            <option value="aguardando_envio_at">⏳ Aguardando Análise do Analista (CE)</option>
-            <option value="concluido_simples">✅ Concluído</option>
-            <option value="ce_aprovada">⭐ CE Aprovada</option>
-            <option value="balcao">🏦 Balcão</option>
-            <option value="recusada">❌ Recusada</option>
-            <option value="erro">⚠️ Erro</option>
-          </select>
-          <select class="form-input" id="hist-filter-onedrive" style="width:auto;padding:8px 12px" onchange="carregarJobs()">
-            <option value="">OneDrive: Todos</option>
-            <option value="enviado">✅ Enviado ao OneDrive</option>
-            <option value="pendente">— Não enviado / falhou</option>
-          </select>
-          <button class="btn-sm btn-outline" onclick="carregarJobs()">↻ Atualizar</button>
-          <button class="btn-sm" style="background:#fff5f5;border:1px solid #fca5a5;color:#c0392b" onclick="excluirJobsPorStatus()">🗑 Excluir filtrados</button>
-        </div>
+        <div class="es-live"><span class="es-live-dot"></span>Atualizado agora</div>
       </div>
-      <!-- Contadores de status -->
-      <div id="hist-contadores" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-        <div onclick="document.getElementById('hist-filter').value='aguardando';carregarJobs()" style="cursor:pointer;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#92400e">⏳ Aguardando: <span id="hcount-aguardando">—</span></div>
-        <div onclick="document.getElementById('hist-filter').value='processando';carregarJobs()" style="cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#1d4ed8">🔄 Em execução: <span id="hcount-processando">—</span></div>
-        <div onclick="document.getElementById('hist-filter').value='aguardando_analise_sistema';carregarJobs()" title="Proposta de Sistema concluída pela IA, mas o analista ainda não decidiu (aprovar/recusar)" style="cursor:pointer;background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#92400e">⏳ Aguardando Análise (Sistema): <span id="hcount-aguardando-analise-sistema">—</span></div>
-        <div onclick="document.getElementById('hist-filter').value='aguardando_envio_at';carregarJobs()" title="CE já preenchida (manual ou pelo robô), mas o analista ainda não revisou/enviou pra AT" style="cursor:pointer;background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#92400e">⏳ Aguardando Análise do Analista (CE): <span id="hcount-aguardando-envio-at">—</span></div>
-        <div onclick="document.getElementById('hist-filter').value='concluido_simples';carregarJobs()" style="cursor:pointer;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#166534">✅ Concluído: <span id="hcount-concluido">—</span></div>
-        <div onclick="document.getElementById('hist-filter').value='ce_aprovada';carregarJobs()" style="cursor:pointer;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#92400e">⭐ CE Aprovada: <span id="hcount-ce">—</span></div>
-        <div onclick="document.getElementById('hist-filter').value='balcao';carregarJobs()" style="cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#1d4ed8">🏦 Balcão: <span id="hcount-balcao">—</span></div>
-        <div onclick="document.getElementById('hist-filter').value='recusada';carregarJobs()" style="cursor:pointer;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#c0392b">❌ Recusada: <span id="hcount-recusada">—</span></div>
-        <div onclick="document.getElementById('hist-filter').value='erro';carregarJobs()" style="cursor:pointer;background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#c0392b">⚠️ Erro: <span id="hcount-erro">—</span></div>
-        <!-- Card média de tempo de avaliação do analista -->
-        <div style="margin-left:auto;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:6px 18px;display:flex;flex-direction:column;align-items:center;min-width:150px">
-          <div style="font-size:10px;font-weight:600;color:#6d28d9;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">⏱ Média de Avaliação</div>
-          <div id="hist-media-tempo" style="font-size:20px;font-weight:800;color:#4c1d95;line-height:1.2">—</div>
-          <div id="hist-media-base" style="font-size:10px;color:#7c3aed;margin-top:1px">calculando…</div>
+
+      <!-- KPIs -->
+      <div class="es-kpis">
+        <div class="es-kpi">
+          <div class="ic" style="background:#eff6ff;color:#1d4ed8"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+          <div><div class="num" id="es-kpi-andamento">—</div><div class="lbl">Em andamento</div></div>
+        </div>
+        <div class="es-kpi">
+          <div class="ic" style="background:var(--g50);color:var(--g600)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <div><div class="num" id="es-kpi-finalizadas">—</div><div class="lbl">Finalizadas (mês)</div><div class="delta" id="es-kpi-finalizadas-sub">calculando…</div></div>
+        </div>
+        <div class="es-kpi">
+          <div class="ic" style="background:#fffbeb;color:var(--gold)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h3v4H3zM10.5 11h3v10h-3zM18 6h3v15h-3z"/></svg></div>
+          <div><div class="num" id="es-kpi-taxa">—</div><div class="lbl">Taxa de aprovação (mês)</div></div>
+        </div>
+        <div class="es-kpi">
+          <div class="ic" style="background:var(--g900);color:var(--gold)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 3"/><path d="M9 2h6"/></svg></div>
+          <div><div class="num" id="hist-media-tempo">—</div><div class="lbl">Tempo médio de avaliação</div><div class="delta" id="hist-media-base">calculando…</div></div>
         </div>
       </div>
 
-      <!-- Abas Sistema / CE — visíveis só para analista -->
-      <div id="hist-abas" style="display:none;gap:4px;margin-bottom:16px">
-        <button id="hist-aba-sistema" onclick="setHistAba('sistema')"
-          style="padding:8px 20px;border-radius:8px 8px 0 0;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #1a3a2a;background:#1a3a2a;color:#fff">
-          🖥️ Sistema
+      <!-- Barra de ferramentas: abas Sistema/CE + busca + ações -->
+      <div class="es-toolbar">
+        <div id="hist-abas" class="es-seg" style="display:none">
+          <button id="hist-aba-sistema" class="active" onclick="setHistAba('sistema')">Sistema</button>
+          <button id="hist-aba-ce" onclick="setHistAba('ce')">Condição Especial</button>
+        </div>
+        <div class="es-search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="hist-filter-proposta" placeholder="Nº da proposta" oninput="buscarPropostaComDebounce()">
+          <div class="es-search-sep"></div>
+          <input id="hist-filter-cliente" placeholder="Nome do cliente" oninput="buscarPropostaComDebounce()">
+        </div>
+        <!-- Filtro de status: continua existindo (os chips abaixo escrevem nele), só não aparece mais como dropdown solto. -->
+        <select id="hist-filter" onchange="carregarJobs()" style="display:none">
+          <option value="">Todos</option>
+          <option value="aguardando">Aguardando processamento</option>
+          <option value="processando">Em execução</option>
+          <option value="aguardando_analise_sistema">Aguardando Análise do Analista (Sistema)</option>
+          <option value="aguardando_envio_at">Aguardando Análise do Analista (CE)</option>
+          <option value="concluido_simples">Concluído</option>
+          <option value="ce_aprovada">CE Aprovada</option>
+          <option value="balcao">Balcão</option>
+          <option value="recusada">Recusada</option>
+          <option value="erro">Erro</option>
+        </select>
+        <!-- Filtro de OneDrive: pouco usado no dia a dia, tirado da barra visível (a pedido do usuário, 2026-11-24). -->
+        <select id="hist-filter-onedrive" onchange="carregarJobs()" style="display:none">
+          <option value="">OneDrive: Todos</option>
+          <option value="enviado">Enviado ao OneDrive</option>
+          <option value="pendente">Não enviado / falhou</option>
+        </select>
+        <button class="es-tb-btn" onclick="carregarJobs()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 11a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 13a9 9 0 0 1-15 6.7L3 16"/></svg>
+          Atualizar
         </button>
-        <button id="hist-aba-ce" onclick="setHistAba('ce')"
-          style="padding:8px 20px;border-radius:8px 8px 0 0;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #d97706;background:#fff;color:#d97706">
-          ⭐ Condição Especial
+        <button class="es-tb-btn danger" onclick="excluirJobsPorStatus()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          Excluir filtrados
         </button>
+      </div>
+
+      <!-- Chips de status — só os que pedem ação agora (contagem ao vivo, não é "do mês") -->
+      <div id="hist-contadores" class="es-chips">
+        <div class="es-chip" onclick="document.getElementById('hist-filter').value='aguardando';carregarJobs()"><span class="dot" style="background:#d97706"></span>Aguardando <span class="n" id="hcount-aguardando">—</span></div>
+        <div class="es-chip" onclick="document.getElementById('hist-filter').value='processando';carregarJobs()"><span class="dot" style="background:#1d4ed8"></span>Em execução <span class="n" id="hcount-processando">—</span></div>
+        <div class="es-chip" title="Proposta de Sistema concluída pela IA, mas o analista ainda não decidiu (aprovar/recusar)" onclick="document.getElementById('hist-filter').value='aguardando_analise_sistema';carregarJobs()"><span class="dot" style="background:#d97706"></span>Aguard. Análise (Sistema) <span class="n" id="hcount-aguardando-analise-sistema">—</span></div>
+        <div class="es-chip" title="CE já preenchida (manual ou pelo robô), mas o analista ainda não revisou/enviou pra AT" onclick="document.getElementById('hist-filter').value='aguardando_envio_at';carregarJobs()"><span class="dot" style="background:#d97706"></span>Aguard. Análise (CE) <span class="n" id="hcount-aguardando-envio-at">—</span></div>
+        <div class="es-chip" onclick="document.getElementById('hist-filter').value='erro';carregarJobs()"><span class="dot" style="background:#c0392b"></span>Erro <span class="n" id="hcount-erro">—</span></div>
+      </div>
+
+      <!-- Resultados do mês — só números (Concluído/CE Aprovada/Balcão/Recusada saíram
+           dos chips de filtro a pedido do usuário, 2026-11-24: "podem ser números,
+           para o mês e não o total", separados por Sistema x Condição Especial,
+           cada grupo com o Total primeiro). -->
+      <div class="es-results">
+        <div class="es-results-title">Resultados deste mês</div>
+        <div class="es-results-groups">
+          <div class="es-rgroup">
+            <span class="es-rgroup-label">Sistema</span>
+            <div class="es-rstat es-rstat-total"><span class="rn" id="es-sis-total">—</span><span class="rl">Total</span></div>
+            <div class="es-rstat"><span class="rn" style="color:var(--g600)" id="es-sis-concluidas">—</span><span class="rl">Concluídas</span></div>
+            <div class="es-rstat"><span class="rn" style="color:var(--red)" id="es-sis-recusadas">—</span><span class="rl">Recusadas</span></div>
+          </div>
+          <div class="es-rsep"></div>
+          <div class="es-rgroup">
+            <span class="es-rgroup-label">Condição Especial</span>
+            <div class="es-rstat es-rstat-total"><span class="rn" id="es-ce-total">—</span><span class="rl">Total</span></div>
+            <div class="es-rstat"><span class="rn" style="color:var(--gold)" id="es-ce-aprovadas">—</span><span class="rl">Aprovadas</span></div>
+            <div class="es-rstat"><span class="rn" style="color:var(--blue)" id="es-ce-balcao">—</span><span class="rl">Balcão</span></div>
+            <div class="es-rstat"><span class="rn" style="color:var(--red)" id="es-ce-recusadas">—</span><span class="rl">Recusadas</span></div>
+          </div>
+        </div>
       </div>
       <div class="card">
         <div class="overflow-x">
@@ -760,7 +857,7 @@
           </table>
         </div>
         <div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:16px">
-          <button id="btn-carregar-mais-jobs" class="btn-sm btn-outline" style="display:none" onclick="carregarMaisJobsHistorico()">⬇️ Carregar mais</button>
+          <button id="btn-carregar-mais-jobs" class="btn-sm btn-outline" style="display:none" onclick="carregarMaisJobsHistorico()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:-2px"><path d="M12 5v13"/><path d="m6 13 6 6 6-6"/></svg>Carregar mais</button>
           <span id="info-carregar-mais-jobs" style="font-size:12px;color:var(--gray400)"></span>
         </div>
       </div>
@@ -3216,13 +3313,8 @@ function setHistAba(aba) {
   _histAba = aba;
   const btnSis = document.getElementById('hist-aba-sistema');
   const btnCE  = document.getElementById('hist-aba-ce');
-  if (aba === 'sistema') {
-    btnSis.style.background = '#1a3a2a'; btnSis.style.color = '#fff';
-    btnCE.style.background  = '#fff';    btnCE.style.color  = '#d97706';
-  } else {
-    btnCE.style.background  = '#d97706'; btnCE.style.color = '#fff';
-    btnSis.style.background = '#fff';    btnSis.style.color = '#1a3a2a';
-  }
+  if (btnSis) btnSis.classList.toggle('active', aba === 'sistema');
+  if (btnCE)  btnCE.classList.toggle('active', aba === 'ce');
   carregarJobs();
 }
 
@@ -3538,24 +3630,67 @@ async function carregarJobs() {
     const dadosContagemTotal = resumo || allJobs;
     const dadosContagem = dadosContagemTotal.filter(j => _histAba === 'sistema' ? _isSistemaContagem(j) : !_isSistemaContagem(j));
     const setCount = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
-    setCount('hcount-aguardando',  dadosContagem.filter(j => j.status === 'aguardando').length);
-    setCount('hcount-processando', dadosContagem.filter(j => j.status === 'processando').length);
-    setCount('hcount-aguardando-analise-sistema', dadosContagem.filter(j => {
+
+    const nAguardando  = dadosContagem.filter(j => j.status === 'aguardando').length;
+    const nProcessando = dadosContagem.filter(j => j.status === 'processando').length;
+    const nAguardAnaliseSistema = dadosContagem.filter(j => {
       const isSistemaProp = j.tipo_analise === 'sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '');
       return isSistemaProp && j.status === 'concluido' && !j.decisao && !j.decisao_risco;
-    }).length);
-    setCount('hcount-aguardando-envio-at', dadosContagem.filter(j =>
+    }).length;
+    const nAguardEnvioAt = dadosContagem.filter(j =>
       j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco &&
       _ceJobIds.has(j.id) && _ceAguardandoAnalistaJobIds.has(j.id)
-    ).length);
-    setCount('hcount-concluido',   dadosContagem.filter(j =>
-      j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco &&
-      !_ceAguardandoAnalistaJobIds.has(j.id)
-    ).length);
-    setCount('hcount-ce',          dadosContagem.filter(j => j.status === 'concluido' && (j.decisao_risco === 'aprovado' || j.decisao_risco === 'aprovado_diferente')).length);
-    setCount('hcount-balcao',      dadosContagem.filter(j => j.status === 'concluido' && j.decisao_risco === 'balcao').length);
-    setCount('hcount-recusada',    dadosContagem.filter(j => j.status === 'concluido' && j.decisao === 'recusado').length);
-    setCount('hcount-erro',        dadosContagem.filter(j => j.status === 'erro' || j.status === 'cancelado').length);
+    ).length;
+    const nErro = dadosContagem.filter(j => j.status === 'erro' || j.status === 'cancelado').length;
+
+    setCount('hcount-aguardando', nAguardando);
+    setCount('hcount-processando', nProcessando);
+    setCount('hcount-aguardando-analise-sistema', nAguardAnaliseSistema);
+    setCount('hcount-aguardando-envio-at', nAguardEnvioAt);
+    setCount('hcount-erro', nErro);
+    setCount('es-kpi-andamento', nAguardando + nProcessando + nAguardAnaliseSistema + nAguardEnvioAt);
+
+    // Resultados do mês — Sistema x Condição Especial, SEMPRE as duas juntas
+    // (não filtra por aba: o ponto é mostrar as duas ao mesmo tempo). Cada
+    // grupo começa pelo Total (soma de todos os resultados daquele grupo no
+    // mês), senão a soma das partes não batia com nada visível. A pedido do
+    // usuário (2026-11-24): "tudo tem que ser em função do mês... quantas
+    // são de sistema e quantas são de CE no mês".
+    const _inicioMes = new Date(); _inicioMes.setDate(1); _inicioMes.setHours(0, 0, 0, 0);
+    const _noMes = j => j.concluido_at && Date.parse(j.concluido_at) >= _inicioMes.getTime();
+    const sisConcluidasMes = dadosContagemTotal.filter(j =>
+      _isSistemaContagem(j) && j.status === 'concluido' && j.decisao === 'aprovado' && !j.decisao_risco &&
+      !_ceAguardandoAnalistaJobIds.has(j.id) && _noMes(j)
+    ).length;
+    const sisRecusadasMes = dadosContagemTotal.filter(j =>
+      _isSistemaContagem(j) && j.status === 'concluido' && j.decisao === 'recusado' && _noMes(j)
+    ).length;
+    const ceAprovadasMes = dadosContagemTotal.filter(j =>
+      !_isSistemaContagem(j) && j.status === 'concluido' && (j.decisao_risco === 'aprovado' || j.decisao_risco === 'aprovado_diferente') && _noMes(j)
+    ).length;
+    const ceBalcaoMes = dadosContagemTotal.filter(j =>
+      !_isSistemaContagem(j) && j.status === 'concluido' && j.decisao_risco === 'balcao' && _noMes(j)
+    ).length;
+    const ceRecusadasMes = dadosContagemTotal.filter(j =>
+      !_isSistemaContagem(j) && j.status === 'concluido' && j.decisao === 'recusado' && _noMes(j)
+    ).length;
+    const sisTotalMes = sisConcluidasMes + sisRecusadasMes;
+    const ceTotalMes = ceAprovadasMes + ceBalcaoMes + ceRecusadasMes;
+    const finalizadasMes = sisTotalMes + ceTotalMes;
+    const taxaAprovacaoMes = finalizadasMes
+      ? Math.round(100 * (sisConcluidasMes + ceAprovadasMes + ceBalcaoMes) / finalizadasMes)
+      : null;
+
+    setCount('es-sis-total', sisTotalMes);
+    setCount('es-sis-concluidas', sisConcluidasMes);
+    setCount('es-sis-recusadas', sisRecusadasMes);
+    setCount('es-ce-total', ceTotalMes);
+    setCount('es-ce-aprovadas', ceAprovadasMes);
+    setCount('es-ce-balcao', ceBalcaoMes);
+    setCount('es-ce-recusadas', ceRecusadasMes);
+    setCount('es-kpi-finalizadas', finalizadasMes);
+    setCount('es-kpi-finalizadas-sub', `Sistema ${sisTotalMes} · CE ${ceTotalMes}`);
+    setCount('es-kpi-taxa', taxaAprovacaoMes === null ? '—' : `${taxaAprovacaoMes}%`);
 
     // Média de tempo de avaliação — sistema + CE juntos (somente onde analista decidiu),
     // de propósito NÃO filtrado por aba (usa dadosContagemTotal, não dadosContagem)
@@ -4522,7 +4657,7 @@ async function carregarStats() {
 // ══════════════════════════════════════════════════════════════
 const _PG = {
   'nova-analise':  { label: 'Nova Análise',           btn: 'nova-analise-btn'  },
-  'historico':     { label: 'Histórico de Análises',  btn: 'historico-btn'     },
+  'historico':     { label: 'Esteira de Análises',    btn: 'historico-btn'     },
   'ce':            { label: 'Condição Especial',      btn: 'ce-btn'            },
   'pre-analise':   { label: 'Pré-análise',            btn: 'pre-analise-btn'   },
   'solicitacoes':  { label: 'Solicitações CE',        btn: 'solicitacoes-btn'  },
