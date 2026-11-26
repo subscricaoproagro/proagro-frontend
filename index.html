@@ -466,6 +466,7 @@
       <button class="topbar-btn" id="rem-btn" onclick="showPage('relatorio-esg-mensal');remInit()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg></span><span class="sidebar-label">Relatório Mensal ESG</span></button>
       <button class="topbar-btn" id="painel-comercial-btn" onclick="showPage('painel-comercial')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span><span class="sidebar-label">Painel Comercial</span></button>
       <button class="topbar-btn" id="gcc-btn" onclick="showPage('gerador-condicoes-comerciais');gccInit()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.41 20.59a2 2 0 0 1-2.82 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z"/><circle cx="7" cy="7" r="1"/></svg></span><span class="sidebar-label">Gerador de Condições Comerciais</span></button>
+      <button class="topbar-btn" id="gerar-drafts-btn" onclick="showPage('gerar-drafts');gdInit()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></span><span class="sidebar-label">Gerar Drafts</span></button>
     </nav>
   </aside>
   <div class="main-wrap">
@@ -1953,6 +1954,134 @@
       <div class="card-header"><div class="card-title">Gerações anteriores</div></div>
       <div class="card-body">
         <div id="gcc-historico-lista"><div class="mc-empty">Carregando…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="page-gerar-drafts" class="page-section">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Gerar Drafts</div>
+      <div class="section-sub">Converte a planilha final de Condições + a planilha de janelas de semeadura (ZARC) nos arquivos de draft pro sistema matriz — um por Plano x variante com/sem replantio</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap">
+    <button id="gd-tab-upload" class="btn-sm" onclick="gdMostrarEtapa('upload')" style="border-radius:8px 8px 0 0">1. Upload</button>
+    <button id="gd-tab-parametros" class="btn-sm" onclick="gdMostrarEtapa('parametros')" style="border-radius:8px 8px 0 0">2. Parâmetros</button>
+    <button id="gd-tab-gerar" class="btn-sm" onclick="gdMostrarEtapa('gerar')" style="border-radius:8px 8px 0 0">3. Gerar e baixar</button>
+    <button id="gd-tab-historico" class="btn-sm" onclick="gdMostrarEtapa('historico')" style="border-radius:8px 8px 0 0">4. Histórico</button>
+  </div>
+
+  <!-- ============ ETAPA 1: UPLOAD ============ -->
+  <div id="gd-etapa-upload" class="gd-etapa">
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">Planilha de Condições</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--gray600);margin-bottom:12px">
+          Produto final do "Gerador de Condições Comerciais" (aba "Condições"). Cultura e safra são detectadas automaticamente do título.
+        </p>
+        <div class="upload-zone" id="gd-upload-zone-condicoes" onclick="document.getElementById('gd-file-condicoes').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="event.preventDefault();this.classList.remove('drag-over');gdSelecionarArquivo(event.dataTransfer.files,'condicoes')">
+          <div class="upload-icon">📄</div>
+          <div class="upload-title" id="gd-upload-title-condicoes">Clique ou arraste o arquivo de Condições</div>
+          <div class="upload-sub">Formato .xlsx</div>
+          <input type="file" id="gd-file-condicoes" style="display:none" accept=".xlsx" onchange="gdSelecionarArquivo(this.files,'condicoes')">
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">Janelas de semeadura (Fechas Siembra / ZARC)</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--gray600);margin-bottom:12px">
+          Uma linha por município x Grupo x classe AD, com as colunas "Codigo Municipio", "Grupo", "Solo" (AD1..AD6), "inicio 1", "final 1".
+        </p>
+        <div class="upload-zone" id="gd-upload-zone-fechas" onclick="document.getElementById('gd-file-fechas').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="event.preventDefault();this.classList.remove('drag-over');gdSelecionarArquivo(event.dataTransfer.files,'fechas')">
+          <div class="upload-icon">🗓️</div>
+          <div class="upload-title" id="gd-upload-title-fechas">Clique ou arraste o arquivo de janelas de semeadura</div>
+          <div class="upload-sub">Formato .xlsx</div>
+          <input type="file" id="gd-file-fechas" style="display:none" accept=".xlsx" onchange="gdSelecionarArquivo(this.files,'fechas')">
+        </div>
+        <button class="btn-sm btn-green" id="gd-btn-analisar" style="width:100%;padding:12px;justify-content:center;margin-top:14px;border-radius:var(--r-md)" onclick="gdAnalisar()" disabled>
+          Analisar arquivos
+        </button>
+        <div id="gd-status-upload" style="display:none;margin-top:16px;font-size:13px;padding:12px 14px;border-radius:var(--r-sm)"></div>
+        <div id="gd-resumo-upload" style="margin-top:14px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ETAPA 2: PARÂMETROS ============ -->
+  <div id="gd-etapa-parametros" class="gd-etapa" style="display:none">
+    <div id="gd-parametros-aviso" class="badge badge-warning" style="margin-bottom:12px;display:none">Preencha o código de produto de cada Plano antes de gerar.</div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">Identificação</div></div>
+      <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;font-size:13px">
+        <div><div style="color:var(--gray600)">Cultura</div><div id="gd-info-cultura" style="font-weight:600">—</div></div>
+        <div><div style="color:var(--gray600)">Safra</div><div id="gd-info-safra" style="font-weight:600">—</div></div>
+        <div><div style="color:var(--gray600)">Saca (kg)</div><div id="gd-info-saca" style="font-weight:600">—</div></div>
+        <div><div style="color:var(--gray600)">Preço mínimo (R$/sc)</div><div id="gd-info-preco-min" style="font-weight:600">—</div></div>
+        <div><div style="color:var(--gray600)">Preço máximo (R$/sc)</div><div id="gd-info-preco-max" style="font-weight:600">—</div></div>
+        <div><div style="color:var(--gray600)">Municípios</div><div id="gd-info-municipios" style="font-weight:600">—</div></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">Código de produto por Plano</div></div>
+      <div class="card-body">
+        <p style="font-size:12px;color:var(--gray600);margin-bottom:10px">Letra/código usado no "NivelCobertura" e no "ItemConcatenado" do draft (ex. "C+", "B").</p>
+        <table class="jobs-table">
+          <thead><tr><th>Plano</th><th>% de cobertura</th><th>Código de produto</th></tr></thead>
+          <tbody id="gd-p-planos-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">Preço da saca e cobertura</div></div>
+      <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Preço da saca usado no SumaAsegurada/CostoProduccion</label>
+          <select class="form-input" id="gd-p-fonte-preco">
+            <option value="min">Mínimo</option>
+            <option value="max" selected>Máximo</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0"><label class="form-label">Dias de cobertura (somados à data fim de semeadura)</label><input class="form-input" type="number" id="gd-p-dias-cobertura" value="165"></div>
+      </div>
+    </div>
+
+    <button class="btn-sm btn-green" style="padding:12px 24px" onclick="gdSalvarParametros()">Salvar parâmetros</button>
+    <div id="gd-status-parametros" style="display:inline-block;margin-left:12px;font-size:13px"></div>
+  </div>
+
+  <!-- ============ ETAPA 3: GERAR E BAIXAR ============ -->
+  <div id="gd-etapa-gerar" class="gd-etapa" style="display:none">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Gerar os arquivos de draft</div></div>
+      <div class="card-body">
+        <button class="btn-sm btn-green" id="gd-btn-gerar" style="padding:14px 28px;font-size:15px;border-radius:var(--r-md)" onclick="gdGerar()">Gerar arquivos</button>
+        <div id="gd-status-gerar" style="display:none;margin-top:16px;font-size:13px;padding:12px 14px;border-radius:var(--r-sm)"></div>
+        <div id="gd-avisos-gerar" style="margin-top:14px"></div>
+        <div id="gd-arquivos-gerados" style="margin-top:14px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ETAPA 4: HISTÓRICO ============ -->
+  <div id="gd-etapa-historico" class="gd-etapa" style="display:none">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Gerações anteriores</div></div>
+      <div class="card-body">
+        <div id="gd-historico-lista"><div class="mc-empty">Carregando…</div></div>
       </div>
     </div>
   </div>
@@ -3545,6 +3674,7 @@ function showPage(page) {
     'gestao-propostas':    'gestao-propostas-btn',
     'painel-comercial':    'painel-comercial-btn',
     'gerador-condicoes-comerciais': 'gcc-btn',
+    'gerar-drafts':        'gerar-drafts-btn',
   };
   // Remove active de todos primeiro, depois aplica só no correto
   Object.values(pageToBtn).forEach(id => {
@@ -4975,6 +5105,7 @@ const _PG = {
   'painel-comercial': { label: 'Painel Comercial',    btn: 'painel-comercial-btn' },
   'sinistros':     { label: 'Painel de Sinistros',    btn: 'sinistros-btn'     },
   'gerador-condicoes-comerciais': { label: 'Gerador de Condições Comerciais', btn: 'gcc-btn' },
+  'gerar-drafts':  { label: 'Gerar Drafts',              btn: 'gerar-drafts-btn' },
 };
 const _PG_DEFAULTS = {
   admin:      Object.keys(_PG),
@@ -4982,7 +5113,7 @@ const _PG_DEFAULTS = {
   supervisor: ['ce', 'auditor-ce', 'esg', 'relatorio-esg-mensal', 'pre-analise'],
   campo:      ['monitoramento'],
   ceo:        [], // sem padrão — acesso escolhido manualmente pelo botão "Acesso"
-  comercial:  ['painel-comercial', 'gerador-condicoes-comerciais'],
+  comercial:  ['painel-comercial', 'gerador-condicoes-comerciais', 'gerar-drafts'],
 };
 
 function mcAtualizarChkPorRole() {
@@ -12329,6 +12460,246 @@ async function gccBaixar(geracaoId, cultura, safra) {
     URL.revokeObjectURL(url);
   } catch (e) {
     showToast(e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════
+// GERAR DRAFTS
+// ══════════════════════════════════════════
+let _gdFileCondicoes = null;
+let _gdFileFechas = null;
+let _gdLoteId = null;
+let _gdChave = null;
+let _gdCultura = null;
+let _gdSafra = null;
+let _gdSacaMin = null;
+let _gdSacaMax = null;
+
+function gdInit() {
+  gdMostrarEtapa('upload');
+}
+
+function gdMostrarEtapa(nome) {
+  document.querySelectorAll('.gd-etapa').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('[id^="gd-tab-"]').forEach(b => b.classList.remove('active'));
+  const etapa = document.getElementById('gd-etapa-' + nome);
+  const tab = document.getElementById('gd-tab-' + nome);
+  if (etapa) etapa.style.display = '';
+  if (tab) tab.classList.add('active');
+  if (!_gdChave) return;
+  if (nome === 'parametros') gdCarregarParametros();
+  if (nome === 'historico') gdCarregarHistorico();
+}
+
+function gdStatus(elId, msg, tipo) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const cores = {
+    info: 'background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8',
+    ok:   'background:#f0fdf4;border:1px solid #86efac;color:#166534',
+    erro: 'background:#fff5f5;border:1px solid #fecaca;color:#c0392b',
+    load: 'background:#fefce8;border:1px solid #fde68a;color:#92400e',
+  };
+  el.style.cssText = 'display:block;margin-top:12px;font-size:13px;padding:12px 14px;border-radius:var(--r-sm);' + (cores[tipo] || cores.info);
+  el.innerHTML = msg;
+}
+
+function gdSelecionarArquivo(files, tipo) {
+  const f = files && files[0];
+  if (!f) return;
+  if (!/\.xlsx$/i.test(f.name)) { showToast('Envie um arquivo .xlsx.', 'error'); return; }
+  if (tipo === 'condicoes') {
+    _gdFileCondicoes = f;
+    document.getElementById('gd-upload-title-condicoes').textContent = f.name + '  (' + (f.size / 1048576).toFixed(1) + ' MB)';
+  } else {
+    _gdFileFechas = f;
+    document.getElementById('gd-upload-title-fechas').textContent = f.name + '  (' + (f.size / 1048576).toFixed(1) + ' MB)';
+  }
+  document.getElementById('gd-btn-analisar').disabled = !(_gdFileCondicoes && _gdFileFechas);
+}
+
+async function gdAnalisar() {
+  if (!_gdFileCondicoes || !_gdFileFechas) { showToast('Selecione os dois arquivos primeiro.', 'error'); return; }
+  if (!BACKEND_URL) { await buscarUrlSupabase(); }
+  const btn = document.getElementById('gd-btn-analisar');
+  btn.disabled = true;
+  gdStatus('gd-status-upload', '⏳ Enviando e lendo os arquivos… planilhas grandes podem levar um pouco.', 'load');
+  try {
+    const form = new FormData();
+    form.append('condicoes_arquivo', _gdFileCondicoes);
+    form.append('fechas_arquivo', _gdFileFechas);
+    const res = await fetch(`${BACKEND_URL}/gerar-drafts/analisar`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${TOKEN}`, 'ngrok-skip-browser-warning': 'true' },
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Erro ao analisar.');
+    }
+    const data = await res.json();
+    _gdLoteId = data.lote_id;
+    _gdChave = data.chave;
+    _gdCultura = data.cultura;
+    _gdSafra = data.safra;
+    _gdSacaMin = data.preco_saca_min;
+    _gdSacaMax = data.preco_saca_max;
+    gdStatus('gd-status-upload', `✓ ${data.total_municipios.toLocaleString('pt-BR')} municípios lidos (cultura: ${data.cultura}, safra: ${data.safra}).`, 'ok');
+    const avisos = data.total_avisos_fallback_ad || 0;
+    const semJanela = data.municipios_sem_janela_semeadura || 0;
+    let resumo = `<span class="badge badge-neutral">${data.total_municipios} municípios</span>`;
+    if (avisos) resumo += ` <span class="badge badge-warning">${avisos} linha(s) usaram fallback de AD mais baixo disponível</span>`;
+    if (semJanela) resumo += ` <span class="badge badge-error">${semJanela} município(s) sem nenhuma janela de semeadura</span>`;
+    document.getElementById('gd-resumo-upload').innerHTML = `<div style="margin-top:8px">${resumo}</div>`;
+    showToast('Arquivos analisados. Agora preencha os parâmetros.', 'success');
+    gdMostrarEtapa('parametros');
+  } catch (e) {
+    console.error(e);
+    gdStatus('gd-status-upload', '❌ ' + e.message, 'erro');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function gdCarregarParametros() {
+  if (!_gdChave) return;
+  try {
+    const p = await api('GET', `/gerar-drafts/parametros/${encodeURIComponent(_gdChave)}`);
+    document.getElementById('gd-info-cultura').textContent = _gdCultura || '—';
+    document.getElementById('gd-info-safra').textContent = _gdSafra || '—';
+    document.getElementById('gd-info-saca').textContent = '60';
+    document.getElementById('gd-info-preco-min').textContent = _gdSacaMin != null ? _gdSacaMin.toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—';
+    document.getElementById('gd-info-preco-max').textContent = _gdSacaMax != null ? _gdSacaMax.toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—';
+    document.getElementById('gd-p-fonte-preco').value = p.fonte_preco_saca || 'max';
+    document.getElementById('gd-p-dias-cobertura').value = p.dias_cobertura ?? 165;
+
+    const codigos = p.planos_codigo_produto || {};
+    const tbody = document.getElementById('gd-p-planos-tbody');
+    const ids = Object.keys(codigos).sort((a,b) => parseInt(a,10) - parseInt(b,10));
+    tbody.innerHTML = ids.map(pid => `
+      <tr data-plano-id="${pid}">
+        <td style="font-weight:600">Plano ${pid}</td>
+        <td>—</td>
+        <td><input class="form-input gd-plano-codigo" type="text" style="padding:6px 8px" value="${codigos[pid] || ''}" placeholder="ex. C+"></td>
+      </tr>`).join('');
+
+    const faltando = ids.some(pid => !codigos[pid]);
+    document.getElementById('gd-parametros-aviso').style.display = faltando ? '' : 'none';
+  } catch (e) {
+    showToast('Erro ao carregar parâmetros: ' + e.message, 'error');
+  }
+}
+
+function gdLerParametrosDaTela() {
+  const planos_codigo_produto = {};
+  document.querySelectorAll('#gd-p-planos-tbody tr[data-plano-id]').forEach(tr => {
+    const pid = tr.dataset.planoId;
+    planos_codigo_produto[pid] = tr.querySelector('.gd-plano-codigo').value.trim();
+  });
+  return {
+    planos_codigo_produto,
+    fonte_preco_saca: document.getElementById('gd-p-fonte-preco').value,
+    dias_cobertura: parseInt(document.getElementById('gd-p-dias-cobertura').value, 10) || 165,
+  };
+}
+
+async function gdSalvarParametros() {
+  if (!_gdChave) { showToast('Envie os arquivos na etapa 1 primeiro.', 'error'); return; }
+  gdStatus('gd-status-parametros', '⏳ Salvando…', 'load');
+  try {
+    const patch = gdLerParametrosDaTela();
+    const p = await api('PATCH', `/gerar-drafts/parametros/${encodeURIComponent(_gdChave)}`, patch);
+    const codigos = p.planos_codigo_produto || {};
+    const faltando = Object.values(codigos).some(c => !c);
+    document.getElementById('gd-parametros-aviso').style.display = faltando ? '' : 'none';
+    gdStatus('gd-status-parametros', '✓ Parâmetros salvos (versão ' + p.versao + ').', 'ok');
+  } catch (e) {
+    gdStatus('gd-status-parametros', '❌ ' + e.message, 'erro');
+  }
+}
+
+async function gdGerar() {
+  if (!_gdChave) { showToast('Envie os arquivos na etapa 1 primeiro.', 'error'); return; }
+  const btn = document.getElementById('gd-btn-gerar');
+  btn.disabled = true;
+  gdStatus('gd-status-gerar', '⏳ Gerando arquivos…', 'load');
+  document.getElementById('gd-avisos-gerar').innerHTML = '';
+  document.getElementById('gd-arquivos-gerados').innerHTML = '';
+  try {
+    const data = await api('POST', `/gerar-drafts/lotes/${encodeURIComponent(_gdChave)}/${_gdLoteId}/gerar`);
+    gdStatus('gd-status-gerar', `✓ ${data.arquivos.length} arquivo(s) gerado(s) — ${data.total_municipios.toLocaleString('pt-BR')} municípios.`, 'ok');
+    if (data.total_avisos_fallback_ad) {
+      document.getElementById('gd-avisos-gerar').innerHTML = `<div class="badge badge-warning">${data.total_avisos_fallback_ad} linha(s) usaram fallback de AD mais baixo disponível — confira o histórico</div>`;
+    }
+    document.getElementById('gd-arquivos-gerados').innerHTML = data.arquivos.map(nome => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0">
+        <span>📄 ${nome}</span>
+        <button class="btn-sm btn-green" onclick="gdBaixarArquivo('${data.geracao_id}','${nome}')">⬇ Baixar</button>
+      </div>`).join('');
+    showToast('Arquivos gerados com sucesso.', 'success');
+    gdMostrarEtapa('historico');
+  } catch (e) {
+    console.error(e);
+    gdStatus('gd-status-gerar', '❌ ' + e.message, 'erro');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function gdCarregarHistorico() {
+  const cont = document.getElementById('gd-historico-lista');
+  if (!_gdChave) { cont.innerHTML = '<div class="mc-empty">Envie os arquivos na etapa 1 primeiro.</div>'; return; }
+  cont.innerHTML = '<div class="mc-empty">Carregando…</div>';
+  try {
+    const r = await api('GET', `/gerar-drafts/geracoes/${encodeURIComponent(_gdChave)}`);
+    const itens = r.itens || [];
+    if (!itens.length) { cont.innerHTML = '<div class="mc-empty">Nenhuma geração ainda.</div>'; return; }
+    cont.innerHTML = itens.map(it => `
+      <div style="padding:14px 16px;border:1px solid var(--gray200);border-radius:var(--r-md);margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:14px;justify-content:space-between;flex-wrap:wrap">
+          <div>
+            <div style="font-weight:600;color:var(--gray900)">${it.cultura} — Safra ${it.safra}</div>
+            <div style="font-size:12px;color:var(--gray600);margin-top:2px">${it.total_municipios} municípios · versão de parâmetros ${it.parametros_versao}</div>
+            <div style="font-size:11px;color:var(--gray400);margin-top:2px">Gerado em ${dzFmtData(it.gerado_em)} por ${it.gerado_por || '—'}</div>
+          </div>
+          <button class="btn-sm" onclick="gdApagarGeracao('${it.geracao_id}')" title="Apagar" style="flex-shrink:0;background:transparent;border:1px solid var(--gray200);color:var(--gray500)">🗑 Apagar</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+          ${(it.arquivos || []).map(nome => `
+            <button class="btn-sm btn-outline" onclick="gdBaixarArquivo('${it.geracao_id}','${nome}')">⬇ ${nome}</button>
+          `).join('')}
+        </div>
+      </div>`).join('');
+  } catch (e) {
+    cont.innerHTML = `<div class="mc-empty">❌ ${e.message}</div>`;
+  }
+}
+
+async function gdBaixarArquivo(geracaoId, nomeArquivo) {
+  if (!BACKEND_URL) { await buscarUrlSupabase(); }
+  try {
+    const res = await fetch(`${BACKEND_URL}/gerar-drafts/geracoes/${encodeURIComponent(_gdChave)}/${geracaoId}/arquivos/${encodeURIComponent(nomeArquivo)}/download`, {
+      headers: { 'Authorization': `Bearer ${TOKEN}`, 'ngrok-skip-browser-warning': 'true' },
+    });
+    if (!res.ok) throw new Error('Falha ao baixar.');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = nomeArquivo; a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function gdApagarGeracao(geracaoId) {
+  if (!confirm('Apagar esta geração e todos os arquivos dela? Essa ação não pode ser desfeita.')) return;
+  try {
+    await api('DELETE', `/gerar-drafts/geracoes/${encodeURIComponent(_gdChave)}/${geracaoId}`);
+    showToast('Geração apagada.', 'success');
+    gdCarregarHistorico();
+  } catch (e) {
+    showToast('Erro ao apagar: ' + e.message, 'error');
   }
 }
 </script>
