@@ -11914,33 +11914,67 @@ function gccAoMudarCulturaSafra() {
 
 function gccInit() {
   gccMostrarEtapa('upload');
-  // preenche as linhas de UF da tabela de parâmetros (só uma vez)
-  const tbody = document.getElementById('gcc-p-uf-tbody');
-  if (tbody && !tbody.dataset.pronto) {
-    tbody.innerHTML = _GCC_UFS.map(uf => `
-      <tr data-uf="${uf}">
-        <td style="font-weight:600">${uf}</td>
-        <td><input class="form-input gcc-uf-tx0" type="number" step="0.001" style="padding:6px 8px"></td>
-        <td><input class="form-input gcc-uf-tx1" type="number" step="0.001" style="padding:6px 8px"></td>
-        <td><input class="form-input gcc-uf-tx2" type="number" step="0.001" style="padding:6px 8px"></td>
-        <td><input class="form-input gcc-uf-la-nina" type="number" step="0.01" style="padding:6px 8px"></td>
-        <td><input class="form-input gcc-uf-el-nino" type="number" step="0.01" style="padding:6px 8px"></td>
-        <td><input class="form-input gcc-uf-neutro" type="number" step="0.01" style="padding:6px 8px"></td>
-      </tr>`).join('');
-    tbody.dataset.pronto = '1';
-  }
-  const selUf = document.getElementById('gcc-rev-uf');
-  if (selUf && selUf.options.length <= 1) {
-    selUf.innerHTML = '<option value="">Todas as UFs</option>' + _GCC_UFS.map(uf => `<option value="${uf}">${uf}</option>`).join('');
-  }
   const ufsAtuacao = document.getElementById('gcc-p-ufs-atuacao');
   if (ufsAtuacao && !ufsAtuacao.dataset.pronto) {
     ufsAtuacao.innerHTML = _GCC_UFS.map(uf => `
       <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;border:1px solid var(--gray200);border-radius:var(--r-sm);padding:5px 10px">
-        <input type="checkbox" class="gcc-uf-atuacao-chk" value="${uf}"> ${uf}
+        <input type="checkbox" class="gcc-uf-atuacao-chk" value="${uf}" onchange="gccRenderTabelaUf();gccAtualizarFiltroUfRevisao()"> ${uf}
       </label>`).join('');
     ufsAtuacao.dataset.pronto = '1';
   }
+}
+
+function gccUfsAtuacaoSelecionadas() {
+  return Array.from(document.querySelectorAll('.gcc-uf-atuacao-chk:checked')).map(c => c.value);
+}
+
+// Redesenha a tabela de taxas/fatores só com as UFs marcadas em "UFs de
+// atuação" -- preserva o que já estiver digitado na tela (ou em
+// _gccParametros, se a linha ainda não existia) pra não perder dado ao
+// marcar/desmarcar uma UF.
+function gccRenderTabelaUf() {
+  const selecionadas = gccUfsAtuacaoSelecionadas();
+  const tbody = document.getElementById('gcc-p-uf-tbody');
+  const naTela = {};
+  document.querySelectorAll('#gcc-p-uf-tbody tr').forEach(tr => {
+    naTela[tr.dataset.uf] = {
+      tx0: tr.querySelector('.gcc-uf-tx0').value, tx1: tr.querySelector('.gcc-uf-tx1').value, tx2: tr.querySelector('.gcc-uf-tx2').value,
+      la_nina: tr.querySelector('.gcc-uf-la-nina').value, el_nino: tr.querySelector('.gcc-uf-el-nino').value, neutro: tr.querySelector('.gcc-uf-neutro').value,
+    };
+  });
+  const basesSalvas = (_gccParametros && _gccParametros.taxas_base_uf) || {};
+  const fatoresSalvos = (_gccParametros && _gccParametros.fatores_climaticos_uf) || {};
+  if (!selecionadas.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="mc-empty">Marque ao menos uma UF em "UFs de atuação" acima.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = selecionadas.map(uf => {
+    const atual = naTela[uf] || {};
+    const base = basesSalvas[uf] || {};
+    const fat = fatoresSalvos[uf] || {};
+    const v = (campo, salvo) => (atual[campo] !== undefined && atual[campo] !== '') ? atual[campo] : (salvo[campo] ?? '');
+    return `
+      <tr data-uf="${uf}">
+        <td style="font-weight:600">${uf}</td>
+        <td><input class="form-input gcc-uf-tx0" type="number" step="0.001" style="padding:6px 8px" value="${v('tx0', base)}"></td>
+        <td><input class="form-input gcc-uf-tx1" type="number" step="0.001" style="padding:6px 8px" value="${v('tx1', base)}"></td>
+        <td><input class="form-input gcc-uf-tx2" type="number" step="0.001" style="padding:6px 8px" value="${v('tx2', base)}"></td>
+        <td><input class="form-input gcc-uf-la-nina" type="number" step="0.01" style="padding:6px 8px" value="${v('la_nina', fat)}"></td>
+        <td><input class="form-input gcc-uf-el-nino" type="number" step="0.01" style="padding:6px 8px" value="${v('el_nino', fat)}"></td>
+        <td><input class="form-input gcc-uf-neutro" type="number" step="0.01" style="padding:6px 8px" value="${v('neutro', fat)}"></td>
+      </tr>`;
+  }).join('');
+}
+
+// O filtro de UF da tela de revisão só mostra as UFs de atuação (as demais
+// nunca aparecem lá mesmo, o backend já filtra).
+function gccAtualizarFiltroUfRevisao() {
+  const selecionadas = gccUfsAtuacaoSelecionadas();
+  const sel = document.getElementById('gcc-rev-uf');
+  if (!sel) return;
+  const atual = sel.value;
+  sel.innerHTML = '<option value="">Todas as UFs de atuação</option>' + selecionadas.map(uf => `<option value="${uf}">${uf}</option>`).join('');
+  if (selecionadas.includes(atual)) sel.value = atual;
 }
 
 function gccMostrarEtapa(nome) {
@@ -12051,19 +12085,8 @@ async function gccCarregarParametros() {
         <td><input class="form-input gcc-plano-multiplicador" type="number" step="0.01" style="padding:6px 8px" value="${pl.multiplicador_pg ?? ''}"></td>
       </tr>`).join('');
 
-    const ufs = p.taxas_base_uf || {};
-    const fatores = p.fatores_climaticos_uf || {};
-    document.querySelectorAll('#gcc-p-uf-tbody tr').forEach(tr => {
-      const uf = tr.dataset.uf;
-      const base = ufs[uf] || {};
-      const fat = fatores[uf] || {};
-      tr.querySelector('.gcc-uf-tx0').value = base.tx0 ?? '';
-      tr.querySelector('.gcc-uf-tx1').value = base.tx1 ?? '';
-      tr.querySelector('.gcc-uf-tx2').value = base.tx2 ?? '';
-      tr.querySelector('.gcc-uf-la-nina').value = fat.la_nina ?? '';
-      tr.querySelector('.gcc-uf-el-nino').value = fat.el_nino ?? '';
-      tr.querySelector('.gcc-uf-neutro').value = fat.neutro ?? '';
-    });
+    gccRenderTabelaUf();
+    gccAtualizarFiltroUfRevisao();
 
     document.getElementById('gcc-parametros-aviso').style.display = p._completos ? 'none' : '';
   } catch (e) {
