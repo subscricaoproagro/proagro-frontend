@@ -11936,7 +11936,7 @@ function gccRenderTabelaUf() {
   const selecionadas = gccUfsAtuacaoSelecionadas();
   const tbody = document.getElementById('gcc-p-uf-tbody');
   const naTela = {};
-  document.querySelectorAll('#gcc-p-uf-tbody tr').forEach(tr => {
+  document.querySelectorAll('#gcc-p-uf-tbody tr[data-uf]').forEach(tr => {
     naTela[tr.dataset.uf] = {
       tx0: tr.querySelector('.gcc-uf-tx0').value, tx1: tr.querySelector('.gcc-uf-tx1').value, tx2: tr.querySelector('.gcc-uf-tx2').value,
       la_nina: tr.querySelector('.gcc-uf-la-nina').value, el_nino: tr.querySelector('.gcc-uf-el-nino').value, neutro: tr.querySelector('.gcc-uf-neutro').value,
