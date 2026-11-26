@@ -2068,7 +2068,14 @@
     <div class="card">
       <div class="card-header"><div class="card-title">Gerar os arquivos de draft</div></div>
       <div class="card-body">
-        <button class="btn-sm btn-green" id="gd-btn-gerar" style="padding:14px 28px;font-size:15px;border-radius:var(--r-md)" onclick="gdGerar()">Gerar arquivos</button>
+        <p style="font-size:13px;color:var(--gray600);margin-bottom:12px">
+          Escolha o Plano — a geração sempre sai em 2 arquivos: sem replantio (Taxa) e com replantio (Taxa REP).
+        </p>
+        <div class="form-group" style="max-width:320px">
+          <label class="form-label">Plano</label>
+          <select class="form-input" id="gd-gerar-plano-id"></select>
+        </div>
+        <button class="btn-sm btn-green" id="gd-btn-gerar" style="padding:14px 28px;font-size:15px;border-radius:var(--r-md)" onclick="gdGerar()">Gerar arquivos do Plano</button>
         <div id="gd-status-gerar" style="display:none;margin-top:16px;font-size:13px;padding:12px 14px;border-radius:var(--r-sm)"></div>
         <div id="gd-avisos-gerar" style="margin-top:14px"></div>
         <div id="gd-arquivos-gerados" style="margin-top:14px"></div>
@@ -12474,6 +12481,7 @@ let _gdCultura = null;
 let _gdSafra = null;
 let _gdSacaMin = null;
 let _gdSacaMax = null;
+let _gdPlanos = [];
 
 function gdInit() {
   gdMostrarEtapa('upload');
@@ -12488,7 +12496,14 @@ function gdMostrarEtapa(nome) {
   if (tab) tab.classList.add('active');
   if (!_gdChave) return;
   if (nome === 'parametros') gdCarregarParametros();
+  if (nome === 'gerar') gdPopularSelectPlano();
   if (nome === 'historico') gdCarregarHistorico();
+}
+
+function gdPopularSelectPlano() {
+  const sel = document.getElementById('gd-gerar-plano-id');
+  if (!sel) return;
+  sel.innerHTML = _gdPlanos.map(p => `<option value="${p.id}">Plano ${p.id} (${Math.round(p.percentual_cobertura*100)}%)</option>`).join('');
 }
 
 function gdStatus(elId, msg, tipo) {
@@ -12544,6 +12559,7 @@ async function gdAnalisar() {
     _gdSafra = data.safra;
     _gdSacaMin = data.preco_saca_min;
     _gdSacaMax = data.preco_saca_max;
+    _gdPlanos = data.planos || [];
     gdStatus('gd-status-upload', `✓ ${data.total_municipios.toLocaleString('pt-BR')} municípios lidos (cultura: ${data.cultura}, safra: ${data.safra}).`, 'ok');
     const avisos = data.total_avisos_fallback_ad || 0;
     const semJanela = data.municipios_sem_janela_semeadura || 0;
@@ -12576,10 +12592,12 @@ async function gdCarregarParametros() {
     const codigos = p.planos_codigo_produto || {};
     const tbody = document.getElementById('gd-p-planos-tbody');
     const ids = Object.keys(codigos).sort((a,b) => parseInt(a,10) - parseInt(b,10));
+    const coberturaPorId = {};
+    _gdPlanos.forEach(pl => { coberturaPorId[pl.id] = pl.percentual_cobertura; });
     tbody.innerHTML = ids.map(pid => `
       <tr data-plano-id="${pid}">
         <td style="font-weight:600">Plano ${pid}</td>
-        <td>—</td>
+        <td>${coberturaPorId[pid] != null ? Math.round(coberturaPorId[pid]*100) + '%' : '—'}</td>
         <td><input class="form-input gd-plano-codigo" type="text" style="padding:6px 8px" value="${codigos[pid] || ''}" placeholder="ex. C+"></td>
       </tr>`).join('');
 
@@ -12620,14 +12638,16 @@ async function gdSalvarParametros() {
 
 async function gdGerar() {
   if (!_gdChave) { showToast('Envie os arquivos na etapa 1 primeiro.', 'error'); return; }
+  const planoId = document.getElementById('gd-gerar-plano-id').value;
+  if (!planoId) { showToast('Selecione o Plano.', 'error'); return; }
   const btn = document.getElementById('gd-btn-gerar');
   btn.disabled = true;
-  gdStatus('gd-status-gerar', '⏳ Gerando arquivos…', 'load');
+  gdStatus('gd-status-gerar', `⏳ Gerando os arquivos do Plano ${planoId}…`, 'load');
   document.getElementById('gd-avisos-gerar').innerHTML = '';
   document.getElementById('gd-arquivos-gerados').innerHTML = '';
   try {
-    const data = await api('POST', `/gerar-drafts/lotes/${encodeURIComponent(_gdChave)}/${_gdLoteId}/gerar`);
-    gdStatus('gd-status-gerar', `✓ ${data.arquivos.length} arquivo(s) gerado(s) — ${data.total_municipios.toLocaleString('pt-BR')} municípios.`, 'ok');
+    const data = await api('POST', `/gerar-drafts/lotes/${encodeURIComponent(_gdChave)}/${_gdLoteId}/gerar?plano_id=${planoId}`);
+    gdStatus('gd-status-gerar', `✓ Plano ${data.plano_id}: ${data.arquivos.length} arquivo(s) gerado(s) — ${data.total_municipios.toLocaleString('pt-BR')} municípios.`, 'ok');
     if (data.total_avisos_fallback_ad) {
       document.getElementById('gd-avisos-gerar').innerHTML = `<div class="badge badge-warning">${data.total_avisos_fallback_ad} linha(s) usaram fallback de AD mais baixo disponível — confira o histórico</div>`;
     }
