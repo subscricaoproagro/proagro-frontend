@@ -1833,6 +1833,14 @@
     <div id="gcc-parametros-aviso" class="badge badge-warning" style="margin-bottom:12px;display:none">Parâmetros incompletos — preencha tudo abaixo antes de gerar.</div>
 
     <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">UFs de atuação</div></div>
+      <div class="card-body">
+        <p style="font-size:12px;color:var(--gray600);margin-bottom:10px">Só os municípios das UFs marcadas aqui entram na revisão e na planilha final -- as demais ficam de fora, mesmo que existam no arquivo enviado.</p>
+        <div id="gcc-p-ufs-atuacao" style="display:flex;flex-wrap:wrap;gap:10px"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
       <div class="card-header"><div class="card-title">Cenário e regras de decisão</div></div>
       <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
         <div class="form-group" style="margin:0">
@@ -11925,6 +11933,14 @@ function gccInit() {
   if (selUf && selUf.options.length <= 1) {
     selUf.innerHTML = '<option value="">Todas as UFs</option>' + _GCC_UFS.map(uf => `<option value="${uf}">${uf}</option>`).join('');
   }
+  const ufsAtuacao = document.getElementById('gcc-p-ufs-atuacao');
+  if (ufsAtuacao && !ufsAtuacao.dataset.pronto) {
+    ufsAtuacao.innerHTML = _GCC_UFS.map(uf => `
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;border:1px solid var(--gray200);border-radius:var(--r-sm);padding:5px 10px">
+        <input type="checkbox" class="gcc-uf-atuacao-chk" value="${uf}"> ${uf}
+      </label>`).join('');
+    ufsAtuacao.dataset.pronto = '1';
+  }
 }
 
 function gccMostrarEtapa(nome) {
@@ -12012,6 +12028,8 @@ async function gccCarregarParametros() {
   try {
     const p = await api('GET', `/condicoes-comerciais/parametros/${encodeURIComponent(cultura)}/${encodeURIComponent(safra)}`);
     _gccParametros = p;
+    const ufsMarcadas = new Set(p.ufs_atuacao || []);
+    document.querySelectorAll('.gcc-uf-atuacao-chk').forEach(chk => { chk.checked = ufsMarcadas.has(chk.value); });
     document.getElementById('gcc-p-cenario').value = p.cenario_enso || '';
     document.getElementById('gcc-p-p10').value = p.percentis_decisao?.p10 ?? '';
     document.getElementById('gcc-p-p25').value = p.percentis_decisao?.p25 ?? '';
@@ -12055,6 +12073,7 @@ async function gccCarregarParametros() {
 
 function gccLerParametrosDaTela() {
   const num = (id) => { const v = document.getElementById(id).value; return v === '' ? null : parseFloat(v); };
+  const ufsAtuacao = Array.from(document.querySelectorAll('.gcc-uf-atuacao-chk:checked')).map(c => c.value);
   const planos = Array.from(document.querySelectorAll('#gcc-p-planos-tbody tr')).map(tr => ({
     id: parseInt(tr.dataset.planoId, 10),
     percentual_cobertura: tr.querySelector('.gcc-plano-cobertura').value === '' ? null : parseFloat(tr.querySelector('.gcc-plano-cobertura').value),
@@ -12070,6 +12089,7 @@ function gccLerParametrosDaTela() {
   });
   return {
     cenario_enso: document.getElementById('gcc-p-cenario').value || null,
+    ufs_atuacao: ufsAtuacao,
     percentis_decisao: { p10: num('gcc-p-p10'), p25: num('gcc-p-p25'), p75: num('gcc-p-p75') },
     fatores_decisao: {
       recusar: { fator: num('gcc-p-fator-recusar') },
