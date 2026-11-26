@@ -12297,9 +12297,21 @@ async function gccCarregarHistorico() {
           <div style="font-size:11px;color:var(--gray400);margin-top:2px">Gerado em ${dzFmtData(it.gerado_em)} por ${it.gerado_por || '—'}</div>
         </div>
         <button class="btn-sm btn-green" onclick="gccBaixar('${it.geracao_id}','${cultura}','${safra}')" style="flex-shrink:0">⬇ Baixar</button>
+        <button class="btn-sm" onclick="gccApagarGeracao('${it.geracao_id}','${cultura}','${safra}','${(it.filename||'').replace(/'/g,'')}')" title="Apagar" style="flex-shrink:0;background:transparent;border:1px solid var(--gray200);color:var(--gray500)">🗑</button>
       </div>`).join('');
   } catch (e) {
     cont.innerHTML = `<div class="mc-empty">❌ ${e.message}</div>`;
+  }
+}
+
+async function gccApagarGeracao(geracaoId, cultura, safra, nome) {
+  if (!confirm(`Apagar a geração "${nome}"? Essa ação não pode ser desfeita.`)) return;
+  try {
+    await api('DELETE', `/condicoes-comerciais/geracoes/${encodeURIComponent(cultura)}/${encodeURIComponent(safra)}/${geracaoId}`);
+    showToast('Geração apagada.', 'success');
+    gccCarregarHistorico();
+  } catch (e) {
+    showToast('Erro ao apagar: ' + e.message, 'error');
   }
 }
 
