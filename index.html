@@ -1880,7 +1880,12 @@
         <div class="form-group" style="margin:0"><label class="form-label">Saca (kg)</label><input class="form-input" type="number" id="gcc-p-saca-kg" value="60" disabled></div>
         <div class="form-group" style="margin:0"><label class="form-label">Preço mínimo da saca (R$)</label><input class="form-input" type="number" step="0.01" id="gcc-p-preco-min"></div>
         <div class="form-group" style="margin:0"><label class="form-label">Preço máximo da saca (R$)</label><input class="form-input" type="number" step="0.01" id="gcc-p-preco-max"></div>
+        <div class="form-group" style="margin:0"><label class="form-label">PG máximo (sc/ha) <span style="color:var(--gray400);font-weight:400">(opcional -- teto aplicado na nova média antes dos 3 Planos, pra nenhum passar desse valor)</span></label><input class="form-input" type="number" step="0.1" id="gcc-p-pg-maximo"></div>
       </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:14px;cursor:pointer;font-size:13px;color:var(--gray700)">
+        <input type="checkbox" id="gcc-p-excluir-recusar">
+        Excluir municípios com decisão RECUSAR da planilha final
+      </label>
     </div>
 
     <div class="card" style="margin-bottom:16px">
@@ -12076,6 +12081,8 @@ async function gccCarregarParametros() {
     document.getElementById('gcc-p-desconto').value = p.desconto_comercial_fixo ?? '';
     document.getElementById('gcc-p-preco-min').value = p.preco_saca_min ?? '';
     document.getElementById('gcc-p-preco-max').value = p.preco_saca_max ?? '';
+    document.getElementById('gcc-p-pg-maximo').value = p.pg_maximo_sc_ha ?? '';
+    document.getElementById('gcc-p-excluir-recusar').checked = !!p.excluir_recusar;
 
     const tbodyPlanos = document.getElementById('gcc-p-planos-tbody');
     tbodyPlanos.innerHTML = (p.planos || []).map(pl => `
@@ -12104,7 +12111,7 @@ function gccLerParametrosDaTela() {
   }));
   const taxas_base_uf = {};
   const fatores_climaticos_uf = {};
-  document.querySelectorAll('#gcc-p-uf-tbody tr').forEach(tr => {
+  document.querySelectorAll('#gcc-p-uf-tbody tr[data-uf]').forEach(tr => {
     const uf = tr.dataset.uf;
     const g = (sel) => { const v = tr.querySelector(sel).value; return v === '' ? null : parseFloat(v); };
     taxas_base_uf[uf] = { tx0: g('.gcc-uf-tx0'), tx1: g('.gcc-uf-tx1'), tx2: g('.gcc-uf-tx2') };
@@ -12127,6 +12134,8 @@ function gccLerParametrosDaTela() {
     desconto_comercial_fixo: num('gcc-p-desconto'),
     preco_saca_min: num('gcc-p-preco-min'),
     preco_saca_max: num('gcc-p-preco-max'),
+    pg_maximo_sc_ha: num('gcc-p-pg-maximo'),
+    excluir_recusar: document.getElementById('gcc-p-excluir-recusar').checked,
   };
 }
 
