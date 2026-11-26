@@ -465,6 +465,7 @@
       <button class="topbar-btn" id="gestao-propostas-btn" onclick="showPage('gestao-propostas')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="9" width="3" height="8"/><rect x="12" y="5" width="3" height="12"/><rect x="17" y="12" width="3" height="5"/></svg></span><span class="sidebar-label">Gestão de Propostas</span><span id="gp-sino-alerta" class="esg-sino-alerta" style="display:none" title="Novas propostas detectadas automaticamente"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2Zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2Z"/></svg></span></button>
       <button class="topbar-btn" id="rem-btn" onclick="showPage('relatorio-esg-mensal');remInit()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg></span><span class="sidebar-label">Relatório Mensal ESG</span></button>
       <button class="topbar-btn" id="painel-comercial-btn" onclick="showPage('painel-comercial')" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span><span class="sidebar-label">Painel Comercial</span></button>
+      <button class="topbar-btn" id="gcc-btn" onclick="showPage('gerador-condicoes-comerciais');gccInit()" style="display:none"><span class="sidebar-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.41 20.59a2 2 0 0 1-2.82 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z"/><circle cx="7" cy="7" r="1"/></svg></span><span class="sidebar-label">Gerador de Condições Comerciais</span></button>
     </nav>
   </aside>
   <div class="main-wrap">
@@ -1769,6 +1770,180 @@
         </div>
       </div>
     </div>
+
+<div id="page-gerador-condicoes-comerciais" class="page-section">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Gerador de Condições Comerciais</div>
+      <div class="section-sub">Transforma o rendimento histórico (IBGE/SIDRA) em condições comerciais por município — upload → parâmetros → revisão → exportação</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-body" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+      <div class="form-group" style="margin:0;min-width:200px">
+        <label class="form-label">Cultura</label>
+        <input class="form-input" id="gcc-cultura" placeholder="Ex: Trigo, Canola..." oninput="gccAoMudarCulturaSafra()">
+      </div>
+      <div class="form-group" style="margin:0;min-width:140px">
+        <label class="form-label">Safra</label>
+        <input class="form-input" id="gcc-safra" placeholder="Ex: 2027" oninput="gccAoMudarCulturaSafra()">
+      </div>
+      <div id="gcc-status-topo" style="font-size:12px;color:var(--gray600)"></div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap">
+    <button id="gcc-tab-upload" class="btn-sm" onclick="gccMostrarEtapa('upload')" style="border-radius:8px 8px 0 0">1. Upload</button>
+    <button id="gcc-tab-parametros" class="btn-sm" onclick="gccMostrarEtapa('parametros')" style="border-radius:8px 8px 0 0">2. Parâmetros</button>
+    <button id="gcc-tab-revisao" class="btn-sm" onclick="gccMostrarEtapa('revisao')" style="border-radius:8px 8px 0 0">3. Revisão por município</button>
+    <button id="gcc-tab-gerar" class="btn-sm" onclick="gccMostrarEtapa('gerar')" style="border-radius:8px 8px 0 0">4. Gerar e baixar</button>
+    <button id="gcc-tab-historico" class="btn-sm" onclick="gccMostrarEtapa('historico')" style="border-radius:8px 8px 0 0">5. Histórico</button>
+  </div>
+
+  <!-- ============ ETAPA 1: UPLOAD ============ -->
+  <div id="gcc-etapa-upload" class="gcc-etapa">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Enviar planilha de rendimento (IBGE/SIDRA)</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--gray600);margin-bottom:12px">
+          Export bruto do IBGE/SIDRA ("Tabela 1612 — Rendimento médio da produção"), uma linha por município,
+          colunas de anos (ex. 2021-2025). Valores ausentes ("..", "-") são tratados como sem dado, nunca como zero.
+        </p>
+        <div class="upload-zone" id="gcc-upload-zone" onclick="document.getElementById('gcc-file-input').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="event.preventDefault();this.classList.remove('drag-over');gccSelecionarArquivo(event.dataTransfer.files)">
+          <div class="upload-icon">🌾</div>
+          <div class="upload-title" id="gcc-upload-title">Clique ou arraste o arquivo do IBGE/SIDRA</div>
+          <div class="upload-sub">Formato .xlsx</div>
+          <input type="file" id="gcc-file-input" style="display:none" accept=".xlsx,.xls" onchange="gccSelecionarArquivo(this.files)">
+        </div>
+        <button class="btn-sm btn-green" id="gcc-btn-analisar" style="width:100%;padding:12px;justify-content:center;margin-top:14px;border-radius:var(--r-md)" onclick="gccAnalisar()" disabled>
+          Analisar arquivo
+        </button>
+        <div id="gcc-status-upload" style="display:none;margin-top:16px;font-size:13px;padding:12px 14px;border-radius:var(--r-sm)"></div>
+        <div id="gcc-resumo-upload" style="margin-top:14px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ETAPA 2: PARÂMETROS ============ -->
+  <div id="gcc-etapa-parametros" class="gcc-etapa" style="display:none">
+    <div id="gcc-parametros-aviso" class="badge badge-warning" style="margin-bottom:12px;display:none">Parâmetros incompletos — preencha tudo abaixo antes de gerar.</div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">Cenário e regras de decisão</div></div>
+      <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Cenário ENSO vigente</label>
+          <select class="form-input" id="gcc-p-cenario">
+            <option value="">Selecione...</option>
+            <option value="la_nina">La Niña</option>
+            <option value="el_nino">El Niño</option>
+            <option value="neutro">Neutro</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0"><label class="form-label">Percentil 10 (Recusar até)</label><input class="form-input" type="number" step="0.1" id="gcc-p-p10"></div>
+        <div class="form-group" style="margin:0"><label class="form-label">Percentil 25 (Reduzir até)</label><input class="form-input" type="number" step="0.1" id="gcc-p-p25"></div>
+        <div class="form-group" style="margin:0"><label class="form-label">Percentil 75 (Manter até)</label><input class="form-input" type="number" step="0.1" id="gcc-p-p75"></div>
+        <div class="form-group" style="margin:0"><label class="form-label">Fator Recusar</label><input class="form-input" type="number" step="0.01" id="gcc-p-fator-recusar"></div>
+        <div class="form-group" style="margin:0"><label class="form-label">Fator Reduzir 65%</label><input class="form-input" type="number" step="0.01" id="gcc-p-fator-reduzir"></div>
+        <div class="form-group" style="margin:0"><label class="form-label">Fator Manter 70%</label><input class="form-input" type="number" step="0.01" id="gcc-p-fator-manter"></div>
+        <div class="form-group" style="margin:0"><label class="form-label">Fator Ajustar 75%</label><input class="form-input" type="number" step="0.01" id="gcc-p-fator-ajustar"></div>
+        <div class="form-group" style="margin:0"><label class="form-label">Denominador de ajuste</label><input class="form-input" type="number" step="0.01" id="gcc-p-denominador"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">Planos comerciais</div></div>
+      <div class="card-body">
+        <table class="jobs-table">
+          <thead><tr><th>Plano</th><th>% de cobertura (fração, ex. 0.65)</th><th>Multiplicador do PG</th></tr></thead>
+          <tbody id="gcc-p-planos-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">Comercial</div></div>
+      <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
+        <div class="form-group" style="margin:0"><label class="form-label">Desconto comercial fixo (fração, ex. 0.006)</label><input class="form-input" type="number" step="0.001" id="gcc-p-desconto"></div>
+        <div class="form-group" style="margin:0"><label class="form-label">Saca (kg)</label><input class="form-input" type="number" id="gcc-p-saca-kg" value="60" disabled></div>
+        <div class="form-group" style="margin:0"><label class="form-label">Preço mínimo da saca (R$)</label><input class="form-input" type="number" step="0.01" id="gcc-p-preco-min"></div>
+        <div class="form-group" style="margin:0"><label class="form-label">Preço máximo da saca (R$)</label><input class="form-input" type="number" step="0.01" id="gcc-p-preco-max"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">Taxas base e fatores climáticos por UF</div></div>
+      <div class="card-body">
+        <p style="font-size:12px;color:var(--gray600);margin-bottom:10px">Taxa base de cada nível (antes do ajuste climático) e o fator de cada cenário ENSO, por estado.</p>
+        <div class="overflow-x">
+          <table class="jobs-table" style="font-size:12px">
+            <thead><tr><th>UF</th><th>Taxa base Plano 1</th><th>Taxa base Plano 2</th><th>Taxa base Plano 3</th><th>Fator La Niña</th><th>Fator El Niño</th><th>Fator Neutro</th></tr></thead>
+            <tbody id="gcc-p-uf-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-sm btn-green" style="padding:12px 24px" onclick="gccSalvarParametros()">Salvar parâmetros</button>
+    <div id="gcc-status-parametros" style="display:inline-block;margin-left:12px;font-size:13px"></div>
+  </div>
+
+  <!-- ============ ETAPA 3: REVISÃO POR MUNICÍPIO ============ -->
+  <div id="gcc-etapa-revisao" class="gcc-etapa" style="display:none">
+    <div class="card">
+      <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div class="card-title">Municípios</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input class="form-input" id="gcc-rev-busca" placeholder="Buscar município ou código" style="width:200px;padding:8px 12px" oninput="gccCarregarMunicipios(1)">
+          <select class="form-input" id="gcc-rev-uf" style="width:auto;padding:8px 12px" onchange="gccCarregarMunicipios(1)">
+            <option value="">Todas as UFs</option>
+          </select>
+          <select class="form-input" id="gcc-rev-decisao" style="width:auto;padding:8px 12px" onchange="gccCarregarMunicipios(1)">
+            <option value="">Todas as decisões</option>
+            <option value="RECUSAR">Recusar</option>
+            <option value="Reduzir para 65%">Reduzir para 65%</option>
+            <option value="Manter 70%">Manter 70%</option>
+            <option value="AJUSTAR PARA 75%">Ajustar para 75%</option>
+          </select>
+          <button class="btn-sm btn-outline" onclick="gccCarregarMunicipios(1)">↻ Atualizar</button>
+        </div>
+      </div>
+      <div class="overflow-x">
+        <table class="jobs-table">
+          <thead><tr><th>Código IBGE</th><th>Município</th><th>UF</th><th>Média 5 anos</th><th>Decisão</th><th>Nova média</th><th>Override</th><th></th></tr></thead>
+          <tbody id="gcc-rev-tbody"><tr><td colspan="8" class="mc-empty">Carregando…</td></tr></tbody>
+        </table>
+      </div>
+      <div id="gcc-rev-paginacao" style="padding:12px 16px;font-size:13px;color:var(--gray600);display:flex;gap:10px;align-items:center"></div>
+    </div>
+  </div>
+
+  <!-- ============ ETAPA 4: GERAR E BAIXAR ============ -->
+  <div id="gcc-etapa-gerar" class="gcc-etapa" style="display:none">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Gerar planilha final</div></div>
+      <div class="card-body">
+        <button class="btn-sm btn-green" id="gcc-btn-gerar" style="padding:14px 28px;font-size:15px;border-radius:var(--r-md)" onclick="gccGerar()">Gerar planilha</button>
+        <div id="gcc-status-gerar" style="display:none;margin-top:16px;font-size:13px;padding:12px 14px;border-radius:var(--r-sm)"></div>
+        <div id="gcc-avisos-gerar" style="margin-top:14px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ETAPA 5: HISTÓRICO ============ -->
+  <div id="gcc-etapa-historico" class="gcc-etapa" style="display:none">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Gerações anteriores</div></div>
+      <div class="card-body">
+        <div id="gcc-historico-lista"><div class="mc-empty">Carregando…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div id="page-esg" class="page-section">
   <div class="section-header">
@@ -3356,6 +3531,7 @@ function showPage(page) {
     'datas-zarc':          'datas-zarc-btn',
     'gestao-propostas':    'gestao-propostas-btn',
     'painel-comercial':    'painel-comercial-btn',
+    'gerador-condicoes-comerciais': 'gcc-btn',
   };
   // Remove active de todos primeiro, depois aplica só no correto
   Object.values(pageToBtn).forEach(id => {
@@ -4785,6 +4961,7 @@ const _PG = {
   'relatorio-esg-mensal': { label: 'Relatório Mensal ESG', btn: 'rem-btn'       },
   'painel-comercial': { label: 'Painel Comercial',    btn: 'painel-comercial-btn' },
   'sinistros':     { label: 'Painel de Sinistros',    btn: 'sinistros-btn'     },
+  'gerador-condicoes-comerciais': { label: 'Gerador de Condições Comerciais', btn: 'gcc-btn' },
 };
 const _PG_DEFAULTS = {
   admin:      Object.keys(_PG),
@@ -4792,7 +4969,7 @@ const _PG_DEFAULTS = {
   supervisor: ['ce', 'auditor-ce', 'esg', 'relatorio-esg-mensal', 'pre-analise'],
   campo:      ['monitoramento'],
   ceo:        [], // sem padrão — acesso escolhido manualmente pelo botão "Acesso"
-  comercial:  ['painel-comercial'],
+  comercial:  ['painel-comercial', 'gerador-condicoes-comerciais'],
 };
 
 function mcAtualizarChkPorRole() {
@@ -11698,6 +11875,394 @@ async function dzRemover(id, nome) {
     });
     if (!res.ok) throw new Error('Falha ao remover.');
     await dzCarregarLista();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════
+// GERADOR DE CONDIÇÕES COMERCIAIS
+// ══════════════════════════════════════════
+let _gccFile = null;
+let _gccLoteId = null;
+let _gccParametros = null;
+let _gccPagina = 1;
+const _GCC_UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
+const _GCC_DECISAO_LABEL = { 'RECUSAR': 'Recusar', 'Reduzir para 65%': 'Reduzir p/ 65%', 'Manter 70%': 'Manter 70%', 'AJUSTAR PARA 75%': 'Ajustar p/ 75%' };
+const _GCC_DECISAO_COR = { 'RECUSAR': 'badge-error', 'Reduzir para 65%': 'badge-warning', 'Manter 70%': 'badge-info', 'AJUSTAR PARA 75%': 'badge-success' };
+
+function gccCulturaSafra() {
+  return {
+    cultura: document.getElementById('gcc-cultura').value.trim(),
+    safra: document.getElementById('gcc-safra').value.trim(),
+  };
+}
+
+function gccAoMudarCulturaSafra() {
+  _gccLoteId = null;
+  _gccParametros = null;
+  document.getElementById('gcc-status-topo').textContent = '';
+}
+
+function gccInit() {
+  gccMostrarEtapa('upload');
+  // preenche as linhas de UF da tabela de parâmetros (só uma vez)
+  const tbody = document.getElementById('gcc-p-uf-tbody');
+  if (tbody && !tbody.dataset.pronto) {
+    tbody.innerHTML = _GCC_UFS.map(uf => `
+      <tr data-uf="${uf}">
+        <td style="font-weight:600">${uf}</td>
+        <td><input class="form-input gcc-uf-tx0" type="number" step="0.001" style="padding:6px 8px"></td>
+        <td><input class="form-input gcc-uf-tx1" type="number" step="0.001" style="padding:6px 8px"></td>
+        <td><input class="form-input gcc-uf-tx2" type="number" step="0.001" style="padding:6px 8px"></td>
+        <td><input class="form-input gcc-uf-la-nina" type="number" step="0.01" style="padding:6px 8px"></td>
+        <td><input class="form-input gcc-uf-el-nino" type="number" step="0.01" style="padding:6px 8px"></td>
+        <td><input class="form-input gcc-uf-neutro" type="number" step="0.01" style="padding:6px 8px"></td>
+      </tr>`).join('');
+    tbody.dataset.pronto = '1';
+  }
+  const selUf = document.getElementById('gcc-rev-uf');
+  if (selUf && selUf.options.length <= 1) {
+    selUf.innerHTML = '<option value="">Todas as UFs</option>' + _GCC_UFS.map(uf => `<option value="${uf}">${uf}</option>`).join('');
+  }
+}
+
+function gccMostrarEtapa(nome) {
+  document.querySelectorAll('.gcc-etapa').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('[id^="gcc-tab-"]').forEach(b => b.classList.remove('active'));
+  const etapa = document.getElementById('gcc-etapa-' + nome);
+  const tab = document.getElementById('gcc-tab-' + nome);
+  if (etapa) etapa.style.display = '';
+  if (tab) tab.classList.add('active');
+  const { cultura, safra } = gccCulturaSafra();
+  if (!cultura || !safra) return;
+  if (nome === 'parametros') gccCarregarParametros();
+  if (nome === 'revisao') gccCarregarMunicipios(1);
+  if (nome === 'historico') gccCarregarHistorico();
+}
+
+function gccStatus(elId, msg, tipo) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const cores = {
+    info: 'background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8',
+    ok:   'background:#f0fdf4;border:1px solid #86efac;color:#166534',
+    erro: 'background:#fff5f5;border:1px solid #fecaca;color:#c0392b',
+    load: 'background:#fefce8;border:1px solid #fde68a;color:#92400e',
+  };
+  el.style.cssText = 'display:block;margin-top:12px;font-size:13px;padding:12px 14px;border-radius:var(--r-sm);' + (cores[tipo] || cores.info);
+  el.innerHTML = msg;
+}
+
+function gccSelecionarArquivo(files) {
+  const f = files && files[0];
+  if (!f) return;
+  if (!/\.(xlsx|xls)$/i.test(f.name)) { showToast('Envie um arquivo .xlsx ou .xls.', 'error'); return; }
+  _gccFile = f;
+  document.getElementById('gcc-upload-title').textContent = f.name + '  (' + (f.size / 1048576).toFixed(1) + ' MB)';
+  document.getElementById('gcc-btn-analisar').disabled = false;
+}
+
+async function gccAnalisar() {
+  const { cultura, safra } = gccCulturaSafra();
+  if (!cultura || !safra) { showToast('Informe a cultura e a safra antes de enviar o arquivo.', 'error'); return; }
+  if (!_gccFile) { showToast('Selecione o arquivo primeiro.', 'error'); return; }
+  if (!BACKEND_URL) { await buscarUrlSupabase(); }
+  const btn = document.getElementById('gcc-btn-analisar');
+  btn.disabled = true;
+  gccStatus('gcc-status-upload', '⏳ Enviando e lendo o arquivo… planilhas grandes (IBGE nacional) podem levar um pouco.', 'load');
+  try {
+    const form = new FormData();
+    form.append('arquivo', _gccFile);
+    form.append('cultura', cultura);
+    form.append('safra', safra);
+    const res = await fetch(`${BACKEND_URL}/condicoes-comerciais/analisar`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${TOKEN}`, 'ngrok-skip-browser-warning': 'true' },
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Erro ao analisar.');
+    }
+    const data = await res.json();
+    _gccLoteId = data.lote_id;
+    gccStatus('gcc-status-upload', `✓ ${data.total_municipios.toLocaleString('pt-BR')} municípios lidos (${data.municipios_sem_dado.toLocaleString('pt-BR')} sem dado em nenhum ano).`, 'ok');
+    const resumo = (data.resumo_por_uf || []).map(r => `<span class="badge badge-neutral">${r.uf}: ${r.qtd_com_dado}</span>`).join(' ');
+    document.getElementById('gcc-resumo-upload').innerHTML = resumo ? `<div style="margin-top:8px">${resumo}</div>` : '';
+    document.getElementById('gcc-status-topo').textContent = `Lote carregado: ${data.total_municipios} municípios`;
+    if (data.avisos_parsing && data.avisos_parsing.length) {
+      showToast(`${data.avisos_parsing.length} aviso(s) no parsing do arquivo (veja o console).`, 'warning');
+      console.warn('Avisos de parsing GCC:', data.avisos_parsing);
+    }
+    showToast('Arquivo analisado. Agora preencha os parâmetros.', 'success');
+    gccMostrarEtapa('parametros');
+  } catch (e) {
+    console.error(e);
+    gccStatus('gcc-status-upload', '❌ ' + e.message, 'erro');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function gccCarregarParametros() {
+  const { cultura, safra } = gccCulturaSafra();
+  if (!cultura || !safra) return;
+  if (!BACKEND_URL) { await buscarUrlSupabase(); }
+  try {
+    const p = await api('GET', `/condicoes-comerciais/parametros/${encodeURIComponent(cultura)}/${encodeURIComponent(safra)}`);
+    _gccParametros = p;
+    document.getElementById('gcc-p-cenario').value = p.cenario_enso || '';
+    document.getElementById('gcc-p-p10').value = p.percentis_decisao?.p10 ?? '';
+    document.getElementById('gcc-p-p25').value = p.percentis_decisao?.p25 ?? '';
+    document.getElementById('gcc-p-p75').value = p.percentis_decisao?.p75 ?? '';
+    document.getElementById('gcc-p-fator-recusar').value = p.fatores_decisao?.recusar?.fator ?? '';
+    document.getElementById('gcc-p-fator-reduzir').value = p.fatores_decisao?.reduzir_65?.fator ?? '';
+    document.getElementById('gcc-p-fator-manter').value = p.fatores_decisao?.manter_70?.fator ?? '';
+    document.getElementById('gcc-p-fator-ajustar').value = p.fatores_decisao?.ajustar_75?.fator ?? '';
+    document.getElementById('gcc-p-denominador').value = p.denominador_ajuste ?? '';
+    document.getElementById('gcc-p-desconto').value = p.desconto_comercial_fixo ?? '';
+    document.getElementById('gcc-p-preco-min').value = p.preco_saca_min ?? '';
+    document.getElementById('gcc-p-preco-max').value = p.preco_saca_max ?? '';
+
+    const tbodyPlanos = document.getElementById('gcc-p-planos-tbody');
+    tbodyPlanos.innerHTML = (p.planos || []).map(pl => `
+      <tr data-plano-id="${pl.id}">
+        <td style="font-weight:600">${pl.nome}</td>
+        <td><input class="form-input gcc-plano-cobertura" type="number" step="0.01" style="padding:6px 8px" value="${pl.percentual_cobertura ?? ''}"></td>
+        <td><input class="form-input gcc-plano-multiplicador" type="number" step="0.01" style="padding:6px 8px" value="${pl.multiplicador_pg ?? ''}"></td>
+      </tr>`).join('');
+
+    const ufs = p.taxas_base_uf || {};
+    const fatores = p.fatores_climaticos_uf || {};
+    document.querySelectorAll('#gcc-p-uf-tbody tr').forEach(tr => {
+      const uf = tr.dataset.uf;
+      const base = ufs[uf] || {};
+      const fat = fatores[uf] || {};
+      tr.querySelector('.gcc-uf-tx0').value = base.tx0 ?? '';
+      tr.querySelector('.gcc-uf-tx1').value = base.tx1 ?? '';
+      tr.querySelector('.gcc-uf-tx2').value = base.tx2 ?? '';
+      tr.querySelector('.gcc-uf-la-nina').value = fat.la_nina ?? '';
+      tr.querySelector('.gcc-uf-el-nino').value = fat.el_nino ?? '';
+      tr.querySelector('.gcc-uf-neutro').value = fat.neutro ?? '';
+    });
+
+    document.getElementById('gcc-parametros-aviso').style.display = p._completos ? 'none' : '';
+  } catch (e) {
+    showToast('Erro ao carregar parâmetros: ' + e.message, 'error');
+  }
+}
+
+function gccLerParametrosDaTela() {
+  const num = (id) => { const v = document.getElementById(id).value; return v === '' ? null : parseFloat(v); };
+  const planos = Array.from(document.querySelectorAll('#gcc-p-planos-tbody tr')).map(tr => ({
+    id: parseInt(tr.dataset.planoId, 10),
+    percentual_cobertura: tr.querySelector('.gcc-plano-cobertura').value === '' ? null : parseFloat(tr.querySelector('.gcc-plano-cobertura').value),
+    multiplicador_pg: tr.querySelector('.gcc-plano-multiplicador').value === '' ? null : parseFloat(tr.querySelector('.gcc-plano-multiplicador').value),
+  }));
+  const taxas_base_uf = {};
+  const fatores_climaticos_uf = {};
+  document.querySelectorAll('#gcc-p-uf-tbody tr').forEach(tr => {
+    const uf = tr.dataset.uf;
+    const g = (sel) => { const v = tr.querySelector(sel).value; return v === '' ? null : parseFloat(v); };
+    taxas_base_uf[uf] = { tx0: g('.gcc-uf-tx0'), tx1: g('.gcc-uf-tx1'), tx2: g('.gcc-uf-tx2') };
+    fatores_climaticos_uf[uf] = { la_nina: g('.gcc-uf-la-nina'), el_nino: g('.gcc-uf-el-nino'), neutro: g('.gcc-uf-neutro') };
+  });
+  return {
+    cenario_enso: document.getElementById('gcc-p-cenario').value || null,
+    percentis_decisao: { p10: num('gcc-p-p10'), p25: num('gcc-p-p25'), p75: num('gcc-p-p75') },
+    fatores_decisao: {
+      recusar: { fator: num('gcc-p-fator-recusar') },
+      reduzir_65: { fator: num('gcc-p-fator-reduzir') },
+      manter_70: { fator: num('gcc-p-fator-manter') },
+      ajustar_75: { fator: num('gcc-p-fator-ajustar') },
+    },
+    denominador_ajuste: num('gcc-p-denominador'),
+    planos,
+    taxas_base_uf,
+    fatores_climaticos_uf,
+    desconto_comercial_fixo: num('gcc-p-desconto'),
+    preco_saca_min: num('gcc-p-preco-min'),
+    preco_saca_max: num('gcc-p-preco-max'),
+  };
+}
+
+async function gccSalvarParametros() {
+  const { cultura, safra } = gccCulturaSafra();
+  if (!cultura || !safra) { showToast('Informe a cultura e a safra.', 'error'); return; }
+  gccStatus('gcc-status-parametros', '⏳ Salvando…', 'load');
+  try {
+    const patch = gccLerParametrosDaTela();
+    const p = await api('PATCH', `/condicoes-comerciais/parametros/${encodeURIComponent(cultura)}/${encodeURIComponent(safra)}`, patch);
+    _gccParametros = p;
+    document.getElementById('gcc-parametros-aviso').style.display = p._completos ? 'none' : '';
+    gccStatus('gcc-status-parametros', '✓ Parâmetros salvos (versão ' + p.versao + ').', 'ok');
+  } catch (e) {
+    gccStatus('gcc-status-parametros', '❌ ' + e.message, 'erro');
+  }
+}
+
+async function gccCarregarMunicipios(pagina) {
+  const { cultura, safra } = gccCulturaSafra();
+  const tbody = document.getElementById('gcc-rev-tbody');
+  if (!cultura || !safra || !_gccLoteId) {
+    tbody.innerHTML = '<tr><td colspan="8" class="mc-empty">Envie um arquivo na etapa 1 primeiro.</td></tr>';
+    return;
+  }
+  _gccPagina = pagina || 1;
+  tbody.innerHTML = '<tr><td colspan="8" class="mc-empty">Carregando…</td></tr>';
+  try {
+    const params = new URLSearchParams({
+      uf: document.getElementById('gcc-rev-uf').value,
+      decisao: document.getElementById('gcc-rev-decisao').value,
+      busca: document.getElementById('gcc-rev-busca').value,
+      pagina: String(_gccPagina),
+      tamanho: '50',
+    });
+    const r = await api('GET', `/condicoes-comerciais/lotes/${encodeURIComponent(cultura)}/${encodeURIComponent(safra)}/${_gccLoteId}/municipios?${params}`);
+    if (r.erro === 'parametros_incompletos') {
+      tbody.innerHTML = '<tr><td colspan="8" class="mc-empty">Preencha e salve os parâmetros (etapa 2) antes de revisar os municípios.</td></tr>';
+      return;
+    }
+    gccRenderMunicipios(r);
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="8" class="mc-empty">❌ ${e.message}</td></tr>`;
+  }
+}
+
+function gccRenderMunicipios(r) {
+  const tbody = document.getElementById('gcc-rev-tbody');
+  if (!r.itens.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="mc-empty">Nenhum município encontrado com esse filtro.</td></tr>';
+  } else {
+    tbody.innerHTML = r.itens.map(m => {
+      const decisaoBadge = m.decisao ? `<span class="badge ${_GCC_DECISAO_COR[m.decisao] || 'badge-neutral'}">${_GCC_DECISAO_LABEL[m.decisao] || m.decisao}</span>` : '<span class="badge badge-neutral">sem dado</span>';
+      const fmt = (v) => v === null || v === undefined ? '—' : Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+      const overrideTxt = m.override_aplicado !== null && m.override_aplicado !== undefined ? fmt(m.override_aplicado) : '—';
+      return `
+        <tr>
+          <td>${m.codigo_ibge}</td>
+          <td>${m.municipio}</td>
+          <td>${m.uf}</td>
+          <td>${fmt(m.media_5anos)}</td>
+          <td>${decisaoBadge}</td>
+          <td>${fmt(m.nova_media_efetiva)}</td>
+          <td>${overrideTxt}</td>
+          <td style="white-space:nowrap">
+            <button class="btn-sm" style="padding:4px 10px" onclick="gccAbrirModalOverride('${m.codigo_ibge}', ${m.nova_media_calculada ?? 'null'}, ${m.override_aplicado ?? 'null'})">✎</button>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+  const totalPaginas = Math.max(1, Math.ceil(r.total / r.tamanho));
+  document.getElementById('gcc-rev-paginacao').innerHTML = `
+    <span>${r.total.toLocaleString('pt-BR')} município(s)</span>
+    <button class="btn-sm" ${r.pagina <= 1 ? 'disabled' : ''} onclick="gccCarregarMunicipios(${r.pagina - 1})">← anterior</button>
+    <span>página ${r.pagina} de ${totalPaginas}</span>
+    <button class="btn-sm" ${r.pagina >= totalPaginas ? 'disabled' : ''} onclick="gccCarregarMunicipios(${r.pagina + 1})">próxima →</button>`;
+}
+
+function gccAbrirModalOverride(codigoIbge, calculada, atual) {
+  const valor = atual !== null ? atual : (calculada !== null ? calculada : '');
+  const novo = prompt(`Nova média esperada para ${codigoIbge} (calculada: ${calculada ?? '—'}):`, valor);
+  if (novo === null) return;
+  const numero = parseFloat(novo);
+  if (isNaN(numero)) { showToast('Valor inválido.', 'error'); return; }
+  const motivo = prompt('Motivo do ajuste (opcional):', '') || '';
+  gccSalvarOverride(codigoIbge, numero, motivo);
+}
+
+async function gccSalvarOverride(codigoIbge, novaMediaEsperada, motivo) {
+  const { cultura, safra } = gccCulturaSafra();
+  try {
+    await api('PUT', `/condicoes-comerciais/lotes/${encodeURIComponent(cultura)}/${encodeURIComponent(safra)}/${_gccLoteId}/municipios/${codigoIbge}/override`, { nova_media_esperada: novaMediaEsperada, motivo });
+    showToast('Override salvo.', 'success');
+    gccCarregarMunicipios(_gccPagina);
+  } catch (e) {
+    showToast('Erro ao salvar override: ' + e.message, 'error');
+  }
+}
+
+async function gccRemoverOverride(codigoIbge) {
+  const { cultura, safra } = gccCulturaSafra();
+  try {
+    await api('DELETE', `/condicoes-comerciais/lotes/${encodeURIComponent(cultura)}/${encodeURIComponent(safra)}/${_gccLoteId}/municipios/${codigoIbge}/override`);
+    showToast('Override removido.', 'success');
+    gccCarregarMunicipios(_gccPagina);
+  } catch (e) {
+    showToast('Erro ao remover override: ' + e.message, 'error');
+  }
+}
+
+async function gccGerar() {
+  const { cultura, safra } = gccCulturaSafra();
+  if (!cultura || !safra || !_gccLoteId) { showToast('Envie o arquivo na etapa 1 primeiro.', 'error'); return; }
+  const btn = document.getElementById('gcc-btn-gerar');
+  btn.disabled = true;
+  gccStatus('gcc-status-gerar', '⏳ Gerando planilha final…', 'load');
+  document.getElementById('gcc-avisos-gerar').innerHTML = '';
+  try {
+    if (!BACKEND_URL) { await buscarUrlSupabase(); }
+    const res = await fetch(`${BACKEND_URL}/condicoes-comerciais/lotes/${encodeURIComponent(cultura)}/${encodeURIComponent(safra)}/${_gccLoteId}/gerar`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${TOKEN}`, 'ngrok-skip-browser-warning': 'true' },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Erro ao gerar.');
+    }
+    const data = await res.json();
+    gccStatus('gcc-status-gerar', `✓ Planilha gerada: ${data.total_municipios.toLocaleString('pt-BR')} municípios.`, 'ok');
+    if (data.avisos && data.avisos.length) {
+      document.getElementById('gcc-avisos-gerar').innerHTML = `<div class="badge badge-warning">${data.avisos.length} município(s) excluído(s) por falta de dado — ver detalhes no histórico</div>`;
+    }
+    showToast('Planilha gerada com sucesso.', 'success');
+    await gccBaixar(data.geracao_id, cultura, safra);
+    gccMostrarEtapa('historico');
+  } catch (e) {
+    console.error(e);
+    gccStatus('gcc-status-gerar', '❌ ' + e.message, 'erro');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function gccCarregarHistorico() {
+  const { cultura, safra } = gccCulturaSafra();
+  const cont = document.getElementById('gcc-historico-lista');
+  if (!cultura || !safra) { cont.innerHTML = '<div class="mc-empty">Informe a cultura e a safra.</div>'; return; }
+  cont.innerHTML = '<div class="mc-empty">Carregando…</div>';
+  try {
+    const r = await api('GET', `/condicoes-comerciais/geracoes/${encodeURIComponent(cultura)}/${encodeURIComponent(safra)}`);
+    const itens = r.itens || [];
+    if (!itens.length) { cont.innerHTML = '<div class="mc-empty">Nenhuma geração ainda.</div>'; return; }
+    cont.innerHTML = itens.map(it => `
+      <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--gray200);border-radius:var(--r-md);margin-bottom:10px">
+        <div style="flex-shrink:0;width:40px;height:40px;border-radius:8px;background:var(--g50);display:flex;align-items:center;justify-content:center;font-size:20px">📄</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;color:var(--gray900)">${it.filename}</div>
+          <div style="font-size:12px;color:var(--gray600);margin-top:2px">${it.total_municipios} municípios · ${it.overrides_aplicados} override(s) · versão de parâmetros ${it.parametros_versao}</div>
+          <div style="font-size:11px;color:var(--gray400);margin-top:2px">Gerado em ${dzFmtData(it.gerado_em)} por ${it.gerado_por || '—'}</div>
+        </div>
+        <button class="btn-sm btn-green" onclick="gccBaixar('${it.geracao_id}','${cultura}','${safra}')" style="flex-shrink:0">⬇ Baixar</button>
+      </div>`).join('');
+  } catch (e) {
+    cont.innerHTML = `<div class="mc-empty">❌ ${e.message}</div>`;
+  }
+}
+
+async function gccBaixar(geracaoId, cultura, safra) {
+  if (!BACKEND_URL) { await buscarUrlSupabase(); }
+  try {
+    const res = await fetch(`${BACKEND_URL}/condicoes-comerciais/geracoes/${encodeURIComponent(cultura)}/${encodeURIComponent(safra)}/${geracaoId}/download`, {
+      headers: { 'Authorization': `Bearer ${TOKEN}`, 'ngrok-skip-browser-warning': 'true' },
+    });
+    if (!res.ok) throw new Error('Falha ao baixar.');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `Condições ${cultura} Safra ${safra}.xlsx`; a.click();
+    URL.revokeObjectURL(url);
   } catch (e) {
     showToast(e.message, 'error');
   }
