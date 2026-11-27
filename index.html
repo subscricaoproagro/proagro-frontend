@@ -4326,6 +4326,7 @@ function renderJobsTable(jobs) {
           ${concluido && (j.tipo_analise==='sistema' || (j.id_proposta && String(j.id_proposta).trim() !== '0' && String(j.id_proposta).trim() !== '')) && j.decisao === 'aprovado' ? `<button class="btn-sm" style="background:#f0fdf4;border:1px solid #86efac;color:#166534" onclick="abrirUploadSistema('${j.id}')">📁 Enviar Arquivos</button>` : ''}
           ${renderBadgeOnedrive(j)}
           ${renderBadgeSemeadura(j)}
+          ${renderBadgeDeclaracaoSinistralidade(j)}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8" onclick="verDecisaoAR('${j.id}')">👁 Ver Decisão AR</button>` : ''}
           ${concluido && j.tipo_analise==='condicao_especial' && j.decisao_risco ? `<button class="btn-sm" style="background:#fefce8;border:1px solid #fde68a;color:#92400e" onclick="reavaliarCE('${j.id}')">🔄 Reavaliar</button>` : ''}
           ${concluido && j.decisao === 'recusado' ? `<button class="btn-sm" style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c" onclick="abrirReenvioEditavel('${j.id}','sistema')">📧 Reenviar Email</button>` : ''}
@@ -4456,6 +4457,39 @@ async function abrirEmailVistoriaPrevia(jobId) {
     mostrarEmailParaCopiar(data.email);
   } catch (e) {
     showToast('⚠️ Erro ao gerar e-mail de vistoria prévia: ' + e.message, 'warning');
+  }
+}
+
+// Declaração de não sinistralidade: proposta aprovada cuja semeadura é
+// anterior à própria data da decisão -- a lavoura já estava no campo quando
+// a subscrição avaliou, então não deu pra confirmar ausência de sinistro
+// antes de aprovar. Mesmo padrão do selo de vistoria prévia (acima), mas
+// comparando contra a data da decisão, não contra "hoje" (confirmado em
+// 2026-11-27: nunca tinha sido solicitado nenhum pedido disso, pra nenhuma
+// proposta -- este selo passa a oferecer o pedido direto na lista).
+function renderBadgeDeclaracaoSinistralidade(j) {
+  if (j.decisao !== 'aprovado' || !j.data_semeadura || !j.decisao_at) return '';
+  const dtSem = new Date(j.data_semeadura + 'T00:00:00');
+  const dtDecisao = new Date(String(j.decisao_at).slice(0, 10) + 'T00:00:00');
+  if (!(dtSem < dtDecisao)) return '';
+  return `<span class="btn-sm" style="background:#fdf4ff;border:1px solid #e9d5ff;color:#7e22ce;cursor:pointer" title="Semeadura anterior à avaliação -- clique pra abrir/reenviar o e-mail solicitando a declaração de não sinistralidade" onclick="abrirEmailDeclaracaoSinistralidade('${j.id}')">📋 Solicitar declaração de não sinistralidade</span>`;
+}
+
+async function abrirEmailDeclaracaoSinistralidade(jobId) {
+  try {
+    const token = sessionStorage.getItem('pa_token');
+    const resp = await fetch(BACKEND_URL + '/jobs/' + jobId + '/email-declaracao-sinistralidade', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      showToast('⚠️ ' + (data.detail || 'Erro ao gerar e-mail de declaração de não sinistralidade'), 'warning');
+      return;
+    }
+    mostrarEmailParaCopiar(data.email);
+  } catch (e) {
+    showToast('⚠️ Erro ao gerar e-mail de declaração de não sinistralidade: ' + e.message, 'warning');
   }
 }
 
