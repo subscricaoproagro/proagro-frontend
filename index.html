@@ -2056,6 +2056,13 @@
           </select>
         </div>
         <div class="form-group" style="margin:0"><label class="form-label">Dias de cobertura (somados à data fim de semeadura)</label><input class="form-input" type="number" id="gd-p-dias-cobertura" value="165"></div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Divisão por linha (coluna Solo/AD do draft)</label>
+          <select class="form-input" id="gd-p-modo-split">
+            <option value="ad" selected>Por AD (Milho: 5 linhas AD-2 a AD-6)</option>
+            <option value="textura">Por textura de solo (Canola/Trigo: 3 linhas fixas TEXTURA MEDIA/ARGILOSO/ARENOSO)</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -12588,6 +12595,7 @@ async function gdCarregarParametros() {
     document.getElementById('gd-info-preco-max').textContent = _gdSacaMax != null ? _gdSacaMax.toLocaleString('pt-BR', {minimumFractionDigits:2}) : '—';
     document.getElementById('gd-p-fonte-preco').value = p.fonte_preco_saca || 'max';
     document.getElementById('gd-p-dias-cobertura').value = p.dias_cobertura ?? 165;
+    document.getElementById('gd-p-modo-split').value = p.modo_split || 'ad';
 
     const codigos = p.planos_codigo_produto || {};
     const tbody = document.getElementById('gd-p-planos-tbody');
@@ -12618,6 +12626,7 @@ function gdLerParametrosDaTela() {
     planos_codigo_produto,
     fonte_preco_saca: document.getElementById('gd-p-fonte-preco').value,
     dias_cobertura: parseInt(document.getElementById('gd-p-dias-cobertura').value, 10) || 165,
+    modo_split: document.getElementById('gd-p-modo-split').value,
   };
 }
 
